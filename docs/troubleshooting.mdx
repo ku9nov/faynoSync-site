@@ -1,0 +1,24 @@
+---
+sidebar_position: 6
+---
+# Troubleshooting
+
+## Handling CORS Restrictions for Chrome Extension Requests
+
+### Problem 
+
+Browsers enforce CORS policies to prevent unauthorized cross-origin requests. Requests made by Chrome extensions are blocked by default unless the server explicitly allows the extension's unique ID. Without proper configuration, these requests will fail due to CORS restrictions.
+
+### Solution
+
+Each Chrome extension has a unique ID generated from its manifest file. By configuring the backend API to allow this specific extension ID in CORS settings, we can bypass the restriction while maintaining security. The extension ID is stable, meaning it rarely changes, so adding it to the allowed origins solves the issue unless the extension is updated.
+
+### Server Configuration
+
+To enable CORS for the Chrome extension, the server’s `ALLOWED_CORS` environment variable was updated to include both the local development URL and the extension's unique ID:
+
+```bash
+ALLOWED_CORS="http://localhost:5173,chrome-extension://fhdpldnibaocgjobfdkikidckofodicc"
+```
+
+This allows requests from both the development environment and the Chrome extension, ensuring functionality while keeping security in check.

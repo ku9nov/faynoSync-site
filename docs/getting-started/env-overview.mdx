@@ -1,0 +1,152 @@
+---
+sidebar_position: 1
+---
+
+# Environment Variables Overview
+To configure `FaynoSync`, you need to set the following environment variables. These settings ensure that your application communicates correctly with storage services, databases, and APIs.
+
+## Required Environment Variables
+* `STORAGE_DRIVER`
+
+    Specifies the storage driver to use. 
+
+    Available options are:
+
+    - **minio**: For local development or private S3-compatible object storage.
+
+    - **aws**: For using `AWS S3` as your object storage solution.
+
+        Example: `STORAGE_DRIVER=minio`
+
+* `S3_ACCESS_KEY`
+
+    Your access key ID for **AWS** or **MinIO**. 
+
+    This key is required to authenticate and interact with your S3-compatible storage.
+
+        Example: `S3_ACCESS_KEY=YOUR_ACCESS_KEY`
+
+* `S3_SECRET_KEY`
+
+    Your secret access key for **AWS** or **MinIO**. 
+
+    This key is paired with the `S3_ACCESS_KEY` for secure access to your storage.
+
+        Example: `S3_SECRET_KEY=YOUR_SECRET_KEY`
+
+* `S3_REGION`
+
+    The **AWS** region in which your S3 bucket is located. For **MinIO**, leave this value empty.
+
+        Example: `S3_REGION=us-east-1` or `S3_REGION=`
+
+* `S3_BUCKET_NAME`
+
+    The name of your S3 bucket where application files will be stored. This bucket is used to manage versions and updates for your applications.
+    
+        Example: `S3_BUCKET_NAME=my-faynosync-bucket`
+
+* `S3_ENDPOINT`
+
+    The S3 endpoint URL used to connect to your storage. This value will differ based on your cloud provider (e.g., MinIO or AWS).
+
+        Example: `S3_ENDPOINT=https://s3.amazonaws.com`
+
+* `DASHBOARD_URL`
+
+    The URL of your dashboard. This is used for configuring CORS (Cross-Origin Resource Sharing) to allow requests to the auto updater service from your dashboard.
+
+        Example: `DASHBOARD_URL=http://localhost:3000`
+
+* `PORT`
+
+    The port on which the auto updater service will listen. By default, the service listens on port 9000.
+
+        Example: `PORT=9000`
+
+* `MONGODB_URL`
+
+    The MongoDB connection string used by `FaynoSync`. This string contains information such as the host, database name, and authentication details.
+
+        Example: `MONGODB_URL=mongodb://root:password@127.0.0.1/faynosync_db?authSource=admin`
+
+
+* `MONGODB_URL_TESTS`
+
+    The MongoDB connection string used by `FaynoSync` for tests running. This string contains information such as the host, database name, and authentication details.
+
+        Example: `MONGODB_URL_TESTS=mongodb://root:password@127.0.0.1/faynosync_db_tests?authSource=admin`
+
+* `API_KEY`
+
+    This key is used for authentication during sign-up and other API interactions. 
+
+    Generate this key using `openssl rand -base64 16`.
+
+        Example: `API_KEY=generated_api_key`
+
+* `JWT_SECRET`
+
+    A secret key used for signing and verifying JWT (JSON Web Tokens) used by the application for secure communication.
+
+    Generate this key using `openssl rand -base64 32`.
+
+        Example: `JWT_SECRET=your_jwt_secret`
+
+* `PERFORMANCE_MODE`
+
+    This setting enables performance optimizations within the application when set to true. Use this for high-load environments where efficiency is a priority.
+
+        Example: `PERFORMANCE_MODE=true`
+
+* `REDIS_HOST`
+
+    The hostname or IP address of the Redis server. If not specified, it defaults to `localhost`.
+
+        Example: `REDIS_HOST=your_redis_host`
+
+* `REDIS_PORT`
+
+    The port number on which the Redis server is listening. The default value is 6379.
+
+        Example: `REDIS_PORT=6379`
+
+* `REDIS_PASSWORD`
+    
+    The password for authenticating with the Redis server. Leave this empty if no password is set for your Redis instance.
+
+        Example: `REDIS_PASSWORD=your_redis_password`
+
+* `REDIS_DB`
+
+    Specifies which Redis database number to use. The default is 0.
+
+        Example: `REDIS_DB=0`
+
+## Setting Up Environment Variables
+
+You can set these environment variables in a `.env` file in the root directory of the application. Here's an example of what your `.env` file might look like:
+
+```bash
+STORAGE_DRIVER=minio
+S3_ACCESS_KEY=YOUR_ACCESS_KEY
+S3_SECRET_KEY=YOUR_SECRET_KEY
+S3_REGION=
+S3_BUCKET_NAME=my-faynosync-bucket
+S3_ENDPOINT=http://localhost:9010
+DASHBOARD_URL=http://localhost:3000
+PORT=9000
+MONGODB_URL=mongodb://root:password@127.0.0.1/faynosync_db?authSource=admin
+SYSTEM_KEY=generated_system_key
+API_KEY=generated_api_key
+JWT_SECRET=your_jwt_secret
+MONGODB_URL_TESTS=mongodb://root:password@127.0.0.1/faynosync_db_tests?authSource=admin
+PERFORMANCE_MODE=true
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
+REDIS_DB=0
+```
+
+For convenience, you can also use the `.env.local` file, which contains all the variables already filled in. Ensure that your environment variables are properly set before running the application to avoid misconfigurations.
+

@@ -1,0 +1,41 @@
+---
+title: Get All Platforms
+---
+# Get All Platforms
+
+Retrieve a list of all platforms.
+
+**Endpoint:**
+
+`GET /listPlatforms`
+
+**Headers:**
+
+`Authorization`: Bearer JWT token.
+
+**Request:**
+
+```bash
+curl -X GET http://localhost:9000/listPlatforms \
+-H "Authorization: Bearer <jwt_token>"
+```
+
+**Response:**
+
+```json
+{
+    "platforms": [
+        {
+            "ID": "653a52481ff613bed613df58",
+            "PlatformName": "darwin",
+            "Updated_at": "2023-10-26T14:49:28.894+03:00"
+        },
+        {
+            "ID": "653a52401ff613bed613df57",
+            "PlatformName": "linux",
+            "Updated_at": "2023-10-26T14:49:20.976+03:00"
+        }
+    ]
+}
+
+```

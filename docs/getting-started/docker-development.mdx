@@ -1,0 +1,55 @@
+---
+sidebar_position: 3
+---
+
+# Docker Development
+
+Docker is a platform that allows developers to automate the deployment of applications inside lightweight, portable containers. Containers package an application with all its dependencies, ensuring that it runs consistently across different environments. This makes it easier to develop, ship, and run applications, as you can be confident that they will behave the same way in development, testing, and production.
+
+For more information on Docker and to install it, visit the official [Docker Documentation](https://docs.docker.com/engine/install/).
+
+Install [Docker Compose](https://docs.docker.com/compose/install/).
+
+To get started, you need to create an environment file (`.env`) and set all the required configurations. For more details on the necessary environment variables, please refer to the [Environment Configuration page](./env-overview).
+
+## Building and Running the API
+
+This step is primarily for users who want to explore the API without installing Golang locally. 
+
+You can build and run the FaynoSync API along with all its dependencies using the following command:
+
+```bash
+docker-compose up --build
+```
+
+This command will build the necessary Docker images and start the containers as defined in `docker-compose.yaml` file.
+
+:::tip Note
+
+Rebuilding the Docker images each time can be time-consuming, making this approach less suitable for active development. It's recommended mainly for initial setup and testing the API’s functionality rather than for regular development tasks.
+
+:::
+
+## Running Tests
+
+Once the services are running, you can execute the test suite with the following command (please wait until the `s3-service` successfully creates the bucket):
+
+```bash
+docker exec -it faynoSync_backend "/usr/bin/faynoSync_tests"
+```
+
+This command runs tests directly inside the `faynoSync_backend` container.
+
+## Running Dependency Services for Local Development
+
+If you prefer to work locally with **Golang** installed, you can start only the dependency services required for **FaynoSync** development by using this command:
+
+```bash
+docker-compose -f docker-compose.yaml -f docker-compose.development.yaml up
+```
+
+This setup will start essential services like **MongoDB** and **MinIO** without running the full API in a container.
+
+:::tip Important
+Make sure **Golang** is installed on your local machine. For instructions on setting up **Golang**, refer to the [Golang Installation Guide](https://go.dev/doc/install).
+:::

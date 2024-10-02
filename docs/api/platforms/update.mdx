@@ -1,0 +1,40 @@
+---
+title: Update Platform
+---
+
+# Update Platform
+
+Update an existing platform.
+
+:::warning
+Changing this value might prevent existing apps from checking for new versions, as the platform name will have changed.
+:::
+
+**Endpoint:**
+
+`POST /updatePlatform`
+
+**Headers:**
+
+`Authorization`: Bearer JWT token.
+
+**Body Form Data:**
+
+- `id`: The ID of the platform you want to change.
+
+- `platform`: New platform name.
+
+**Request:**
+```bash
+curl --location 'http://localhost:9000/updatePlatform' \
+-H "Authorization: Bearer <jwt_token>" \
+--form 'data="{\"id\":\"66ae13fe5b663c058367f893\", \"platform\":\"new_name\"}"'
+```
+
+**Response:**
+
+```json
+{
+    "updatePlatformResult.Updated": true
+}
+```

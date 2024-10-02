@@ -1,0 +1,35 @@
+---
+title: Login
+---
+
+### Login
+
+Authenticate and receive a jwt token for accessing the API.
+
+**Endpoint:**
+
+`POST /login`
+
+**Headers:**
+
+`Content-Type: application/json`
+
+**Body Parameters:**
+
+- **username** (string, required): The username of your account.
+
+- **password** (string, required): The password for the new account.
+
+**Request:**
+
+```bash
+curl -X POST -H "Content-Type: application/json" -d '{"username": "admin", "password": "password"}' http://localhost:9000/login
+```
+
+**Response:**
+
+```json
+{
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MjY3NDQ4NDMsInVzZXJuYW1lIjoiYWRtaW4ifQ.eYkCNem24-6rpw8aXo6NIcN6xtU9rqq2_2YYz1nS82Q"
+}
+```

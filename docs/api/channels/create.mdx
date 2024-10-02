@@ -1,0 +1,38 @@
+---
+title: Create Channel
+---
+# Create Channel
+
+:::warning 
+After the first creation, the `channel` field becomes required.
+:::
+
+Creates a new deployment channel.
+
+**Endpoint:**
+
+`POST /createChannel`
+
+**Headers:**
+
+`Authorization`: Bearer JWT token.
+
+**Body Form Data:**
+
+`channel`: The name of the channel to be created.
+
+**Request:**
+
+```bash
+curl --location 'http://localhost:9000/createChannel' \
+--header 'Authorization: Bearer <jwt_token>' \
+--form 'data="{\"channel\":\"nightly\"}"'
+```
+
+**Response:**
+
+```json
+{
+   "createChannelResult.Created": "641459ffb8360d74164e7e3c"
+}
+```

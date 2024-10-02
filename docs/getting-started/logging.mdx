@@ -1,0 +1,31 @@
+# Logging Configuration
+
+## Overview
+
+The API server uses `logrus` for logging, providing a flexible way to manage log levels based on the current environment or specific needs. You can control the logging level by setting the `--loglevel` flag when running the application.
+
+## Supported Log Levels
+
+The following log levels are supported:
+
+* debug – Detailed information, typically for diagnosing issues.
+* info – General operational information about the application.
+* warn – Potentially harmful situations, but the application is still running.
+* error – Errors that prevent certain functionality but don't cause the system to stop.
+* fatal – Critical errors that cause the application to terminate.
+* panic – Logs panic messages before terminating.
+
+## Command-Line Flag
+
+The log level is specified using the `--loglevel` flag in the command line. By default, the log level is set to `info` if not provided.
+
+**Syntax:**
+
+```bash
+--loglevel=<log_level>
+```
+
+## Example Log Levels
+- **Development:** Use `debug` for detailed logs during development and testing.
+- **Production**: Use `warn` or `error` in production to reduce log noise and focus on critical issues.
+

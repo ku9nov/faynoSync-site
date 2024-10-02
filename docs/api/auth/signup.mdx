@@ -1,0 +1,37 @@
+---
+title: SignUp
+---
+
+### SignUp
+
+This endpoint allows a new user to register and authenticate by providing the necessary credentials. Upon successful registration, the user will receive a confirmation message, and further actions will require a JWT token for secure access to the API.
+
+**Endpoint:**
+
+`POST /signup`
+
+**Headers:**
+
+`Content-Type: application/json`
+
+**Body Parameters:**
+
+- **username** (string, required): The username of your account.
+
+- **password** (string, required): The password for the new account.
+
+- **api_key** (string, required): API key required for signing up. Check this value in `.env` file.
+
+**Request:**
+
+```bash
+curl -X POST -H "Content-Type: application/json" -d '{"username": "admin", "password": "password", "api_key": "UHp3aKb40fwpoKZluZByWQ"}' http://localhost:9000/signup
+```
+
+**Response:**
+
+```
+{
+    "result": "Successfully created admin user."
+}
+```

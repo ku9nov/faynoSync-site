@@ -1,0 +1,62 @@
+---
+title: Upload App
+---
+
+# Upload App
+
+Upload a new version of an application, including the binary file and relevant metadata.
+
+**Endpoint:**
+
+`POST /upload`
+
+**Headers:**
+
+`Authorization`: Bearer JWT token.
+
+**Body (multipart/form-data):**
+
+**file**: App binary file(s).
+
+**app_name** (string, required): Name of the application.
+
+**version** (string, required): Version of the application.
+
+**channel** (string, optional): Channel (e.g., stable, beta).
+
+**publish** (boolean, optional): Marks the version available for users.
+
+**critical** (boolean, optional): Marks the version as critical.
+
+**platform** (string, optional): Platform (e.g., linux, windows).
+
+**arch** (string, optional): Architecture (e.g., amd64, arm64).
+
+**changelog** (string, optional): Changelog in markdown format.
+
+**Request:**
+
+```bash
+curl -X POST --location 'http://localhost:9000/upload' \
+--header 'Authorization: Bearer <jwt_token>' \
+--form 'file=@"/path_to_file/myapp.deb"' \
+--form 'data="{\"app_name\":\"myapp\",\"version\":\"0.0.1\",\"channel\":\"stable\",\"publish\":true,\"platform\":\"linux\",\"arch\":\"amd64\",\"changelog\":\"### Changelog\\n\\n- Added new feature X\\n- Fixed bug Y\"}"'
+```
+
+**Response:**
+
+```json
+{
+   "uploadResult.Uploaded": "6411c7c0ec4ff9a9a9bc18fa"
+}
+```
+
+**Multiple File Upload Example:**
+
+```bash
+curl -X POST --location 'http://localhost:9000/upload' \
+--header 'Authorization: Bearer <jwt_token>' \
+--form 'file=@"/path_to_file/myapp.deb"' \
+--form 'file=@"/path_to_file/myapp.rpm"' \
+--form 'data="{\"app_name\":\"myapp\",\"version\":\"0.0.1\",\"channel\":\"stable\",\"publish\":true,\"platform\":\"linux\",\"arch\":\"amd64\",\"changelog\":\"### Changelog\\n\\n- Added new feature X\\n- Fixed bug Y\"}"'
+```

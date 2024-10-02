@@ -1,0 +1,38 @@
+---
+title: Create arch 
+---
+# Create arch 
+
+:::warning 
+After creating the first architecture, the arch field becomes required.
+:::
+
+Create a deployment architecture.
+
+**Endpoint:**
+
+`POST /createArch`
+
+**Headers:**
+
+`Authorization`: Bearer JWT token.
+
+**Body Form Data:**
+
+`arch`: Architecture of the application.
+
+**Request:**
+
+```bash
+curl --location 'http://localhost:9000/createArch' \
+--header 'Authorization: Bearer <jwt_token>' \
+--form 'data="{\"arch\":\"amd64\"}"'
+```
+
+**Response:**
+
+```json
+{
+   "createArchResult.Created": "641459ffb8360d74164e7e3c"
+}
+```

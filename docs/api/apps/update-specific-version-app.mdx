@@ -1,0 +1,62 @@
+---
+title: Update specific version of application
+---
+
+# Update specific version of application
+
+Update existing specific version of application.
+
+:::warning
+You can't change `app_name` and `version`. They are used only for correct searching.
+:::
+
+**Endpoint:**
+
+`POST /apps/update`
+
+**Headers:**
+
+`Authorization`: Bearer JWT token.
+
+**Body (multipart/form-data):**
+
+**file**: App binary file(s).
+
+**app_name** (string, required): Name of the application.
+
+**version** (string, required): Version of the application.
+
+**channel** (string, optional): Channel (e.g., stable, beta).
+
+**publish** (boolean, optional): Marks the version available for users.
+
+**critical** (boolean, optional): Marks the version as critical.
+
+**platform** (string, optional): Platform (e.g., linux, windows).
+
+**arch** (string, optional): Architecture (e.g., amd64, arm64).
+
+**changelog** (string, optional): Changelog in markdown format.
+
+**Request:**
+```
+curl --location 'http://localhost:9000/apps/update' \
+--header 'Authorization: Bearer <jwt_token>' \
+--form 'data="{\"id\": \"653a6268f51dee6a99a3d88c\", \"app_name\": \"secondapp\", \"version\": \"0.0.2\", \"channel\": \"stable\", \"publish\": true, \"platform\": \"linux\", \"arch\": \"amd64\", \"changelog\": \"\"}"' \
+--form 'file=@"/path_to_file/secondapp.deb"' \
+```
+**Multiple File Upload Example:**
+```
+curl --location 'http://localhost:9000/apps/update' \
+--header 'Authorization: Bearer <jwt_token>' \
+--form 'data="{\"id\": \"653a6268f51dee6a99a3d88c\", \"app_name\": \"secondapp\", \"version\": \"0.0.2\", \"channel\": \"stable\", \"publish\": true, \"platform\": \"linux\", \"arch\": \"amd64\", \"changelog\": \"\"}"' \
+--form 'file=@"/path_to_file/secondapp.deb"' \
+--form 'file=@"/path_to_file/secondapp.rpm"'
+
+**Response:**
+
+```json
+{
+    "updatedResult.Updated": true
+}
+```

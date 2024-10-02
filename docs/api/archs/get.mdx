@@ -1,0 +1,40 @@
+---
+title: Get All Architectures
+---
+# Get All Architectures
+
+Retrieve a list of all architectures.
+
+**Endpoint:**
+
+`GET /listArchs`
+
+**Headers:**
+
+`Authorization`: Bearer JWT token.
+
+**Request:**
+
+```bash
+curl -X GET http://localhost:9000/listArchs \
+-H "Authorization: Bearer <jwt_token>"
+```
+
+**Response:**
+
+```json
+{
+    "archs": [
+        {
+            "ID": "653a52611ff613bed613df59",
+            "ArchID": "amd64",
+            "Updated_at": "2023-10-26T14:49:53.815+03:00"
+        },
+        {
+            "ID": "653a52691ff613bed613df5a",
+            "ArchID": "arm64",
+            "Updated_at": "2023-10-26T14:50:01.413+03:00"
+        }
+    ]
+}
+```

@@ -1,0 +1,34 @@
+---
+title: Delete Specific Arch
+---
+
+# Delete Specific Arch
+
+Delete a specific architecture by its ID.
+
+**Endpoint:**
+
+`DELETE /deleteArch?id=<id>`
+
+**Headers:**
+
+`Authorization`: Bearer JWT token.
+
+**Query Parameters:**
+
+`id`: The unique identifier of the architecture.
+
+**Request:**
+
+```bash
+curl -X DELETE 'http://localhost:9000/deleteArch?id=64145ebaedd163d59d52e1dc' \
+-H "Authorization: Bearer <jwt_token>"
+```
+
+**Response:**
+
+```json
+{
+   "deleteArchResult.DeletedCount": 1
+}
+```

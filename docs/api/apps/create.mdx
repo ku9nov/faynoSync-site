@@ -1,0 +1,34 @@
+---
+title: Create Application
+---
+# Create Application
+
+Creates a new application.
+
+**Endpoint:**
+
+`POST /createApp`
+
+**Headers:**
+
+`Authorization`: Bearer JWT token.
+
+**Body Form Data:**
+
+`app`: The name of the application to be created.
+
+**Request:**
+
+```bash
+curl --location 'http://localhost:9000/createApp' \
+--header 'Authorization: Bearer <jwt_token>' \
+--form 'data="{\"app\":\"appName\"}"'
+```
+
+**Response:**
+
+```json
+{
+   "createAppResult.Created":"641459ffb8760d74164e7e3c"
+}
+```

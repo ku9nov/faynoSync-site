@@ -1,0 +1,39 @@
+---
+title: Check Latest Version
+---
+
+### Check Latest Version of application
+
+Check if there is a newer version of a specific application.
+
+**Endpoint:**
+
+`POST /checkVersion?app_name=<app_name>&version=<version>`
+
+**Query Parameters:**
+
+`app_name`: Name of the app.
+
+`version`: Current version of the app.
+
+`channel` (string, optional): Channel (e.g., stable, beta).
+
+`platform` (string, optional): Platform (e.g., linux, windows).
+
+`arch` (string, optional): Architecture (e.g., amd64, arm64).
+
+**Request:**
+
+```bash
+curl -X GET --location 'http://localhost:9000/checkVersion?app_name=secondapp&version=0.0.1&channel=stable&platform=linux&arch=amd64'
+```
+
+**Response:**
+
+```json
+{
+    "update_available": false,
+    "update_url_deb": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.1.deb",
+    "update_url_rpm": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.1.rpm"
+}
+```

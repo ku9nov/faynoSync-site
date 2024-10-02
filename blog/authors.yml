@@ -1,0 +1,22 @@
+ku9nov:
+  name: Serhii Kuianov
+  title: DevOps
+  url: https://github.com/ku9nov
+  image_url: https://github.com/ku9nov.png
+  page: true
+  socials:
+    github: ku9nov
+
+slorber:
+  name: Sébastien Lorber
+  title: Docusaurus maintainer
+  url: https://sebastienlorber.com
+  image_url: https://github.com/slorber.png
+  page:
+    # customize the url of the author page at /blog/authors/<permalink>
+    permalink: '/all-sebastien-lorber-articles'
+  socials:
+    x: sebastienlorber
+    linkedin: sebastienlorber
+    github: slorber
+    newsletter: https://thisweekinreact.com

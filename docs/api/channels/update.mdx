@@ -1,0 +1,40 @@
+---
+title: Update Arch
+---
+
+# Update Arch
+
+Update an existing architecture.
+
+:::warning
+Changing this value might prevent existing apps from checking for new versions, as the architecture name will have changed.
+:::
+
+**Endpoint:**
+
+`POST /updateArch`
+
+**Headers:**
+
+`Authorization`: Bearer JWT token.
+
+**Body Form Data:**
+
+- `id`: The ID of the architecture you want to change.
+
+- `channel`: New architecture name.
+
+**Request:**
+```bash
+curl --location 'http://localhost:9000/updateArch' \
+-H "Authorization: Bearer <jwt_token>" \
+--form 'data="{\"id\":\"66ae13fe5b663c058367f893\", \"arch\":\"new_name\"}"'
+```
+
+**Response:**
+
+```json
+{
+    "updateArchResult.Updated": true
+}
+```

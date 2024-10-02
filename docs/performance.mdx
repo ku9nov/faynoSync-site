@@ -1,0 +1,59 @@
+---
+sidebar_position: 5
+---
+# Performance Mode
+
+Performance Mode is an important feature that optimizes the performance of our API by reducing latency on frequently repeated requests. This mode uses Redis to cache the results of requests, allowing us to store responses for commonly used queries and avoid redundant database calls.
+
+## Why Is This Needed
+
+Enabling Performance Mode allows us to:
+
+* Reduce database load: Using the cache helps avoid unnecessary queries to MongoDB.
+
+* Increase API response speed: Cached responses are returned significantly faster than executing queries against the database.
+
+* Optimize resource usage: Lowering the number of database queries can also reduce resource consumption and improve overall system performance.
+
+## How Performance Mode Works
+
+* **Environment Variable Check:** Performance Mode is enabled if the `.env` file defines the variable `PERFORMANCE_MODE=true`.
+
+* **Response Caching:** When a request hits the API, it first checks Redis for cached data for that request. If data is found, it is returned to the client.
+
+* **Executing the Request:** If no cached data is found, a query is executed against the database. The result is stored in Redis for future use.
+
+## Expected Behavior
+
+**Performance Mode Enabled:**
+
+- API requests check Redis for cached responses.
+- If cache exists, a quick response is returned from the cache.
+- If no cache exists, data is fetched from the database and cached for later use.
+
+**Performance Mode Disabled:**
+
+- The API always executes queries against the database without checking the cache. This may lead to increased response times, especially for frequently repeated requests.
+
+## Checking Performance
+You can test the performance of the API using the following command:
+
+```bash
+start_time=$(date +%s); 
+for i in {1..1000}; do 
+  response=$(curl -s -w "Connect Time: %{time_connect}s, Start Transfer Time: %{time_starttransfer}s, Total Time: %{time_total}s\n" -o /dev/stdout --location 'http://localhost:9000/checkVersion?app_name=myapp&version=0.0.3&channel=nightly&platform=null&arch=null'); 
+  echo "$response"; 
+done; 
+end_time=$(date +%s); 
+total_time=$((end_time - start_time)); 
+echo "Total execution time: $total_time seconds"
+```
+:::tip
+Note on Functionality
+The Performance Mode is currently implemented only for the `checkVersion` request.
+In the case of uploading a new application with `publish` set to `true`, the Redis keys for that application will be removed, and it will be cached the next time the `checkVersion` request is made.
+:::
+
+## Conclusion
+
+Performance Mode is a vital tool for enhancing the speed and efficiency of our API. By caching the results of requests, we can reduce database load and provide faster data access for our users. It is recommended to activate Performance Mode in environments expecting high API load.

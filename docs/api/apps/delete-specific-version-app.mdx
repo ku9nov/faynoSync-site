@@ -1,0 +1,34 @@
+---
+title: Delete specific version of application
+---
+
+# Delete specific version of application
+
+Delete specific version of application.
+
+:::warning
+You can't change `app_name` and `version`. They are used only for correct searching.
+:::
+
+**Endpoint:**
+
+`DELETE /apps/delete?id=<id>`
+
+**Headers:**
+
+`Authorization`: Bearer JWT token.
+
+**Request:**
+```
+curl --location 'http://localhost:9000/apps/delete\?\id\=\653a5e4f51ce5114611f5abb' \
+--header 'Authorization: Bearer <jwt_token>' \
+```
+
+
+**Response:**
+
+```json
+{
+   "deleteSpecificAppResult.DeletedCount":1
+}
+```

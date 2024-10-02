@@ -1,0 +1,38 @@
+---
+title: Create Platform
+---
+# Create Platform
+
+:::warning 
+After creating the first platform, the `platform` field becomes required.
+:::
+
+Create a deployment platform.
+
+**Endpoint:**
+
+`POST /createPlatform`
+
+**Headers:**
+
+`Authorization`: Bearer JWT token.
+
+**Body Form Data:**
+
+`platform`: Name of the platform.
+
+**Request:**
+
+```bash
+curl --location 'http://localhost:9000/createPlatform' \
+--header 'Authorization: Bearer <jwt_token>' \
+--form 'data="{\"platform\":\"linux\"}"'
+```
+
+**Response:**
+
+```json
+{
+   "createPlatformResult.Created": "641459ffb8360d74164e7e3c"
+}
+```

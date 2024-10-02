@@ -1,0 +1,40 @@
+---
+title: Update application
+---
+
+# Update application
+
+Update an existing application.
+
+:::warning
+Changing this value might prevent existing apps from checking for new versions, as the application name will have changed.
+:::
+
+**Endpoint:**
+
+`POST /updateApp`
+
+**Headers:**
+
+`Authorization`: Bearer JWT token.
+
+**Body Form Data:**
+
+- `id`: The ID of the application you want to change.
+
+- `app`: New application name.
+
+**Request:**
+```bash
+curl --location 'http://localhost:9000/updateApp' \
+-H "Authorization: Bearer <jwt_token>" \
+--form 'data="{\"id\":\"66ae13fe5b663c058367f893\", \"app\":\"new_name\"}"'
+```
+
+**Response:**
+
+```json
+{
+    "updateAppResult.Updated": true
+}
+```

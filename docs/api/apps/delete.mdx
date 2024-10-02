@@ -1,0 +1,34 @@
+---
+title: Delete Specific application
+---
+
+# Delete Specific application
+
+This endpoint allows you to delete a specific application.
+
+**Endpoint:**
+
+`DELETE /deleteApp?id=<id>`
+
+**Headers:**
+
+`Authorization`: Bearer JWT token.
+
+**Query Parameters:**
+
+`id`: The unique identifier of the application to delete.
+
+**Request:**
+
+```bash
+curl -X DELETE http://localhost:9000/deleteApp\?\id\=\64145ebaedd163d59d52e1dc \
+-H "Authorization: Bearer <jwt_token>"
+```
+
+**Response:**
+
+```json
+{
+   "deleteAppResult.DeletedCount":1
+}
+```

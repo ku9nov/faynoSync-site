@@ -1,0 +1,40 @@
+---
+title: Update Channel
+---
+
+# Update Channel
+
+Update an existing deployment channel.
+
+:::warning
+Changing the channel name may disrupt existing client apps' ability to check for new versions due to the altered channel name.
+:::
+
+**Endpoint:**
+
+`POST /updateChannel`
+
+**Headers:**
+
+`Authorization`: Bearer JWT token.
+
+**Body Form Data:**
+
+- `id`: The ID of the channel to update.
+
+- `channel`: The new name for the channel.
+
+**Request:**
+```bash
+curl --location 'http://localhost:9000/updateChannel' \
+-H "Authorization: Bearer <jwt_token>" \
+--form 'data="{\"id\":\"66ae13fe4b663c058367f893\", \"channel\":\"new_name\"}"'
+```
+
+**Response:**
+
+```json
+{
+    "updateChannelResult.Updated": true
+}
+```

@@ -1,0 +1,93 @@
+---
+title: Search application by name
+---
+
+# Search application by name
+
+Search for all versions of an application by name.
+
+**Endpoint:**
+
+`GET /search?app_name=<app_name>`
+
+**Headers:**
+
+`Authorization`: Bearer JWT token.
+
+**Query Parameters:**
+
+`app_name`: Name of the application.
+
+**Request:**
+
+```bash
+curl -X GET --location 'http://localhost:9000/search?app_name=secondapp' \
+--header 'Authorization: Bearer <jwt_token>'
+```
+
+**Response:**
+
+```json
+{
+    "apps": [
+        {
+            "ID": "653a5e4f51ce5114611f5abb",
+            "AppName": "secondapp",
+            "Version": "0.0.1",
+            "Channel": "stable",
+            "Published": true,
+            "Artifacts": [
+                {
+                    "Link": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.1.deb",
+                    "Platform": "linux",
+                    "Arch": "amd64",
+                    "Package": ".deb"
+                },
+                {
+                    "Link": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.1.rpm",
+                    "Platform": "linux",
+                    "Arch": "amd64",
+                    "Package": ".rpm"
+                }
+            ],
+            "Changelog": [
+                {
+                    "Version": "0.0.1",
+                    "Changes": "### Changelog\n\n- Added new feature X\n- Fixed bug Y",
+                    "Date": "2023-10-26"
+                }
+            ],
+            "Updated_at": "2023-10-26T15:40:47.226+03:00"
+        },
+        {
+            "ID": "653a6268f51dee6a99a3d88c",
+            "AppName": "secondapp",
+            "Version": "0.0.3",
+            "Channel": "stable",
+            "Published": true,
+            "Artifacts": [
+                {
+                    "Link": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.3.deb",
+                    "Platform": "linux",
+                    "Arch": "amd64",
+                    "Package": ".deb"
+                },
+                {
+                    "Link": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.3.rpm",
+                    "Platform": "linux",
+                    "Arch": "amd64",
+                    "Package": ".rpm"
+                }
+            ],
+            "Changelog": [
+                {
+                    "Version": "0.0.3",
+                    "Changes": "### Changelog\n\n- Added new feature X\n- Fixed bug Y",
+                    "Date": "2023-10-26"
+                }
+            ],
+            "Updated_at": "2023-10-26T15:58:16.999+03:00"
+        }
+    ]
+}
+```

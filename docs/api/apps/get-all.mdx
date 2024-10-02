@@ -1,0 +1,81 @@
+---
+title: Get All Applications
+---
+# Get All Applications
+
+Retrieve a list of all applications.
+
+**Endpoint:**
+
+`GET /`
+
+**Headers:**
+
+`Authorization`: Bearer JWT token.
+
+**Request:**
+
+```bash
+curl -X GET http://localhost:9000/ -H "Authorization: Bearer <jwt_token>"
+```
+
+**Response:**
+
+```json
+{
+    "apps": [
+        {
+            "ID": "653a544c1ff613bed613df5b",
+            "AppName": "firstapp",
+            "Version": "0.0.1",
+            "Channel": "nightly",
+            "Published": false,
+            "Artifacts": [
+                {
+                    "Link": "https://<bucket_name>.s3.amazonaws.com/firstapp/nightly/linux/amd64/firstapp-0.0.1.deb",
+                    "Platform": "linux",
+                    "Arch": "amd64",
+                    "Package": ".deb"
+                }
+            ],
+            "Changelog": [
+                {
+                    "Version": "0.0.1",
+                    "Changes": "",
+                    "Date": "2023-10-26"
+                }
+            ],
+            "Updated_at": "2023-10-26T14:58:04.258+03:00"
+        },
+        {
+            "ID": "653a5e4f51ce5114611f5abb",
+            "AppName": "secondapp",
+            "Version": "0.0.1",
+            "Channel": "stable",
+            "Published": true,
+            "Artifacts": [
+                {
+                    "Link": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.1.deb",
+                    "Platform": "linux",
+                    "Arch": "amd64",
+                    "Package": ".deb"
+                },
+                {
+                    "Link": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.1.rpm",
+                    "Platform": "linux",
+                    "Arch": "amd64",
+                    "Package": ".rpm"
+                }
+            ],
+            "Changelog": [
+                {
+                    "Version": "0.0.1",
+                    "Changes": "",
+                    "Date": "2023-10-26"
+                }
+            ],
+            "Updated_at": "2023-10-26T15:40:47.226+03:00"
+        }
+    ]
+}
+```

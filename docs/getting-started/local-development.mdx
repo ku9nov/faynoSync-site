@@ -1,0 +1,74 @@
+---
+sidebar_position: 2
+---
+
+# Local development
+
+To get started with developing FaynoSync locally, you will need to set up the following services:
+
+**MongoDB** - A NoSQL database used to store application data, including version information, channel settings, and metadata. MongoDB’s flexible document structure is perfect for handling the dynamic data models required by FaynoSync.
+
+
+
+**Golang** - The main programming language used to build FaynoSync. Golang’s performance, simplicity, and strong concurrency support make it an ideal choice for developing efficient, scalable backend services.
+
+
+
+**MinIO** - An object storage service compatible with the Amazon S3 API. MinIO is used in FaynoSync to simulate S3 storage locally, allowing you to upload and manage application files directly on your machine during development. It provides the same API as AWS S3, making it easy to switch between local and production environments.
+
+
+
+## Setting Up Your Local Environment
+
+### Install MongoDB
+MongoDB is used to store all necessary data for FaynoSync, including application metadata, version control, channel, platform and architecture information. Ensure MongoDB is up and running on your local machine before starting the API.
+
+**Installation Guide**: [MongoDB Installation](https://www.mongodb.com/docs/manual/administration/install-community/)
+
+### Install Golang
+The FaynoSync API is built with Golang, so you need to have it installed to run the application locally. Once installed, you can build, run, and test the API with ease.
+
+**Installation Guide**: [Golang Installation](https://go.dev/doc/install)
+
+### Install MinIO
+MinIO acts as your local storage solution, replicating the AWS S3 environment where your application files will be uploaded and managed. Set up MinIO to ensure FaynoSync can interact with your local storage as it would with AWS S3.
+
+**Installation Guide**: [MinIO Installation](https://min.io/docs/minio/linux/operations/install-deploy-manage/deploy-minio-single-node-single-drive.html)
+
+After installing MinIO, open [http://localhost:9001/access-keys](http://localhost:9001/access-keys), create Access Keys, and set `S3_ACCESS_KEY` and `S3_SECRET_KEY` in either .env or .env.local. To access the MinIO dashboard, use the `MINIO_ROOT_USER` specified in your MinIO configuration as the username and `MINIO_ROOT_PASSWORD` as the password.
+
+
+### Running FaynoSync Locally
+
+Once you have all these services set up, you can run FaynoSync locally, allowing you to develop and test your application seamlessly. This setup ensures that your local environment closely mirrors the production setup, making your development process efficient and straightforward.
+
+To get started, you need to create an environment file (`.env`) and set all the required configurations. For more details on the necessary environment variables, please refer to the [Environment Configuration page](./env-overview).
+
+#### Starting FaynoSync
+To run FaynoSync, use the following command:
+```bash
+go run faynoSync.go
+```
+If this is your first time running FaynoSync, include the `--migration` flag to apply initial migrations:
+
+```bash
+go run faynoSync.go --migration
+```
+
+To roll back migrations, use:
+
+```bash
+go run faynoSync.go --migration --rollback
+```
+
+#### Testing Your Setup
+You can verify that everything is set up correctly by running the test suite:
+
+```bash
+go test
+```
+
+This will ensure that all components are correctly configured and that your local development environment is ready for use.
+
+If you encounter any issues during setup, feel free to consult the linked guides or reach out to our community on GitHub.
+
