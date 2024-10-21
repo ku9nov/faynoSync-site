@@ -1,0 +1,114 @@
+---
+title: Fetch Latest Version of App
+---
+
+### Fetch Latest Version of App
+
+This API endpoint retrieves the latest version of a specific app based on the provided parameters.
+
+**Endpoint:**
+
+`GET /apps/latest?app_name=<app_name>&channel=stable&platform=linux&arch=amd64`
+
+**Query Parameters:**
+
+`app_name`: (Required) The name of the app you want to fetch.
+
+`channel`: (Optional) The release channel (e.g., stable, beta). If omitted, the API returns the latest build from any available channel.
+
+`platform`: (Optional) The platform (e.g., linux, darwin).
+
+`arch`: (Optional) The architecture (e.g., amd64, arm64).
+
+`package`: (Optional) The package type (e.g., deb, rpm, dmg).
+
+**Important Behavior:**
+
+1. Channel Parameter:
+
+    - If channels have been pre-defined, the channel parameter becomes mandatory. Without it, the API will default to returning the latest build from the most recent channel associated with the app.
+
+2. Single URL Redirection:
+
+    - If the response contains only one URL, the API will automatically redirect the request to download the build at that URL. This simplifies the process when only one option is available.
+
+3. Flexible Responses Based on Parameters:
+
+    - The API responds dynamically based on the parameters you provide. For example, the request:
+
+    ```bash
+    GET /apps/latest?app_name=secondapp&channel=stable&platform=linux&arch=amd64
+    ```
+
+    returns a list of available builds:
+
+    ```json
+    {
+        "stable": {
+            "linux": {
+                "amd64": {
+                    "deb": {
+                        "url": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.3.deb"
+                    },
+                    "rpm": {
+                        "url": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.3.rpm"
+                    }
+                }
+            }
+        }
+    }
+    ```
+
+    - If you further specify the package parameter like so:
+
+    ```bash
+    GET /apps/latest?app_name=secondapp&channel=stable&platform=linux&arch=amd64&package=deb
+    ```
+
+    the API will redirect directly to the .deb package download URL:
+
+    ```bash
+    https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.3.deb
+    ```
+
+4. Omitting Platform and Arch:
+
+    - If you omit specific parameters such as platform or arch, the API will return all builds available under that channel. For example, this request:
+
+    ```bash
+    GET /apps/latest?app_name=secondapp&channel=stable
+    ```
+
+    might return:
+
+    ```json
+    {
+        "stable": {
+            "linux": {
+                "amd64": {
+                    "deb": {
+                        "url": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.3.deb"
+                    },
+                    "rpm": {
+                        "url": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.3.rpm"
+                    }
+                }
+            },
+            "darwin": {
+                "arm64": {
+                    "dmg": {
+                        "url": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/darwin/arm64/secondapp-0.0.3.dmg"
+                    }
+                },
+                "amd64": {
+                    "pkg": {
+                        "url": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/darwin/amd64/secondapp-0.0.3.pkg"
+                    }
+                }
+            }
+        }
+    }
+    ```
+
+
+The API will provide all available builds depending on what is uploaded in the specified channel, platform, and architecture.

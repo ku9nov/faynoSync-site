@@ -102,6 +102,7 @@ const sidebars: SidebarsConfig = {
           items: [
             'api/info/latest',
             'api/info/health',
+            'api/info/fetch-latest-build',
           ],
         },
       ],
