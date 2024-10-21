@@ -11,7 +11,7 @@ Create a deployment architecture.
 
 **Endpoint:**
 
-`POST /createArch`
+`POST /arch/create`
 
 **Headers:**
 
@@ -24,7 +24,7 @@ Create a deployment architecture.
 **Request:**
 
 ```bash
-curl --location 'http://localhost:9000/createArch' \
+curl --location 'http://localhost:9000/arch/create' \
 --header 'Authorization: Bearer <jwt_token>' \
 --form 'data="{\"arch\":\"amd64\"}"'
 ```

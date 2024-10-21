@@ -11,7 +11,7 @@ Create a deployment platform.
 
 **Endpoint:**
 
-`POST /createPlatform`
+`POST /platform/create`
 
 **Headers:**
 
@@ -24,7 +24,7 @@ Create a deployment platform.
 **Request:**
 
 ```bash
-curl --location 'http://localhost:9000/createPlatform' \
+curl --location 'http://localhost:9000/platform/create' \
 --header 'Authorization: Bearer <jwt_token>' \
 --form 'data="{\"platform\":\"linux\"}"'
 ```

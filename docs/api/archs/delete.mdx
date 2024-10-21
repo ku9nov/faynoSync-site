@@ -8,7 +8,7 @@ Delete a specific architecture by its ID.
 
 **Endpoint:**
 
-`DELETE /deleteArch?id=<id>`
+`DELETE /arch/delete?id=<id>`
 
 **Headers:**
 
@@ -21,7 +21,7 @@ Delete a specific architecture by its ID.
 **Request:**
 
 ```bash
-curl -X DELETE 'http://localhost:9000/deleteArch?id=64145ebaedd163d59d52e1dc' \
+curl -X DELETE 'http://localhost:9000/arch/delete?id=64145ebaedd163d59d52e1dc' \
 -H "Authorization: Bearer <jwt_token>"
 ```
 

@@ -8,7 +8,7 @@ Delete a specific platform by its ID.
 
 **Endpoint:**
 
-`DELETE /deletePlatform?id=<id>`
+`DELETE /platform/delete?id=<id>`
 
 **Headers:**
 
@@ -21,7 +21,7 @@ Delete a specific platform by its ID.
 **Request:**
 
 ```bash
-curl -X DELETE 'http://localhost:9000/deletePlatform?id=64145ebaedd163d59d52e1dc' \
+curl -X DELETE 'http://localhost:9000/platform/delete?id=64145ebaedd163d59d52e1dc' \
 -H "Authorization: Bearer <jwt_token>"
 ```
 

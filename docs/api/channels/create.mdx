@@ -11,7 +11,7 @@ Creates a new deployment channel.
 
 **Endpoint:**
 
-`POST /createChannel`
+`POST /channel/create`
 
 **Headers:**
 
@@ -24,7 +24,7 @@ Creates a new deployment channel.
 **Request:**
 
 ```bash
-curl --location 'http://localhost:9000/createChannel' \
+curl --location 'http://localhost:9000/channel/create' \
 --header 'Authorization: Bearer <jwt_token>' \
 --form 'data="{\"channel\":\"nightly\"}"'
 ```

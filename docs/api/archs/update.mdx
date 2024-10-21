@@ -12,7 +12,7 @@ Changing the channel name may disrupt existing client apps' ability to check for
 
 **Endpoint:**
 
-`POST /updateChannel`
+`POST /channel/update`
 
 **Headers:**
 
@@ -26,7 +26,7 @@ Changing the channel name may disrupt existing client apps' ability to check for
 
 **Request:**
 ```bash
-curl --location 'http://localhost:9000/updateChannel' \
+curl --location 'http://localhost:9000/channel/update' \
 -H "Authorization: Bearer <jwt_token>" \
 --form 'data="{\"id\":\"66ae13fe4b663c058367f893\", \"channel\":\"new_name\"}"'
 ```
