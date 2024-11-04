@@ -123,6 +123,24 @@ To configure `FaynoSync`, you need to set the following environment variables. T
 
         Example: `REDIS_DB=0`
 
+* `SLACK_ENABLE`
+
+    Specifies whether Slack integration is enabled. If `SLACK_ENABLE=false`, no messages will be sent to Slack. The default is `false`.
+
+        Example: `SLACK_ENABLE=true`
+
+* `SLACK_BOT_TOKEN`
+
+    The authentication token for the Slack bot used to access the API. It should be in the format xoxb-*.
+
+        Example: `SLACK_BOT_TOKEN=xoxb-123456789012-1234567890123-abcdef123456`
+
+* `SLACK_CHANNEL`
+
+    Specifies the name of the Slack channel where messages will be sent.
+
+        Example: `SLACK_CHANNEL=test-channel`
+
 ## Setting Up Environment Variables
 
 You can set these environment variables in a `.env` file in the root directory of the application. Here's an example of what your `.env` file might look like:
@@ -146,6 +164,9 @@ REDIS_HOST=localhost
 REDIS_PORT=6379
 REDIS_PASSWORD=
 REDIS_DB=0
+SLACK_ENABLE=false
+SLACK_BOT_TOKEN=xoxb-*
+SLACK_CHANNEL=test-channel
 ```
 
 For convenience, you can also use the `.env.local` file, which contains all the variables already filled in. Ensure that your environment variables are properly set before running the application to avoid misconfigurations.
