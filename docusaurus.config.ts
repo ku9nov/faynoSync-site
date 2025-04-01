@@ -117,15 +117,27 @@ const config: Config = {
         //   ],
         // },
         {
-          title: 'More',
+          title: 'GitHub',
           items: [
             // {
             //   label: 'Blog',
             //   to: '/blog',
             // },
             {
-              label: 'GitHub',
+              label: 'Website',
+              href: 'https://github.com/ku9nov/faynoSync-site',
+            },
+            {
+              label: 'API',
               href: 'https://github.com/ku9nov/faynoSync',
+            },
+            {
+              label: 'Dashboard',
+              href: 'https://github.com/ku9nov/faynoSync-dashboard',
+            },
+            {
+              label: 'Admin',
+              href: 'https://github.com/ku9nov/faynoSync-mongodb-dashboard',
             },
           ],
         },
