@@ -1,0 +1,42 @@
+---
+title: Delete artifact
+---
+
+# Delete artifact
+
+This endpoint allows you to delete artifacts of a specific application by its identifier in array.
+
+
+**Endpoint:**
+
+`POST /artifact/delete`
+
+**Headers:**
+
+`Authorization`: Bearer JWT token.
+
+**Body (multipart/form-data):**
+
+**id**: Unique identifier of the specific version of application.
+
+**app_name**: Name of the application to which the artifact belongs.
+
+**version**: Current version of the application.
+
+**artifacts_to_delete**: Array of identifiers of the artifacts to be deleted. Example: ["0", "1"]
+
+**Request:**
+```
+curl --location 'http://localhost:9000/apps/update' \
+--header 'Authorization: Bearer <jwt_token>' \
+--form 'data="{\"id\":\"653a5e4f51ce5114611f5abb\", \"app_name\":\"secondapp\", \"version\":\"0.0.1\", \"artifacts_to_delete\":[\"0\"]}"'
+```
+
+
+**Response:**
+
+```json
+{
+    "deleteSpecificArtifactResult": true
+}
+```

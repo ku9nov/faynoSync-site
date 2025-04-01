@@ -60,6 +60,7 @@ const sidebars: SidebarsConfig = {
             'api/apps/search',
             'api/apps/update-specific-version-app',
             'api/apps/delete-specific-version-app',
+            'api/apps/delete-specific-artifact',
           ],
         },
         {
