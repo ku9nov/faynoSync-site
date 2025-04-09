@@ -1,0 +1,40 @@
+---
+title: Download artifact from private bucket
+---
+
+# Download artifact from private bucket
+
+This request returns a signed URL for downloading a file.
+
+**Endpoint:**
+
+`GET /download`
+
+**Headers (Optional):**
+
+`Authorization`: Bearer JWT token.
+
+:::tip Note
+
+If `ENABLE_PRIVATE_APP_DOWNLOADING=false`, then this request requires authentication.
+
+:::
+
+**Query Parameters:**
+
+`key`: Key for finding the object on S3.
+
+**Request:**
+```
+curl -X GET --location 'http://localhost:9000/download?key=secondapp%2Fstable%2Flinux%2Famd64%2Fsecondapp-0.0.1.deb'
+```
+
+**Response:**
+
+You will be redirected to the file if `ENABLE_PRIVATE_APP_DOWNLOADING=true`, and you will receive this response if `false`:
+
+```json
+{
+    "download_url":"https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.1.deb?X-Amz-Algorithm=AWS4-HMAC-SHA256\u0026X-Amz-Credential=MdnaDEXKy9nOc4beIvNcgy%2F20250409%2Fus-east-1%2Fs3%2Faws4_request\u0026X-Amz-Date=20250409T153628Z\u0026X-Amz-Expires=900\u0026X-Amz-SignedHeaders=host\u0026X-Amz-Signature=bb89a695151c19880c2a2de6620e49a8f532ef1b356542f4821e701c32db9382"
+}
+```

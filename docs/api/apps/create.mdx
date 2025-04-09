@@ -5,6 +5,8 @@ title: Create Application
 
 Creates a new application.
 
+Optional with `description`, `logo`, `private`. 
+
 **Endpoint:**
 
 `POST /app/create`
@@ -13,9 +15,15 @@ Creates a new application.
 
 `Authorization`: Bearer JWT token.
 
-**Body Form Data:**
+**Body (multipart/form-data):**
 
-`app`: The name of the application to be created.
+- `app`: The name of the application to be created.
+
+- `file`: Logo of the app.
+
+- `description`: App description.
+
+- `private`: Lock app. (If selected, the app will be stored in a private bucket. Can't be changed.)
 
 **Request:**
 

@@ -6,6 +6,19 @@ sidebar_position: 1
 To configure `FaynoSync`, you need to set the following environment variables. These settings ensure that your application communicates correctly with storage services, databases, and APIs.
 
 ## Required Environment Variables
+
+* `API_URL`
+
+    Public URL to this API.
+
+        Example: `API_URL=https://faynosync.example.com`
+
+* `ENABLE_PRIVATE_APP_DOWNLOADING`
+
+    If enabled, then apps located in private S3 can be downloaded using the public API; if disabled, then download links require authentication.
+
+        Example: `ENABLE_PRIVATE_APP_DOWNLOADING=false`
+
 * `STORAGE_DRIVER`
 
     Specifies the storage driver to use. 
@@ -44,11 +57,23 @@ To configure `FaynoSync`, you need to set the following environment variables. T
 
     The name of your S3 bucket where application files will be stored. This bucket is used to manage versions and updates for your applications.
     
-        Example: `S3_BUCKET_NAME=my-faynosync-bucket`
+        Example: `S3_BUCKET_NAME=my-faynosync-bucket-private`
+
+* `S3_BUCKET_NAME_PUBLIC`
+
+    The name of your public S3 bucket. Artifacts will be uploaded here by default. This bucket is used to manage versions and updates for your applications.
+    
+        Example: `S3_BUCKET_NAME=my-faynosync-bucket-public`
 
 * `S3_ENDPOINT`
 
     The S3 endpoint URL used to connect to your storage. This value will differ based on your cloud provider (e.g., MinIO or AWS).
+
+        Example: `S3_ENDPOINT=https://s3.amazonaws.com`
+
+* `S3_ENDPOINT_PUBLIC`
+
+    The public bucket endpoint for S3. Check the documentation of your cloud provider. Artifacts will be uploaded here by default.
 
         Example: `S3_ENDPOINT=https://s3.amazonaws.com`
 
@@ -150,13 +175,15 @@ STORAGE_DRIVER=minio
 S3_ACCESS_KEY=YOUR_ACCESS_KEY
 S3_SECRET_KEY=YOUR_SECRET_KEY
 S3_REGION=
-S3_BUCKET_NAME=my-faynosync-bucket
-S3_ENDPOINT=http://localhost:9010
+S3_BUCKET_NAME_PUBLIC=my-faynosync-bucket
+S3_ENDPOINT_PUBLIC=http://localhost:9010
 DASHBOARD_URL=http://localhost:3000
 PORT=9000
 MONGODB_URL=mongodb://root:password@127.0.0.1/faynosync_db?authSource=admin
 SYSTEM_KEY=generated_system_key
 API_KEY=generated_api_key
+API_URL=http://localhost:9000
+ENABLE_PRIVATE_APP_DOWNLOADING=false
 JWT_SECRET=your_jwt_secret
 MONGODB_URL_TESTS=mongodb://root:password@127.0.0.1/faynosync_db_tests?authSource=admin
 PERFORMANCE_MODE=true

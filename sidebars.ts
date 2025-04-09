@@ -61,6 +61,7 @@ const sidebars: SidebarsConfig = {
             'api/apps/update-specific-version-app',
             'api/apps/delete-specific-version-app',
             'api/apps/delete-specific-artifact',
+            'api/apps/download',
           ],
         },
         {
