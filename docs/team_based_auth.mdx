@@ -1,0 +1,130 @@
+---
+sidebar_position: 6
+---
+# Team Based Authorization Matrix
+
+:::tip
+Available since version 1.4.0
+:::
+
+Starting from version **1.4.0**, faynoSync API includes a **Team Based Authorization Matrix** — a system that enables fine-grained, team-level access control. This mechanism allows administrators to create team users, assign specific permissions, and strictly isolate data between different administrators.
+
+## Core Concepts
+
+### Administrator
+
+- A unique user (admin usernames must be unique).
+
+- Owns a private set of team users.
+
+- Has access **only to their own users and resources**.
+
+- Can create, update, and delete their own team users.
+
+- Can set a password (including auto-generation via UI), change the username, password, and permissions of a user — **only if that user belongs to them**.
+
+### Team User
+
+- Also a unique user (usernames must not be duplicated).
+
+- Belongs to a specific administrator and is **isolated** from others.
+
+- **Has no access** to any user-related API (user management endpoints).
+
+- Can only create, edit, or delete **resources that belong to their administrator**.
+
+- Any resource created by a team user is automatically owned by their administrator.
+
+### Access Permissions
+
+Each team user can be granted specific permissions, defined separately for each type of resource.
+
+#### Supported Permissions:
+
+- Create
+
+- Edit
+
+- Delete
+
+- Upload (only for `applications`)
+
+- Download (only for `applications`)
+
+#### Resource Types:
+
+- Applications
+
+- Channels
+
+- Platforms
+
+- Architectures
+
+When a resource is created by a team user who has the Create permission for that resource type, it will be **automatically added to the team user's list of allowed resources**.
+
+### Resource Visibility and Ownership
+
+- Team users can **only access resources they’ve been explicitly granted access to**.
+
+- Team users cannot see or manage resources from other administrators.
+
+- **Administrators can view and manage all resources created by their team users**.
+
+- Duplicate resource names (`applications`, `channels`, `platforms`, `architectures`) **are allowed across administrators**, but not within the same administrator's scope.
+
+### API Changes
+
+To prevent collisions from duplicated resource names across different administrators, the following endpoints now require an additional mandatory query parameter: `owner`.
+
+#### Updated Endpoints:
+
+- `GET /checkVersion`
+
+- `GET /apps/latest`
+
+`owner` is the administrator's account name. It ensures that the correct scope is used when resolving resource names.
+
+### Expected Behavior
+
+<table>
+  <thead>
+    <tr>
+      <th>Action</th>
+      <th>Team User</th>
+      <th>Administrator</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Create resources</td>
+      <td>✅ (within admin scope)</td>
+      <td>✅</td>
+    </tr>
+    <tr>
+      <td>Edit resources</td>
+      <td>✅ (only own admin’s)</td>
+      <td>✅</td>
+    </tr>
+    <tr>
+      <td>Delete resources</td>
+      <td>✅ (only own admin’s)</td>
+      <td>✅</td>
+    </tr>
+    <tr>
+      <td>Manage users</td>
+      <td>❌</td>
+      <td>✅</td>
+    </tr>
+    <tr>
+      <td>Access user API</td>
+      <td>❌</td>
+      <td>✅</td>
+    </tr>
+    <tr>
+      <td>Access other admins' data</td>
+      <td>❌</td>
+      <td>❌</td>
+    </tr>
+  </tbody>
+</table>

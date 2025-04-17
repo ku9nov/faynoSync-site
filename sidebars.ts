@@ -99,17 +99,30 @@ const sidebars: SidebarsConfig = {
         },
         {
           type: 'category',
+          label: 'Users Management',
+          link: { type: 'doc', id: 'api/team/users-introduction' },
+          items: [
+            'api/team/create',
+            'api/team/list',
+            'api/team/update',
+            'api/team/delete',
+          ],
+        },
+        {
+          type: 'category',
           label: 'Status',
           link: { type: 'doc', id: 'api/info/info-introduction' },
           items: [
             'api/info/latest',
             'api/info/health',
             'api/info/fetch-latest-build',
+            'api/info/whoami',
           ],
         },
       ],
     },
     'performance',
+    'team_based_auth',
     'troubleshooting',
   ],
 };

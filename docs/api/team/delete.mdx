@@ -1,0 +1,39 @@
+---
+title: Delete Specific User
+---
+
+# Delete Specific User
+
+Delete a specific team user.
+
+**Endpoint:**
+
+`DELETE /user/delete`
+
+**Headers:**
+
+`Authorization`: Bearer JWT token.
+
+**Body:**
+
+`id`: The unique identifier of the user to delete.
+
+**Request:**
+
+```bash
+curl -X DELETE \
+  'http://localhost:9000/user/delete' \
+  -H 'Authorization: Bearer <jwt_token>' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "id": "67f8e842675a6e160d48a59c"
+  }'
+```
+
+**Response:**
+
+```json
+{
+    "message": "Team user deleted successfully"
+}
+```

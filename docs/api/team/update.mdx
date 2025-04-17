@@ -1,0 +1,73 @@
+---
+title: Update User
+---
+
+# Update User
+
+Update an existing team user's permissions.
+
+**Endpoint:**
+
+`POST /user/update`
+
+**Headers:**
+
+`Authorization`: Bearer JWT token.
+
+**Body:**
+
+`username`: Username for the new team user.
+
+`password`: Password for the new team user.
+
+`permissions`: Object containing permission settings for different resources.
+
+
+**Request:**
+
+```bash
+curl -X POST \
+  'http://localhost:9000/user/update' \
+  -H 'Authorization: Bearer <jwt_token>' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "username": "teamuser1",
+    "password": "password1234",
+    "permissions": {
+      "apps": {
+        "create": false,
+        "delete": true,
+        "edit": true,
+        "download": true,
+        "upload": true,
+        "allowed": ["", ""]
+      },
+      "channels": {
+        "create": true,
+        "delete": true,
+        "edit": true,
+        "allowed": [""]
+      },
+      "platforms": {
+        "create": true,
+        "delete": false,
+        "edit": true,
+        "allowed": [""]
+      },
+      "archs": {
+        "create": true,
+        "delete": false,
+        "edit": true,
+        "allowed": [""]
+      }
+    }
+  }'
+```
+
+**Response:**
+
+```json
+{
+    "message": "Team user updated successfully"
+}
+```
