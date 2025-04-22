@@ -1,0 +1,76 @@
+---
+slug: first-meet-faynosync
+title: Self-Hosted API for Automatic App Updates
+authors: [ku9nov]
+tags: [faynosync]
+---
+
+# faynoSync — the simple open-source update server you've been waiting for
+
+In today's fast-paced world of AI and digitalization, more and more people, companies, and startups are creating their own applications. Depending on the type of app, you might publish it on platforms like Google Play, the App Store, and so on. These services not only handle publishing but also provide automatic versioned updates to end users.
+
+But there's a small catch.
+
+Bureaucracy. Registrations. The 9 circles of hell you have to go through before your app finally goes live on those platforms.  
+Just think — where do you actually download apps like **Discord**, **Brave Browser**, or **Docker Desktop**?  
+Exactly. The list goes on.
+
+That's where **faynoSync** comes in.
+
+---
+
+## What is faynoSync?
+
+**faynoSync** is a lightweight, open-source API server that gives you full control over application updates. Whether it's desktop software, mobile apps, browser extensions, or custom binaries for metrics or monitoring — faynoSync helps you deliver updates easily, securely, and reliably.
+
+No external dependencies. No gatekeepers. Just pure control.
+
+---
+
+## Why faynoSync?
+
+Sure, each programming language or OS has its own update tools. But they're often non-transparent, overly complicated, or just a pain to integrate.
+
+**faynoSync is a universal solution** — it allows you to check for updates from any language, with a centralized API and minimal setup.
+
+---
+
+## What can faynoSync do?
+
+- 🔓 Create **public** or **private** applications
+- 🔐 Support **signed** and **unsigned** builds (perfect for development environments)
+- 👥 Manage team users and assign fine-grained permissions
+- 🚀 Publish, roll back, or deactivate specific releases
+- ⚠️ Mark applications as **critical** to notify users immediately
+- 🌍 Manage **channels** (dev, prod, nightly, stable), **platforms**, and **architectures**
+- 📝 Add, edit, and display **changelogs** so users know what's new
+- ⚡ Built with **Go** — fast, simple, and open-source
+
+And it's only the start; there will be more in the future.
+
+---
+
+## How to try faynoSync?
+
+1. Follow the Getting Started guide:  
+👉 [https://ku9nov.github.io/faynoSync-site/docs/category/getting-started](https://ku9nov.github.io/faynoSync-site/docs/category/getting-started)
+
+2. Create your app using the REST API or web dashboard:  
+📦 API Docs: [https://ku9nov.github.io/faynoSync-site/docs/api](https://ku9nov.github.io/faynoSync-site/docs/api)  
+🖥️ Dashboard UI: [https://github.com/ku9nov/faynoSync-dashboard](https://github.com/ku9nov/faynoSync-dashboard)
+
+3. Upload at least two versions of your application.
+
+4. Check for updates with this simple request:  
+📡 [`/info/latest`](https://ku9nov.github.io/faynoSync-site/docs/api/info/latest)
+
+---
+
+This article is just an introduction. In the next posts, we'll explore the full functionality of faynoSync, integration examples, and development tips.
+
+If you find this project helpful, please consider **subscribing**, **leaving a comment**, or giving it a **star**, create **Issue** or **feature request** on GitHub.  
+Your support keeps the project alive and growing 💚
+
+---
+
+

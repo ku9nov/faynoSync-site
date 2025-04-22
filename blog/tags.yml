@@ -1,19 +1,19 @@
-facebook:
-  label: Facebook
-  permalink: /facebook
-  description: Facebook tag description
+faynoSync:
+  label: FaynoSync
+  permalink: /faynoSync
+  description: FaynoSync is a tool for syncing data between two systems.
 
-hello:
-  label: Hello
-  permalink: /hello
-  description: Hello tag description
+API:
+  label: API
+  permalink: /api
+  description: API documentation for FaynoSync
 
-docusaurus:
-  label: Docusaurus
-  permalink: /docusaurus
-  description: Docusaurus tag description
+frontend:
+  label: Frontend
+  permalink: /frontend
+  description: Frontend documentation for FaynoSync
 
-hola:
-  label: Hola
-  permalink: /hola
-  description: Hola tag description
+feature:
+  label: Feature
+  permalink: /feature
+  description: Features of FaynoSync
