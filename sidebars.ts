@@ -106,6 +106,7 @@ const sidebars: SidebarsConfig = {
             'api/team/list',
             'api/team/update',
             'api/team/delete',
+            'api/team/updateAdmin',
           ],
         },
         {
