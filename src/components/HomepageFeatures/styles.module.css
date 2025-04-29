@@ -3,7 +3,7 @@
   text-align: center;
   position: relative;
   overflow: hidden;
-  background: linear-gradient(to right, #0057B7, #4B0082);
+  background: transparent;
   color: white;
 }
 
@@ -69,15 +69,15 @@
   text-align: right;
 }
 
-
-
-
-
-
 /* Custom styles for Docusaurus home page */
 
+.bg-gradient {
+  background: transparent;
+  min-height: 100vh;
+}
+
 .bg-gradient-to-r {
-  background-image: linear-gradient(to right, var(--ifm-color-primary), var(--ifm-color-primary-dark));
+  background-image: none;
 }
 
 .bg-primary {
@@ -89,12 +89,12 @@
 }
 
 .from-primary {
-  --tw-gradient-from: var(--ifm-color-primary);
+  --tw-gradient-from: var(--bg-gradient-start);
   --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(59, 130, 246, 0));
 }
 
 .to-primary-dark {
-  --tw-gradient-to: var(--ifm-color-primary-dark);
+  --tw-gradient-to: var(--bg-gradient-end);
 }
 
 .hover\:bg-opacity-90:hover {
@@ -107,6 +107,12 @@
 
 .text-muted-foreground {
   color: var(--ifm-color-gray-700);
+}
+
+/* Backdrop blur utilities */
+.backdrop-blur-lg {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 /* Add any additional custom styles here */

@@ -5,7 +5,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 const config: Config = {
   title: 'FaynoSync',
   tagline: 'The auto-updater service that puts simplicity, reliability, and user control at the forefront.',
-  favicon: 'img/favicon.ico',
+  favicon: 'img/logo.svg',
 
   // Set the production url of your site here
   url: 'https://your-docusaurus-site.example.com',
@@ -72,19 +72,22 @@ const config: Config = {
         alt: 'faynoSync Logo',
         src: 'img/logo.svg',
       },
+      style: 'primary',
       items: [
         {
           type: 'docSidebar',
           sidebarId: 'docs',
           position: 'left',
           label: 'Documentation',
+          className: 'navbar__link--active',
         },
         {to: '/blog', label: 'Blog', position: 'left'},
-        // {
-        //   href: 'https://github.com/facebook/docusaurus',
-        //   label: 'GitHub',
-        //   position: 'right',
-        // },
+        {
+          href: 'https://github.com/ku9nov/faynoSync',
+          label: 'GitHub',
+          position: 'right',
+          className: 'header-github-link',
+        },
       ],
     },
     footer: {
@@ -145,8 +148,8 @@ const config: Config = {
       copyright: `Copyright © ${new Date().getFullYear()} faynoSync.`,
     },
     prism: {
-      theme: prismThemes.github,
-      darkTheme: prismThemes.dracula,
+      theme: prismThemes.vsLight,
+      darkTheme: prismThemes.vsDark,
     },
   } satisfies Preset.ThemeConfig,
 };

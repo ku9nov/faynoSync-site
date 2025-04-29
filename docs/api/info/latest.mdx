@@ -22,10 +22,12 @@ Check if there is a newer version of a specific application.
 
 `arch` (string, optional): Architecture (e.g., amd64, arm64).
 
+`owner`: Name of your admin user.
+
 **Request:**
 
 ```bash
-curl -X GET --location 'http://localhost:9000/checkVersion?app_name=secondapp&version=0.0.1&channel=stable&platform=linux&arch=amd64'
+curl -X GET --location 'http://localhost:9000/checkVersion?app_name=secondapp&version=0.0.1&channel=stable&platform=linux&arch=amd64&owner=admin'
 ```
 
 **Response:**
