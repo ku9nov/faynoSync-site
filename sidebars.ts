@@ -56,7 +56,7 @@ const sidebars: SidebarsConfig = {
             'api/apps/update-app',
             'api/apps/delete',
             'api/apps/upload',
-            'api/apps/get-all',
+            // 'api/apps/get-all',
             'api/apps/search',
             'api/apps/update-specific-version-app',
             'api/apps/delete-specific-version-app',

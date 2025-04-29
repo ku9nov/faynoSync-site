@@ -2,7 +2,7 @@ import React from 'react'
 import Link from '@docusaurus/Link'
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext'
 import Layout from '@theme/Layout'
-import { ArrowRight, Cloud, Hash, Zap, Globe, Rocket, Wrench, Laptop, Globe2, Smartphone, Shield, Zap as Lightning } from 'lucide-react'
+import { ArrowRight, Cloud, Hash, Zap, Globe, Rocket, Wrench, Laptop, Globe2, Smartphone, Shield, Zap as Lightning, Users } from 'lucide-react'
 
 export default function HomePage() {
   const { siteConfig } = useDocusaurusContext()
@@ -49,8 +49,23 @@ export default function HomePage() {
               },
               {
                 icon: <Lightning className="h-8 w-8" />,
-                title: "Performance",
+                title: "Speed",
                 description: "Fast and efficient system operation with minimal user intervention.",
+              },
+              {
+                icon: <Rocket className="h-8 w-8" />,
+                title: "Application Management",
+                description: "Publish, modify, and update your applications with ease. Manage your application lifecycle efficiently.",
+              },
+              {
+                icon: <Users className="h-8 w-8" />,
+                title: "Team Management",
+                description: "Create and manage team users with granular permissions. Control access to applications and resources with fine-grained authorization.",
+              },
+              {
+                icon: <Zap className="h-8 w-8" />,
+                title: "Performance Mode",
+                description: "Enable caching to reduce server load and minimize response times. Optimize your application's performance with smart request handling.",
               },
             ].map((feature, index) => (
               <div

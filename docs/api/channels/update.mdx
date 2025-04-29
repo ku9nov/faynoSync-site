@@ -1,18 +1,18 @@
 ---
-title: Update Arch
+title: Update Channel
 ---
 
-# Update Arch
+# Update Channel
 
-Update an existing architecture.
+Update an existing deployment channel.
 
 :::warning
-Changing this value might prevent existing apps from checking for new versions, as the architecture name will have changed.
+Changing the channel name may disrupt existing client apps' ability to check for new versions due to the altered channel name.
 :::
 
 **Endpoint:**
 
-`POST /arch/update`
+`POST /channel/update`
 
 **Headers:**
 
@@ -20,21 +20,21 @@ Changing this value might prevent existing apps from checking for new versions, 
 
 **Body Form Data:**
 
-- `id`: The ID of the architecture you want to change.
+- `id`: The ID of the channel to update.
 
-- `channel`: New architecture name.
+- `channel`: The new name for the channel.
 
 **Request:**
 ```bash
-curl --location 'http://localhost:9000/arch/update' \
+curl --location 'http://localhost:9000/channel/update' \
 -H "Authorization: Bearer <jwt_token>" \
---form 'data="{\"id\":\"66ae13fe5b663c058367f893\", \"arch\":\"new_name\"}"'
+--form 'data="{\"id\":\"66ae13fe4b663c058367f893\", \"channel\":\"new_name\"}"'
 ```
 
 **Response:**
 
 ```json
 {
-    "updateArchResult.Updated": true
+    "updateChannelResult.Updated": true
 }
 ```
