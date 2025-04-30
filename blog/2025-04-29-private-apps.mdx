@@ -1,0 +1,106 @@
+---
+slug: private-apps
+title: Private Apps in faynoSync — Keep Your Software Secure
+authors: [ku9nov]
+tags: [faynosync, security]
+---
+
+# Private Apps in faynoSync — Keep Your Software Secure 🔒
+
+When developing software, sometimes you need to keep things private. Whether it's internal tools, beta versions, or enterprise applications — not everything should be publicly accessible. That's why faynoSync comes with built-in support for private applications.
+
+---
+
+## What are Private Apps? 🤔
+
+Private apps in faynoSync are applications that are stored in a separate, private S3 bucket. This gives you an extra layer of security and control over who can access your software.
+
+Once an app is marked as private, it stays private forever — this is a one-way decision to ensure consistency and security.
+
+---
+
+## How to Create a Private App? 🛠️
+
+There are two ways to create a private app:
+
+### 1. Using the Web Dashboard 🖥️
+
+Simply check the "Private" option when creating your app through the dashboard interface. It's that simple!
+
+### 2. Using the API 📡
+
+When making a POST request to `/app/create`, include the `private` parameter:
+
+```bash
+curl --location 'http://localhost:9000/app/create' \
+--header 'Authorization: Bearer <jwt_token>' \
+--form 'data="{\"app\":\"appName\", \"private\": true}"'
+```
+
+---
+
+## How Private Apps Work? 🔐
+
+1. **Storage**: Private apps are stored in a separate S3 bucket (defined by `S3_BUCKET_NAME` in your environment)
+2. **Access Control**: You can control who can download your private apps through the `ENABLE_PRIVATE_APP_DOWNLOADING` setting:
+   - If `true`: Anyone can download the app using the public API endpoints
+   - If `false`: Only authenticated users can download the app
+
+---
+
+## Security Features 🛡️
+
+Think of private apps in faynoSync as your software's VIP section! Here's what makes them special:
+
+- 🔒 **Separate Storage**: Your private apps live in their own secure S3 bucket, like having a private vault for your most valuable assets
+- 🔐 **One-Way Privacy**: Once you mark an app as private, it stays private forever. This might sound strict, but it's actually a good thing — it ensures your security settings can't be accidentally changed
+- 👥 **Smart Access Control**: You're in charge! You can decide whether your private apps need authentication to download, giving you perfect control over who gets access
+- 🚫 **Download Protection**: Want to make sure only your team can download the app? Just set `ENABLE_PRIVATE_APP_DOWNLOADING=false`, and only authenticated users will be able to access it
+
+---
+
+## Best Practices 💡
+
+1. Use private apps for:
+   - Internal tools and utilities
+   - Beta versions of your software
+   - Enterprise-specific applications
+   - Software requiring license validation
+
+2. Set `ENABLE_PRIVATE_APP_DOWNLOADING=false` when you need strict access control
+
+3. Always use authentication tokens when accessing private apps in restricted mode
+
+---
+
+## What's Next? 🚀
+
+In our next posts, we'll explore:
+- Local development and deployment to server
+- Managing user access and permissions
+- How to properly use `Fetch latest version of app` request
+
+Stay tuned for more faynoSync tips and tricks! 💚
+
+---
+
+## How to try faynoSync?
+
+1. Follow the Getting Started guide:  
+👉 [https://ku9nov.github.io/faynoSync-site/docs/category/getting-started](https://ku9nov.github.io/faynoSync-site/docs/category/getting-started)
+
+2. Create your app using the REST API or web dashboard:  
+📦 API Docs: [https://ku9nov.github.io/faynoSync-site/docs/api](https://ku9nov.github.io/faynoSync-site/docs/api)  
+🖥️ Dashboard UI: [https://github.com/ku9nov/faynoSync-dashboard](https://github.com/ku9nov/faynoSync-dashboard)
+
+3. Upload at least two versions of your application.
+
+4. Check for updates with this simple request:  
+📡 [`/info/latest`](https://ku9nov.github.io/faynoSync-site/docs/api/info/latest)
+
+---
+
+If you find this project helpful, please consider **subscribing**, **leaving a comment**, or giving it a **star**, create **Issue** or **feature request** on GitHub.  
+Your support keeps the project alive and growing 💚
+
+---

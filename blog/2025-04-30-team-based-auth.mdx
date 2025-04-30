@@ -1,0 +1,167 @@
+---
+slug: team-based-auth
+title: Team-Based Authorization in faynoSync — Manage Your Team Like a Pro
+authors: [ku9nov]
+tags: [faynosync, security, team]
+---
+
+# Team-Based Authorization in faynoSync — Manage Your Team Like a Pro 👥
+
+Managing a team of developers? Need to control who can do what in your faynoSync instance? Starting from version **1.4.0**, faynoSync introduces a powerful **Team Based Authorization Matrix** that gives you complete control over your team's access and permissions.
+
+---
+
+## What is Team-Based Authorization? 🤔
+
+Think of it as your team's digital headquarters! The Team Based Authorization Matrix is a sophisticated system that lets you:
+
+- 👨‍💼 Create and manage team users
+- 🔐 Assign specific permissions
+- 🏢 Keep data isolated between different teams
+- 📊 Track who can do what
+
+---
+
+## Meet the Players 🎭
+
+### The Administrator 👑
+- You're the boss! Each admin is unique
+- You own your team of users
+- You can create, update, and delete your team members
+- You have full control over passwords and permissions
+- You can only access your own team's resources
+
+### The Team User 👤
+- A unique member of your team
+- Belongs only to you (their admin)
+- Can't manage other users
+- Can only work with resources you've allowed
+- Everything they create belongs to you
+
+---
+
+## What Can Your Team Do? 🛠️
+
+Each team member can have different permissions for different types of resources:
+
+### Resource Types:
+- 📱 Applications
+- 📊 Channels
+- 💻 Platforms
+- 🏗️ Architectures
+
+### Available Permissions:
+- ➕ Create
+- ✏️ Edit
+- 🗑️ Delete
+- ⬆️ Upload (for apps)
+- ⬇️ Download (for apps)
+
+---
+
+## Smart Resource Management 🧠
+
+- 🔒 Team users can only see and use resources they've been given access to
+- 🏢 Each admin's resources are completely separate
+- 👀 You (as admin) can see everything your team creates
+- 📝 Different teams can have resources with the same names
+
+---
+
+## How to Manage Your Team? 🎯
+
+### Option 1: Using the API
+
+#### Creating a Team User
+```bash
+curl -X POST 'http://localhost:9000/user/create' \
+  -H 'Authorization: Bearer <jwt_token>' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "username": "teamuser1",
+    "password": "password123",
+    "permissions": {
+      "apps": {
+        "create": true,
+        "delete": false,
+        "edit": true,
+        "download": true,
+        "upload": false
+      }
+      // ... other permissions
+    }
+  }'
+```
+
+#### Updating Permissions
+```bash
+curl -X POST 'http://localhost:9000/user/update' \
+  -H 'Authorization: Bearer <jwt_token>' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "username": "teamuser1",
+    "password": "newpassword123",
+    "permissions": {
+      // ... updated permissions
+    }
+  }'
+```
+
+### Option 2: Using the Web Dashboard 🖥️
+
+Prefer a more visual approach? The faynoSync dashboard makes team management a breeze!
+
+#### For Administrators:
+1. Click the **Settings** button in the dashboard
+2. A modal window will open where you can:
+   - 👥 Create new team users
+   - 🔑 Set passwords (or auto-generate them)
+   - ✅ Assign permissions with simple checkboxes
+   - ✏️ Update usernames and passwords
+   - 🗑️ Remove team users
+
+#### For Team Users:
+1. Go to your **Profile** section
+2. View your current permissions at a glance:
+   - 📱 Which applications you can access
+   - 📊 What actions you can perform
+   - 🔒 What resources are available to you
+
+This visual interface makes it much easier to:
+- 🎯 Understand your permissions
+- 🔄 Manage team access
+- 📊 Track resource availability
+- ⚡ Make quick changes
+
+---
+
+## What's Next? 🚀
+
+In our next posts, we'll explore:
+- Local development and deployment to server
+- How to properly use `Fetch latest version of app` request
+
+Stay tuned for more faynoSync tips and tricks! 💚
+
+---
+
+## How to try faynoSync?
+
+1. Follow the Getting Started guide:  
+👉 [https://ku9nov.github.io/faynoSync-site/docs/category/getting-started](https://ku9nov.github.io/faynoSync-site/docs/category/getting-started)
+
+2. Create your app using the REST API or web dashboard:  
+📦 API Docs: [https://ku9nov.github.io/faynoSync-site/docs/api](https://ku9nov.github.io/faynoSync-site/docs/api)  
+🖥️ Dashboard UI: [https://github.com/ku9nov/faynoSync-dashboard](https://github.com/ku9nov/faynoSync-dashboard)
+
+3. Upload at least two versions of your application.
+
+4. Check for updates with this simple request:  
+📡 [`/info/latest`](https://ku9nov.github.io/faynoSync-site/docs/api/info/latest)
+
+---
+
+If you find this project helpful, please consider **subscribing**, **leaving a comment**, or giving it a **star**, create **Issue** or **feature request** on GitHub.  
+Your support keeps the project alive and growing 💚
+
+--- 

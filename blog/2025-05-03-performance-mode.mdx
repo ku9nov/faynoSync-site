@@ -1,0 +1,150 @@
+---
+slug: performance-mode
+title: Performance Mode — Speed Up Your API
+authors: [ku9nov]
+tags: [faynosync, performance]
+---
+
+# Performance Mode — Speed Up Your API ⚡
+
+Is your faynoSync instance handling thousands of update checks per minute? Worried about database load? Meet Performance Mode — your API's new best friend for handling high traffic efficiently!
+
+---
+
+## What is Performance Mode? 🤔
+
+Performance Mode is a smart caching system that:
+- 🚀 Reduces response times
+- 📉 Lowers database load
+- 💾 Optimizes resource usage
+
+It works by caching frequently requested data in Redis, making your API responses lightning-fast!
+
+---
+
+## How It Works 🛠️
+
+### The Magic Behind the Scenes
+1. **Request Arrives** 📥
+   - API checks if Performance Mode is enabled (`PERFORMANCE_MODE=true`)
+   - Looks for cached data in Redis
+
+2. **Cache Check** 🔍
+   - If data exists in cache → returns it immediately
+   - If not → queries the database
+
+3. **Cache Update** 💾
+   - New data is stored in Redis
+   - Ready for next request
+
+### What Gets Cached?
+Currently, Performance Mode is implemented for the `checkVersion` endpoint, which is one of the most frequently called endpoints in the system.
+
+---
+
+## Why Do We Need It? 🎯
+
+### 1. Database Load Reduction
+- 📊 Fewer queries to MongoDB
+- 💪 Less strain on your database
+- 🎯 Better resource utilization
+
+### 2. Faster Response Times
+- ⚡ Cached responses are returned instantly
+- 🏎️ No need to wait for database queries
+- 🎮 Perfect for high-traffic scenarios
+
+### 3. Resource Optimization
+- 🌱 Lower CPU usage
+- 💧 Reduced memory consumption
+- 📈 Better scalability
+
+---
+
+## How to Enable It? 🔌
+
+Just add this to your `.env` file:
+```bash
+PERFORMANCE_MODE=true
+```
+
+That's it! Your API will automatically start using Redis for caching.
+
+---
+
+## Testing Performance 🧪
+
+Want to see the difference? Try this test script:
+
+```bash
+start_time=$(date +%s); 
+for i in {1..1000}; do 
+  response=$(curl -s -w "Connect Time: %{time_connect}s, Start Transfer Time: %{time_starttransfer}s, Total Time: %{time_total}s\n" -o /dev/stdout --location 'http://localhost:9000/checkVersion?app_name=myapp&version=0.0.3&channel=nightly&platform=null&arch=null'); 
+  echo "$response"; 
+done; 
+end_time=$(date +%s); 
+total_time=$((end_time - start_time)); 
+echo "Total execution time: $total_time seconds"
+```
+
+Compare the results with and without Performance Mode enabled!
+
+---
+
+## Important Notes 📝
+
+1. **Cache Invalidation** 🔄
+   - Cache is automatically cleared when you publish a new version
+   - New data is cached on the next request
+   - Ensures users always get the latest information
+
+2. **Current Implementation** 🎯
+   - Only implemented for `checkVersion` endpoint
+   - Perfect for high-frequency update checks
+   - More endpoints might be added in the future
+
+3. **When to Use** ⚡
+   - High-traffic environments
+   - Systems with frequent update checks
+   - Scenarios where response time is critical
+
+---
+
+## Best Practices 💡
+
+1. **Enable in Production** 🚀
+   - Always use Performance Mode in production
+   - Especially if you expect high traffic
+
+2. **Monitor Performance** 📊
+   - Keep an eye on response times
+   - Watch Redis memory usage
+   - Track database load
+
+3. **Regular Updates** 🔄
+   - Cache is automatically managed
+   - No manual intervention needed
+   - Just focus on your app!
+
+---
+
+## How to try faynoSync?
+
+1. Follow the Getting Started guide:  
+👉 [https://ku9nov.github.io/faynoSync-site/docs/category/getting-started](https://ku9nov.github.io/faynoSync-site/docs/category/getting-started)
+
+2. Create your app using the REST API or web dashboard:  
+📦 API Docs: [https://ku9nov.github.io/faynoSync-site/docs/api](https://ku9nov.github.io/faynoSync-site/docs/api)  
+🖥️ Dashboard UI: [https://github.com/ku9nov/faynoSync-dashboard](https://github.com/ku9nov/faynoSync-dashboard)
+
+3. Upload at least two versions of your application.
+
+4. Check for updates with this simple request:  
+📡 [`/info/latest`](https://ku9nov.github.io/faynoSync-site/docs/api/info/latest)
+
+---
+
+If you find this project helpful, please consider **subscribing**, **leaving a comment**, or giving it a **star**, create **Issue** or **feature request** on GitHub.  
+Your support keeps the project alive and growing 💚
+
+--- 

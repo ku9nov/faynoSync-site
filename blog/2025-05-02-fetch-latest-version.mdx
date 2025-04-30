@@ -1,0 +1,203 @@
+---
+slug: fetch-latest-version
+title: Fetch Latest Version of App — Smart Update Links
+authors: [ku9nov]
+tags: [faynosync, api]
+---
+
+# Fetch Latest Version of App — Smart Update Links 🔄
+
+Ever needed to share a download link that always points to the latest version of your app? Or wanted to set up automatic updates for your users? The `Fetch latest version of app` endpoint is your perfect solution! Let's explore how it works with some real-world examples.
+
+---
+
+## Meet Our Example App 🎮
+
+Let's imagine we have an app called "SpaceExplorer" with the following setup:
+
+### Channels:
+- 🚀 `stable` - Production releases
+- 🧪 `beta` - Testing versions
+- 🌙 `nightly` - Daily builds
+
+### Platforms & Architectures:
+- 💻 Linux (amd64, arm64)
+- 🍎 macOS (amd64, arm64)
+- 🪟 Windows (amd64)
+
+### Package Types:
+- 📦 .deb (Linux)
+- 📦 .rpm (Linux)
+- 📦 .dmg (macOS)
+- 📦 .exe (Windows)
+
+---
+
+## Let's Fetch Some Versions! 🎯
+
+### Example 1: Simple Latest Version
+```bash
+GET /apps/latest?app_name=SpaceExplorer&owner=admin
+```
+
+This basic request returns ALL available builds:
+```json
+{
+    "stable": {
+        "linux": {
+            "amd64": {
+                "deb": { "url": "..." },
+                "rpm": { "url": "..." }
+            },
+            "arm64": {
+                "deb": { "url": "..." },
+                "rpm": { "url": "..." }
+            }
+        },
+        "darwin": {
+            "amd64": { "dmg": { "url": "..." } },
+            "arm64": { "dmg": { "url": "..." } }
+        },
+        "windows": {
+            "amd64": { "exe": { "url": "..." } }
+        }
+    },
+    "beta": {
+        // Similar structure for beta builds
+    },
+    "nightly": {
+        // Similar structure for nightly builds
+    }
+}
+```
+
+### Example 2: Specific Channel
+```bash
+GET /apps/latest?app_name=SpaceExplorer&channel=stable&owner=admin
+```
+
+Now we get only stable builds:
+```json
+{
+    "stable": {
+        "linux": {
+            "amd64": {
+                "deb": { "url": "..." },
+                "rpm": { "url": "..." }
+            }
+            // ... other architectures
+        }
+        // ... other platforms
+    }
+}
+```
+
+### Example 3: Platform-Specific
+```bash
+GET /apps/latest?app_name=SpaceExplorer&channel=stable&platform=linux&owner=admin
+```
+
+Only Linux builds:
+```json
+{
+    "stable": {
+        "linux": {
+            "amd64": {
+                "deb": { "url": "..." },
+                "rpm": { "url": "..." }
+            },
+            "arm64": {
+                "deb": { "url": "..." },
+                "rpm": { "url": "..." }
+            }
+        }
+    }
+}
+```
+
+### Example 4: Exact Match
+```bash
+GET /apps/latest?app_name=SpaceExplorer&channel=stable&platform=linux&arch=amd64&package=deb&owner=admin
+```
+
+This returns a direct download URL:
+```
+https://<bucket_name>.s3.amazonaws.com/SpaceExplorer/stable/linux/amd64/SpaceExplorer-1.2.3.deb
+```
+
+---
+
+## Smart Features 🧠
+
+1. **Automatic Redirection** 🔄
+   - If only one build matches your criteria, you'll get redirected straight to the download
+   - Perfect for landing pages and direct download links
+
+2. **Flexible Responses** 🎯
+   - Get all available builds
+   - Filter by channel
+   - Filter by platform
+   - Filter by architecture
+   - Filter by package type
+
+3. **Channel Priority** ⚡
+   - If you don't specify a channel, you'll get the latest build from the most recent channel
+   - Great for testing new features while maintaining stability
+
+---
+
+## Real-World Use Cases 🌍
+
+### 1. Landing Page Downloads
+```html
+<!-- For Linux users -->
+<a href="/apps/latest?app_name=SpaceExplorer&platform=linux&arch=amd64&package=deb&owner=admin">
+    Download for Linux (.deb)
+</a>
+
+<!-- For macOS users -->
+<a href="/apps/latest?app_name=SpaceExplorer&platform=darwin&arch=arm64&package=dmg&owner=admin">
+    Download for macOS (.dmg)
+</a>
+```
+
+### 2. Team Testing
+```bash
+# For beta testers
+GET /apps/latest?app_name=SpaceExplorer&channel=beta&platform=darwin&arch=arm64&package=dmg&owner=admin
+
+# For nightly build enthusiasts
+GET /apps/latest?app_name=SpaceExplorer&channel=nightly&platform=linux&arch=amd64&package=deb&owner=admin
+```
+
+---
+
+## What's Next? 🚀
+
+In our next posts, we'll explore:
+- Performance optimization tips
+
+Stay tuned for more faynoSync tips and tricks! 💚
+
+---
+
+## How to try faynoSync?
+
+1. Follow the Getting Started guide:  
+👉 [https://ku9nov.github.io/faynoSync-site/docs/category/getting-started](https://ku9nov.github.io/faynoSync-site/docs/category/getting-started)
+
+2. Create your app using the REST API or web dashboard:  
+📦 API Docs: [https://ku9nov.github.io/faynoSync-site/docs/api](https://ku9nov.github.io/faynoSync-site/docs/api)  
+🖥️ Dashboard UI: [https://github.com/ku9nov/faynoSync-dashboard](https://github.com/ku9nov/faynoSync-dashboard)
+
+3. Upload at least two versions of your application.
+
+4. Check for updates with this simple request:  
+📡 [`/info/latest`](https://ku9nov.github.io/faynoSync-site/docs/api/info/latest)
+
+---
+
+If you find this project helpful, please consider **subscribing**, **leaving a comment**, or giving it a **star**, create **Issue** or **feature request** on GitHub.  
+Your support keeps the project alive and growing 💚
+
+--- 

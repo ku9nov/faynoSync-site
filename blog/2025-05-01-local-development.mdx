@@ -1,0 +1,171 @@
+---
+slug: local-development
+title: Local Development with faynoSync — Choose Your Path
+authors: [ku9nov]
+tags: [faynosync, development]
+---
+
+# Local Development with faynoSync — Choose Your Path 🛠️
+
+Getting started with faynoSync development? Great! You have two main options for setting up your local environment. Whether you prefer a traditional local setup or the convenience of Docker, we've got you covered.
+
+---
+
+## Option 1: Traditional Local Development 🖥️
+
+Perfect for developers who want full control over their environment and need to make frequent code changes.
+
+### What You'll Need:
+
+- **MongoDB** 🗄️
+  - Stores all your application data, versions, and metadata
+  - [Installation Guide](https://www.mongodb.com/docs/manual/administration/install-community/)
+
+- **Golang** 🐹
+  - The heart of faynoSync
+  - [Installation Guide](https://go.dev/doc/install)
+
+- **MinIO** 📦
+  - Your local S3-compatible storage
+  - [Installation Guide](https://min.io/docs/minio/linux/operations/install-deploy-manage/deploy-minio-single-node-single-drive.html)
+
+### Setting Up:
+
+1. Install all required services
+2. Create your `.env` file with necessary configurations
+3. Run faynoSync:
+   ```bash
+   # First run (with migrations)
+   go run faynoSync.go --migration
+   
+   # Subsequent runs
+   go run faynoSync.go
+   ```
+
+### Benefits:
+- ⚡ Fast development cycle
+- 🔧 Direct access to all components
+- 🧪 Easy debugging
+- 🔄 Quick code changes
+
+### Testing Your Setup:
+Want to make sure everything is working correctly? Just run:
+```bash
+go test
+```
+This will verify that all components are properly configured and your local environment is ready for development.
+
+---
+
+## Option 2: Docker Development 🐳
+
+Ideal for quick setup and testing, or when you want to avoid installing dependencies locally.
+
+### What You'll Need:
+
+- **Docker** 🐳
+  - [Installation Guide](https://docs.docker.com/engine/install/)
+- **Docker Compose** 🎵
+  - [Installation Guide](https://docs.docker.com/compose/install/)
+
+### Two Ways to Use Docker:
+
+#### 1. Full Container Setup
+```bash
+docker-compose up --build
+```
+Perfect for:
+- 🚀 Quick testing
+- 🧪 Initial setup
+- 🔄 Testing API functionality
+
+#### 2. Hybrid Approach
+```bash
+docker-compose -f docker-compose.yaml -f docker-compose.development.yaml up
+```
+This starts only the dependencies (MongoDB and MinIO) while you run faynoSync locally.
+
+### Benefits:
+- 🚀 Quick setup
+- 🧩 Isolated environment
+- 🔄 Consistent across machines
+- 🧪 Easy testing
+
+### Testing Your Setup:
+After running `docker-compose up --build`, wait until the s3-service successfully creates the bucket, then run:
+```bash
+docker exec -it faynoSync_backend "/usr/bin/faynoSync_tests"
+```
+This will run the test suite inside the container to verify everything is working correctly.
+
+---
+
+## Environment Configuration ⚙️
+
+Both approaches need proper environment configuration. Here are the key variables you'll need:
+
+```bash
+# Storage Configuration
+STORAGE_DRIVER=minio
+S3_ACCESS_KEY=your_access_key
+S3_SECRET_KEY=your_secret_key
+S3_BUCKET_NAME=your_bucket
+
+# Database Configuration
+MONGODB_URL=mongodb://root:password@127.0.0.1/faynosync_db
+
+# API Configuration
+API_URL=http://localhost:9000
+PORT=9000
+```
+
+For a complete list of environment variables, check out our [Environment Configuration Guide](https://ku9nov.github.io/faynoSync-site/docs/getting-started/env-overview).
+
+---
+
+## Which Option Should You Choose? 🤔
+
+### Choose Local Development if you:
+- 🔧 Need to modify the code frequently
+- 🐛 Want to debug easily
+- ⚡ Need fast development cycles
+- 💻 Prefer direct control over your environment
+
+### Choose Docker if you:
+- 🚀 Want quick setup
+- 🧪 Need to test the API
+- 💻 Work on multiple machines
+- 🧩 Prefer isolated environments
+
+---
+
+## What's Next? 🚀
+
+In our next posts, we'll explore:
+- How to properly use `Fetch latest version of app` request
+- Performance optimization tips
+
+Stay tuned for more faynoSync tips and tricks! 💚
+
+---
+
+## How to try faynoSync?
+
+1. Follow the Getting Started guide:  
+👉 [https://ku9nov.github.io/faynoSync-site/docs/category/getting-started](https://ku9nov.github.io/faynoSync-site/docs/category/getting-started)
+
+2. Create your app using the REST API or web dashboard:  
+📦 API Docs: [https://ku9nov.github.io/faynoSync-site/docs/api](https://ku9nov.github.io/faynoSync-site/docs/api)  
+🖥️ Dashboard UI: [https://github.com/ku9nov/faynoSync-dashboard](https://github.com/ku9nov/faynoSync-dashboard)
+
+3. Upload at least two versions of your application.
+
+4. Check for updates with this simple request:  
+📡 [`/info/latest`](https://ku9nov.github.io/faynoSync-site/docs/api/info/latest)
+
+---
+
+If you find this project helpful, please consider **subscribing**, **leaving a comment**, or giving it a **star**, create **Issue** or **feature request** on GitHub.  
+Your support keeps the project alive and growing 💚
+
+--- 

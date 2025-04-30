@@ -3,7 +3,7 @@ faynoSync:
   permalink: /faynoSync
   description: FaynoSync is a tool for syncing data between two systems.
 
-API:
+api:
   label: API
   permalink: /api
   description: API documentation for FaynoSync
@@ -17,3 +17,23 @@ feature:
   label: Feature
   permalink: /feature
   description: Features of FaynoSync
+
+security:
+  label: Security
+  permalink: /security
+  description: Security documentation for FaynoSync
+
+performance:
+  label: Performance
+  permalink: /performance
+  description: Performance documentation for FaynoSync
+
+team:
+  label: Team
+  permalink: /team
+  description: Team documentation for FaynoSync
+
+development:
+  label: Development
+  permalink: /development
+  description: Development documentation for FaynoSync
