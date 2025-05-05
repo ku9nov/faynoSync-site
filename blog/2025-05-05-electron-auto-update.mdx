@@ -1,0 +1,286 @@
+---
+slug: electron-auto-update
+title: How to Setup Auto Update for Electron App
+authors: [ku9nov]
+tags: [faynoSync, electron, auto-update, development]
+---
+
+# How to Setup Auto Update for Electron App 🔄
+
+Today, we'll explore how to create a simple Electron app and add auto-update functionality using faynoSync. Let's make your app smarter with automatic version checking and updates!
+
+---
+
+## Prerequisites 📋
+
+Before we begin, make sure you have:
+- A running faynoSync instance
+- Published versions 0.0.1 and 0.0.2 of your app
+- Created an app in faynoSync named "myapp"
+- Created a channel in faynoSync named "nightly" 
+- Created a platform in faynoSync named (darwin/linux/windows)
+- Created a architecture in faynoSync named (amd64/arm64)
+
+---
+
+## Let's Get Started! 🚀
+
+### 1. Initialize Your Project
+
+First, let's create a new project with the following `package.json`:
+
+```json
+{
+  "name": "myapp",
+  "version": "0.0.1",
+  "description": "Hello world app for testing faynoSync",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "keywords": [],
+  "author": "Example Author",
+  "license": "ISC",
+  "dependencies": {
+    "node-fetch": "2.6.9"
+  },
+  "devDependencies": {
+    "electron": ">=23.3.13"
+  },
+  "engines": {
+    "npm": ">=8.19.3",
+    "node": ">=18.13.0"
+  }
+}
+```
+
+### 2. Create Basic Files
+
+#### index.html
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title id="title"></title>
+</head>
+<body>
+  <h1 id="label">Hello, world!</h1>
+</body>
+</html>
+```
+
+#### config.js
+```javascript
+const packageJson = require('./package.json');
+
+module.exports = {
+  app_name: packageJson.name,
+  version: packageJson.version,
+  channel: "nightly",
+  owner: "example",
+};
+```
+
+---
+
+## The Magic of Auto-Updates ✨
+
+Let's create our `main.js` file step by step:
+
+### 1. Import Required Modules
+```javascript
+const { app, BrowserWindow, dialog, shell } = require('electron');
+const fetch = require('node-fetch');
+const os = require('os');
+const { version, app_name, channel, owner } = require('./config.js');
+const fs = require('fs');
+```
+
+### 2. Platform Detection
+```javascript
+function getLinuxDistributionFamily() {
+  let distroFamily = 'Linux';
+  try {
+    const releaseInfo = fs.readFileSync('/etc/os-release', 'utf8');
+    const match = releaseInfo.match(/^ID(?:_LIKE)?=(.*)$/m);
+    if (match) {
+      const idLike = match[1].trim().toLowerCase();
+      if (idLike.includes('rhel') || idLike.includes('fedora') || idLike.includes('centos')) {
+        distroFamily = 'RHEL';
+      } else if (idLike.includes('debian') || idLike.includes('ubuntu') || idLike.includes('kali')) {
+        distroFamily = 'Debian';
+      }
+    }
+  } catch (err) {
+    console.error('Error getting Linux distribution family:', err);
+  }
+  return distroFamily;
+}
+```
+
+### 3. Update Choice Window
+```javascript
+function createChoiceWindow(updateOptions) {
+  const win = new BrowserWindow({
+    width: 600,
+    height: 400,
+    webPreferences: {
+      nodeIntegration: true,
+    },
+  });
+
+  win.loadURL(`data:text/html,
+    <html>
+      <body>
+        <h2>Choose an update package:</h2>
+        <ul>
+          ${updateOptions
+            .map(
+              (option, index) =>
+                `<li><a id="option-${index}" href="${option.url}">${option.name}</a></li>`
+            )
+            .join('')}
+        </ul>
+        <script>
+          const { shell } = require('electron');
+          document.addEventListener('click', (event) => {
+            if (event.target.tagName === 'A') {
+              event.preventDefault();
+              shell.openExternal(event.target.href);
+            }
+          });
+        </script>
+      </body>
+    </html>`
+  );
+
+  return win;
+}
+```
+
+### 4. Update Check Function
+```javascript
+function checkUpdates() {
+  let url = `http://localhost:9000/checkVersion?app_name=${app_name}&version=${version}&platform=${os.platform()}&arch=${os.arch()}&owner=${owner}`;
+
+  if (channel !== undefined) {
+    url += `&channel=${channel}`;
+  }
+
+  fetch(url, { method: 'GET' })
+    .then((res) => res.json())
+    .then((data) => {
+      console.log(data);
+      if (data.update_available) {
+        const message = `You have an older version. Would you like to update your app?`;
+        dialog.showMessageBox({
+          type: 'question',
+          title: 'Update available',
+          message: message,
+          buttons: ['Yes', 'No'],
+          defaultId: 0,
+        }).then(({ response }) => {
+          if (response === 0) {
+            const updateOptions = [];
+            for (const key in data) {
+              if (key.startsWith('update_url_')) {
+                updateOptions.push({ name: key.substring(11).toUpperCase(), url: data[key] });
+              }
+            }
+            const choiceWindow = createChoiceWindow(updateOptions);
+          }
+        });
+      }
+    })
+    .catch(() => {});
+}
+```
+
+### 5. Main Window Creation
+```javascript
+function createWindow() {
+  let osName = os.platform();
+  let pcArch = os.arch();
+  if (osName === 'linux') {
+    osName = getLinuxDistributionFamily();
+  }
+  const title = `${app_name} - v${version} (${osName}-${pcArch})`;
+
+  let win = new BrowserWindow({
+    width: 400,
+    height: 300,
+    webPreferences: {
+      nodeIntegration: true,
+    },
+  });
+
+  win.setTitle(title);
+  win.loadFile('index.html');
+  win.on('closed', () => {
+    win = null;
+  });
+
+  checkUpdates();
+}
+
+app.whenReady().then(createWindow);
+```
+
+---
+
+## Running Your App 🏃‍♂️
+
+To start your app, simply run:
+```bash
+npm start
+```
+
+If everything is set up correctly in faynoSync and a newer version exists, you'll see something like this in your logs:
+```json
+{
+  "critical": false,
+  "update_available": true,
+  "update_url_dmg": "http://localhost:9010/cb-faynosync-s3-public/myapp-example/nightly/darwin/arm64/myapp-0.0.2.0.dmg"
+}
+```
+
+And in your app's UI, you'll see a notification about the available update. After agreeing to update, you can download and install the new version.
+
+---
+
+## Next Steps 🚀
+
+1. Customize the update process to match your app's needs
+2. Add more sophisticated update handling
+3. Implement your own update installation logic
+4. Add progress indicators for downloads
+
+---
+
+## Need Help? 🤝
+
+If you have any questions or need assistance:
+1. Check out our [documentation](https://ku9nov.github.io/faynoSync-site/docs)
+2. Create an issue on [GitHub](https://github.com/ku9nov/faynoSync)
+
+---
+
+## How to try faynoSync?
+
+1. Follow the Getting Started guide:  
+👉 [https://ku9nov.github.io/faynoSync-site/docs/category/getting-started](https://ku9nov.github.io/faynoSync-site/docs/category/getting-started)
+
+2. Create your app using the REST API or web dashboard:  
+📦 API Docs: [https://ku9nov.github.io/faynoSync-site/docs/api](https://ku9nov.github.io/faynoSync-site/docs/api)  
+🖥️ Dashboard UI: [https://github.com/ku9nov/faynoSync-dashboard](https://github.com/ku9nov/faynoSync-dashboard)
+
+3. Upload at least two versions of your application.
+
+4. Check for updates with this simple request:  
+📡 [`/info/latest`](https://ku9nov.github.io/faynoSync-site/docs/api/info/latest)
+
+---
+
+If you find this project helpful, please consider **subscribing**, **leaving a comment**, or giving it a **star**, create **Issue** or **feature request** on GitHub.  
+Your support keeps the project alive and growing 💚

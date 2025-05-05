@@ -37,3 +37,13 @@ development:
   label: Development
   permalink: /development
   description: Development documentation for FaynoSync
+
+electron:
+  label: Electron
+  permalink: /electron
+  description: Electron documentation for FaynoSync
+
+auto-update:
+  label: Auto-Update
+  permalink: /auto-update
+  description: Auto-Update documentation for FaynoSync
