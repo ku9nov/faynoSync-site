@@ -1,0 +1,66 @@
+---
+sidebar_position: 8
+---
+# Required Intermediate Build Feature
+
+## Overview
+The Required Intermediate Build feature is designed to enforce a specific update path for applications, ensuring that users update through intermediate versions when necessary. This is particularly useful when there are breaking changes or critical updates that require users to go through specific versions before reaching the latest version.
+
+## How It Works
+
+### 1. Setting Required Intermediate Build
+When uploading or updating an app version, you can mark it as a required intermediate step by setting the `intermediate` parameter to `true`. This version will then be required for users who are updating from an older version to a newer version.
+
+### 2. Update Flow
+When a user checks for updates:
+1. The system checks if there are any required intermediate versions between the user's current version and the latest version
+2. If required intermediate versions exist, the system returns the first required version instead of the latest version
+3. Users must update through these required versions in sequence
+
+## Response Examples
+
+### When Required Migration Step Exists
+
+```json
+{
+    "changelog": "Example changelog\n",
+    "critical": true,
+    "is_intermediate_required": true,
+    "update_available": true,
+    "update_url_deb": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.5.deb",
+    "update_url_rpm": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.5.rpm"
+}
+```
+
+### When No Required Migration Step Exists
+
+```json
+{
+    "changelog": "Example changelog\n",
+    "critical": false,
+    "update_available": true,
+    "update_url_deb": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.8.deb",
+    "update_url_rpm": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.8.rpm"
+}
+```
+
+## Use Cases
+
+1. **Breaking Changes**: When a new version introduces breaking changes that require specific migration steps
+2. **Database Migrations**: When database schema changes require specific update paths
+3. **Security Updates**: When critical security updates need to be applied in a specific order
+4. **Feature Dependencies**: When new features depend on changes introduced in intermediate versions
+
+## Best Practices
+
+1. Always document why a version is marked as a required intermediate step
+2. Keep the number of required intermediate steps to a minimum
+3. Ensure that required intermediate versions are stable and well-tested
+4. Include clear changelog entries explaining the migration requirements
+5. Consider the impact on users when planning Required Intermediate Build
+
+## Limitations
+
+1. The system only enforces the first required intermediate version in the update path
+2. Users must update through required versions sequentially
+3. The feature requires proper versioning following semantic versioning principles 
