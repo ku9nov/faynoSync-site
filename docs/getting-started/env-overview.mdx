@@ -124,6 +124,12 @@ To configure `FaynoSync`, you need to set the following environment variables. T
 
         Example: `PERFORMANCE_MODE=true`
 
+* `ENABLE_TELEMETRY`
+
+    This setting enables statistics when set to true.
+
+        Example: `ENABLE_TELEMETRY=true`
+
 * `REDIS_HOST`
 
     The hostname or IP address of the Redis server. If not specified, it defaults to `localhost`.
@@ -194,6 +200,7 @@ REDIS_DB=0
 SLACK_ENABLE=false
 SLACK_BOT_TOKEN=xoxb-*
 SLACK_CHANNEL=test-channel
+ENABLE_TELEMETRY=true
 ```
 
 For convenience, you can also use the `.env.local` file, which contains all the variables already filled in. Ensure that your environment variables are properly set before running the application to avoid misconfigurations.

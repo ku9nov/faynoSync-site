@@ -1,0 +1,349 @@
+---
+sidebar_position: 9
+---
+# Telemetry System
+
+The telemetry system in FaynoSync provides detailed analytics and insights about your application's usage, helping you understand your user base and make informed decisions about updates and maintenance.
+
+You can enable statistics by defining the variable `ENABLE_TELEMETRY=true` in the `.env` file.
+
+## Overview
+
+The telemetry system collects and aggregates data about your application's usage, including:
+- Total requests
+- Unique clients
+- Version distribution
+- Platform usage
+- Architecture distribution
+- Channel usage
+- Daily statistics
+
+## How It Works
+
+### Data Collection
+
+Telemetry data is collected automatically when clients check for updates using the `/checkVersion` API endpoint. The system tracks:
+
+- Device ID (via `X-Device-ID` header)
+- Application name
+- Platform
+- Channel
+- Architecture
+- Application version
+
+### Data Storage
+
+All telemetry data is stored in Redis with a 30-day retention period. The data is organized by:
+- Administrator
+- Application
+- Date
+- Various metrics (versions, platforms, channels, etc.)
+
+## Access Control
+
+### Administrator Access
+
+Each administrator has access to telemetry data only for their own resources. This ensures data privacy and proper separation of concerns.
+
+### Team User Access
+
+Team users have access to their administrator's telemetry data, but with some limitations:
+- They can view all statistics
+- They can only filter/sort data for resources they have access to
+- Access is verified through the API to ensure proper authorization
+
+## Device ID Requirements
+
+### Importance of Device ID
+
+The `X-Device-ID` header is crucial for accurate telemetry data. It helps:
+- Track unique devices
+- Provide accurate user counts
+- Generate meaningful statistics
+
+### Implementation Guidelines
+
+1. Generate a unique device ID for each installation
+2. Store the ID persistently on the device
+3. Include it in all requests to the `/checkVersion` endpoint
+4. Use the same ID across app restarts
+
+### Security Considerations
+
+⚠️ **Important**: The `X-Device-ID` header should:
+- NOT contain any personal information
+- NOT include IP addresses
+- NOT include any sensitive data
+- Be used solely for device identification
+
+## API Usage
+
+### Collecting Telemetry
+
+Telemetry is automatically collected when using the `/checkVersion` endpoint. Ensure you include the `X-Device-ID` header:
+
+```http
+GET /checkVersion?app_name=myapp&version=1.0.0&channel=stable&platform=darwin&arch=x64
+X-Device-ID: unique-device-identifier
+```
+
+### Viewing Telemetry Data
+
+Access telemetry data through the dashboard or API:
+
+```http
+GET /telemetry?range=week
+```
+
+Available query parameters:
+- `date`: Specific date (YYYY-MM-DD)
+- `range`: Time range ("week" or "month")
+- `apps`: Filter by specific apps
+- `channels`: Filter by channels
+- `platforms`: Filter by platforms
+- `architectures`: Filter by architectures
+
+## Best Practices
+
+1. **Device ID Generation**
+   - Use UUID v4 or similar for device IDs
+   - Store IDs in secure, persistent storage
+   - Never change the ID for an existing installation
+
+2. **Data Privacy**
+   - Never include personal information in device IDs
+   - Follow data protection regulations
+   - Regularly review collected data
+
+3. **Implementation**
+   - Implement telemetry collection early in development
+   - Test with various device configurations
+   - Monitor data quality and accuracy
+
+## Example Response
+
+```json
+{
+    "date": "2025-06-09",
+    "date_range": [
+        "2025-06-09",
+        "2025-06-10",
+        "2025-06-11",
+        "2025-06-12",
+        "2025-06-13",
+        "2025-06-14",
+        "2025-06-15",
+        "2025-06-16"
+    ],
+    "admin": "ku9n",
+    "summary": {
+        "total_requests": 1765,
+        "unique_clients": 1751,
+        "clients_using_latest_version": 167,
+        "clients_outdated": 1584,
+        "total_active_apps": 5
+    },
+    "versions": {
+        "used_versions_count": 12,
+        "known_versions": [
+            "0.0.0.1",
+            "0.0.0.10",
+            "0.0.0.2",
+            "0.0.0.3",
+            "0.0.0.4",
+            "0.0.0.5",
+            "0.0.0.6",
+            "0.0.0.7",
+            "0.0.0.8",
+            "0.0.0.9",
+            "0.0.2.0",
+            "0.0.2.1"
+        ],
+        "usage": [
+            {
+                "version": "0.0.0.2",
+                "client_count": 149
+            },
+            {
+                "version": "0.0.0.3",
+                "client_count": 149
+            },
+            {
+                "version": "0.0.0.4",
+                "client_count": 120
+            },
+            {
+                "version": "0.0.0.5",
+                "client_count": 145
+            },
+            {
+                "version": "0.0.0.6",
+                "client_count": 154
+            },
+            {
+                "version": "0.0.0.7",
+                "client_count": 125
+            },
+            {
+                "version": "0.0.0.8",
+                "client_count": 141
+            },
+            {
+                "version": "0.0.0.9",
+                "client_count": 158
+            },
+            {
+                "version": "0.0.2.1",
+                "client_count": 167
+            },
+            {
+                "version": "0.0.0.1",
+                "client_count": 139
+            },
+            {
+                "version": "0.0.0.10",
+                "client_count": 147
+            },
+            {
+                "version": "0.0.2.0",
+                "client_count": 157
+            }
+        ]
+    },
+    "platforms": [
+        {
+            "platform": "universal",
+            "client_count": 224
+        },
+        {
+            "platform": "linux",
+            "client_count": 215
+        },
+        {
+            "platform": "browser",
+            "client_count": 213
+        },
+        {
+            "platform": "darwin",
+            "client_count": 207
+        },
+        {
+            "platform": "windows",
+            "client_count": 229
+        },
+        {
+            "platform": "android",
+            "client_count": 244
+        }
+    ],
+    "architectures": [
+        {
+            "arch": "chrome",
+            "client_count": 213
+        },
+        {
+            "arch": "edge",
+            "client_count": 211
+        },
+        {
+            "arch": "universal",
+            "client_count": 200
+        },
+        {
+            "arch": "arm64",
+            "client_count": 230
+        },
+        {
+            "arch": "firefox",
+            "client_count": 227
+        },
+        {
+            "arch": "amd64",
+            "client_count": 231
+        }
+    ],
+    "channels": [
+        {
+            "channel": "nightly",
+            "client_count": 435
+        },
+        {
+            "channel": "beta",
+            "client_count": 446
+        },
+        {
+            "channel": "stable",
+            "client_count": 448
+        },
+        {
+            "channel": "alpha",
+            "client_count": 422
+        }
+    ],
+    "daily_stats": [
+        {
+            "date": "2025-06-09",
+            "total_requests": 100,
+            "unique_clients": 100,
+            "clients_using_latest_version": 12,
+            "clients_outdated": 88
+        },
+        {
+            "date": "2025-06-10",
+            "total_requests": 150,
+            "unique_clients": 150,
+            "clients_using_latest_version": 14,
+            "clients_outdated": 136
+        },
+        {
+            "date": "2025-06-11",
+            "total_requests": 200,
+            "unique_clients": 200,
+            "clients_using_latest_version": 17,
+            "clients_outdated": 183
+        },
+        {
+            "date": "2025-06-12",
+            "total_requests": 250,
+            "unique_clients": 250,
+            "clients_using_latest_version": 28,
+            "clients_outdated": 222
+        },
+        {
+            "date": "2025-06-13",
+            "total_requests": 300,
+            "unique_clients": 300,
+            "clients_using_latest_version": 32,
+            "clients_outdated": 268
+        },
+        {
+            "date": "2025-06-14",
+            "total_requests": 350,
+            "unique_clients": 350,
+            "clients_using_latest_version": 26,
+            "clients_outdated": 324
+        },
+        {
+            "date": "2025-06-15",
+            "total_requests": 400,
+            "unique_clients": 400,
+            "clients_using_latest_version": 37,
+            "clients_outdated": 363
+        },
+        {
+            "date": "2025-06-16",
+            "total_requests": 15,
+            "unique_clients": 1,
+            "clients_using_latest_version": 1,
+            "clients_outdated": 0
+        }
+    ]
+}
+```
+
+## Limitations
+
+1. Data is retained for 30 days
+2. Statistics are only collected when `X-Device-ID` is provided
+3. Team users have limited filtering capabilities
+4. Data is aggregated daily

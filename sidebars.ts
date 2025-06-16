@@ -126,6 +126,7 @@ const sidebars: SidebarsConfig = {
     'team_based_auth',
     'troubleshooting',
     'intermediate_build',
+    'telemetry',
   ],
 };
 
