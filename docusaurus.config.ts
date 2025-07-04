@@ -5,7 +5,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 const config: Config = {
   title: 'FaynoSync',
   tagline: 'The auto-updater service that puts simplicity, reliability, and user control at the forefront.',
-  favicon: 'img/logo.svg',
+  favicon: 'img/favicon.png',
 
   // Set the production url of your site here
   url: 'https://your-docusaurus-site.example.com',
@@ -72,7 +72,7 @@ const config: Config = {
       title: 'FaynoSync',
       logo: {
         alt: 'faynoSync Logo',
-        src: 'img/logo.svg',
+        src: 'img/favicon.png',
       },
       style: 'primary',
       items: [
