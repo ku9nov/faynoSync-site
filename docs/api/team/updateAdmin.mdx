@@ -4,26 +4,30 @@ title: Update Admin User
 
 # Update Admin User
 
-Update an existing admin's passswords.
+Update an existing admin user's password.
 
-**Endpoint:**
+## Endpoint
 
-`POST /admin/update`
+```
+POST /admin/update
+```
 
-**Headers:**
+## Authentication
 
-`Authorization`: Bearer JWT token.
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <jwt_token>` |
+| `Content-Type` | `application/json` |
 
-**Body:**
+## Request Body
 
-`id`: ID of the admin to update (can't be updated).
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | ✅ | ID of the admin to update (cannot be changed) |
+| `username` | string | ✅ | Username of the admin to update (cannot be changed) |
+| `password` | string | ✅ | New password for the admin |
 
-`username`: Username of the admin to update (can't be updated).
-
-`password`: New password for the admin.
-
-
-**Request:**
+## Example Request
 
 ```bash
 curl -X POST \
@@ -37,10 +41,26 @@ curl -X POST \
   }'
 ```
 
-**Response:**
+## Response
+
+### Success Response (200 OK)
 
 ```json
 {
-    "message": "Admin updated successfully"
+  "message": "Admin updated successfully"
 }
 ```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `message` | string | Confirmation message indicating successful admin update |
+
+## Notes
+
+- Only admin users can update admin passwords
+- The `id` and `username` fields are used for identification and cannot be changed
+- Password changes take effect immediately
+- New passwords should follow security best practices
+- The admin will need to re-authenticate with the new password

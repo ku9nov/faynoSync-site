@@ -41,7 +41,7 @@ export default function HomePage() {
                 {
                   icon: <Cloud className="h-8 w-8" />,
                   title: "Unified Registry",
-                  description: "A centralized registry for all your application types, ensuring consistency across platforms.",
+                  description: "A centralized registry for all your application types, ensuring consistency across platforms. Supports AWS S3, MinIO, Digital Ocean Spaces, and GCP Cloud Storage.",
                 },
                 {
                   icon: <Shield className="h-8 w-8" />,

@@ -4,31 +4,50 @@ title: Delete Specific application
 
 # Delete Specific application
 
-This endpoint allows you to delete a specific application.
+This endpoint allows you to delete a specific application and all its versions.
 
-**Endpoint:**
+## Endpoint
 
-`DELETE /app/delete?id=<id>`
+```
+DELETE /app/delete?id=<id>
+```
 
-**Headers:**
+## Authentication
 
-`Authorization`: Bearer JWT token.
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <jwt_token>` |
 
-**Query Parameters:**
+## Query Parameters
 
-`id`: The unique identifier of the application to delete.
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | string | ✅ | The unique identifier of the application to delete |
 
-**Request:**
+## Example Request
 
 ```bash
-curl -X DELETE http://localhost:9000/app/delete\?\id\=\64145ebaedd163d59d52e1dc \
+curl -X DELETE http://localhost:9000/app/delete?id=64145ebaedd163d59d52e1dc \
 -H "Authorization: Bearer <jwt_token>"
 ```
 
-**Response:**
+## Response
+
+### Success Response (200 OK)
 
 ```json
 {
-   "deleteAppResult.DeletedCount":1
+  "deleteAppResult.DeletedCount": 1
 }
 ```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `deleteAppResult.DeletedCount` | number | Number of applications successfully deleted (should be 1 if successful) |
+
+## Notes
+
+- This operation permanently deletes the entire application
+- The deletion is irreversible - deleted applications cannot be recovered

@@ -1,81 +1,134 @@
 ---
 title: Get All Applications (deprecated)
 ---
+
 # Get All Applications (deprecated)
 
-Retrieve a list of all applications.
+:::warning
+This endpoint is deprecated. Use `/app/list` instead for better performance and cleaner response format.
+:::
 
-**Endpoint:**
+Retrieve a list of all applications with their versions and artifacts.
 
-`GET /`
+## Endpoint
 
-**Headers:**
+```
+GET /
+```
 
-`Authorization`: Bearer JWT token.
+## Authentication
 
-**Request:**
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <jwt_token>` |
+
+## Example Request
 
 ```bash
 curl -X GET http://localhost:9000/ -H "Authorization: Bearer <jwt_token>"
 ```
 
-**Response:**
+## Response
+
+### Success Response (200 OK)
 
 ```json
 {
-    "apps": [
+  "apps": [
+    {
+      "ID": "653a544c1ff613bed613df5b",
+      "AppName": "firstapp",
+      "Version": "0.0.1",
+      "Channel": "nightly",
+      "Published": false,
+      "Artifacts": [
         {
-            "ID": "653a544c1ff613bed613df5b",
-            "AppName": "firstapp",
-            "Version": "0.0.1",
-            "Channel": "nightly",
-            "Published": false,
-            "Artifacts": [
-                {
-                    "Link": "https://<bucket_name>.s3.amazonaws.com/firstapp/nightly/linux/amd64/firstapp-0.0.1.deb",
-                    "Platform": "linux",
-                    "Arch": "amd64",
-                    "Package": ".deb"
-                }
-            ],
-            "Changelog": [
-                {
-                    "Version": "0.0.1",
-                    "Changes": "",
-                    "Date": "2023-10-26"
-                }
-            ],
-            "Updated_at": "2023-10-26T14:58:04.258+03:00"
+          "Link": "https://<bucket_name>.s3.amazonaws.com/firstapp/nightly/linux/amd64/firstapp-0.0.1.deb",
+          "Platform": "linux",
+          "Arch": "amd64",
+          "Package": ".deb"
+        }
+      ],
+      "Changelog": [
+        {
+          "Version": "0.0.1",
+          "Changes": "",
+          "Date": "2023-10-26"
+        }
+      ],
+      "Updated_at": "2023-10-26T14:58:04.258+03:00"
+    },
+    {
+      "ID": "653a5e4f51ce5114611f5abb",
+      "AppName": "secondapp",
+      "Version": "0.0.1",
+      "Channel": "stable",
+      "Published": true,
+      "Artifacts": [
+        {
+          "Link": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.1.deb",
+          "Platform": "linux",
+          "Arch": "amd64",
+          "Package": ".deb"
         },
         {
-            "ID": "653a5e4f51ce5114611f5abb",
-            "AppName": "secondapp",
-            "Version": "0.0.1",
-            "Channel": "stable",
-            "Published": true,
-            "Artifacts": [
-                {
-                    "Link": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.1.deb",
-                    "Platform": "linux",
-                    "Arch": "amd64",
-                    "Package": ".deb"
-                },
-                {
-                    "Link": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.1.rpm",
-                    "Platform": "linux",
-                    "Arch": "amd64",
-                    "Package": ".rpm"
-                }
-            ],
-            "Changelog": [
-                {
-                    "Version": "0.0.1",
-                    "Changes": "",
-                    "Date": "2023-10-26"
-                }
-            ],
-            "Updated_at": "2023-10-26T15:40:47.226+03:00"
+          "Link": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.1.rpm",
+          "Platform": "linux",
+          "Arch": "amd64",
+          "Package": ".rpm"
         }
-    ]
+      ],
+      "Changelog": [
+        {
+          "Version": "0.0.1",
+          "Changes": "",
+          "Date": "2023-10-26"
+        }
+      ],
+      "Updated_at": "2023-10-26T15:40:47.226+03:00"
+    }
+  ]
 }
 ```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `apps` | array | Array of application objects |
+
+#### Application Object Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `ID` | string | Unique identifier of the application version |
+| `AppName` | string | Name of the application |
+| `Version` | string | Version number |
+| `Channel` | string | Release channel (e.g., stable, nightly) |
+| `Published` | boolean | Whether the version is published |
+| `Artifacts` | array | Array of artifact objects |
+| `Changelog` | array | Array of changelog entries |
+| `Updated_at` | string | Last update timestamp |
+
+#### Artifact Object Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Link` | string | Direct download URL for the artifact |
+| `Platform` | string | Target platform (e.g., linux, windows) |
+| `Arch` | string | Target architecture (e.g., amd64, arm64) |
+| `Package` | string | Package format (e.g., .deb, .rpm) |
+
+#### Changelog Entry Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Version` | string | Version number |
+| `Changes` | string | Changelog content in markdown format |
+| `Date` | string | Release date |
+
+## Notes
+
+- This endpoint returns all versions of all applications, which can be slow for large datasets
+- Consider using `/app/list` for a simpler list of applications or `/search` for specific applications
+- The response includes detailed information about each version and its artifacts

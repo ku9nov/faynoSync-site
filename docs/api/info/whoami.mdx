@@ -4,30 +4,44 @@ title: WhoamI
 
 # Check current user information
 
-**Endpoint:**
+Retrieve information about the currently authenticated user, including permissions and role.
 
-`GET /whoami`
+## Endpoint
 
-**Headers:**
+```
+GET /whoami
+```
 
-`Authorization`: Bearer JWT token.
+## Authentication
 
-**Request:**
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <jwt_token>` |
+
+## Example Request
 
 ```bash
 curl -X GET http://localhost:9000/whoami \
 -H "Authorization: Bearer <jwt_token>"
 ```
 
-**Response:**
+## Response
+
+### Success Response (200 OK)
+
+#### Admin User Response
 
 ```json
 {
-    "id": "67ffc3f5a2120e73468ce66c",
-    "username": "admin",
-    "is_admin": true
+  "id": "67ffc3f5a2120e73468ce66c",
+  "username": "admin",
+  "is_admin": true
 }
-# Or for team user
+```
+
+#### Team User Response
+
+```json
 {
   "id": "6800be205e5d00c1c14fe244",
   "username": "teamuser1",
@@ -73,3 +87,39 @@ curl -X GET http://localhost:9000/whoami \
   }
 }
 ```
+
+### Response Fields
+
+#### Common Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique identifier of the user |
+| `username` | string | Username of the authenticated user |
+| `is_admin` | boolean | Whether the user has administrative privileges |
+
+#### Team User Additional Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `owner` | string | Username of the admin who created this team user |
+| `permissions` | object | Detailed permissions for different resource types |
+
+#### Permission Object Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Create` | boolean | Permission to create new resources |
+| `Delete` | boolean | Permission to delete resources |
+| `Edit` | boolean | Permission to edit existing resources |
+| `Download` | boolean | Permission to download files |
+| `Upload` | boolean | Permission to upload files |
+| `Allowed` | array | List of resource IDs the user has access to |
+
+## Notes
+
+- Admin users have full access to all resources and operations
+- Team users have restricted access based on their assigned permissions
+- The `Allowed` array contains IDs of specific resources the user can access
+- Use this endpoint to determine user capabilities and access rights
+- Permissions are granular and can be customized per resource type

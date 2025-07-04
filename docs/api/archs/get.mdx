@@ -1,40 +1,68 @@
 ---
 title: Get All Architectures
 ---
+
 # Get All Architectures
 
-Retrieve a list of all architectures.
+Retrieve a list of all available architectures in the system.
 
-**Endpoint:**
+## Endpoint
 
-`GET /arch/list`
+```
+GET /arch/list
+```
 
-**Headers:**
+## Authentication
 
-`Authorization`: Bearer JWT token.
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <jwt_token>` |
 
-**Request:**
+## Example Request
 
 ```bash
 curl -X GET http://localhost:9000/arch/list \
 -H "Authorization: Bearer <jwt_token>"
 ```
 
-**Response:**
+## Response
+
+### Success Response (200 OK)
 
 ```json
 {
-    "archs": [
-        {
-            "ID": "653a52611ff613bed613df59",
-            "ArchID": "amd64",
-            "Updated_at": "2023-10-26T14:49:53.815+03:00"
-        },
-        {
-            "ID": "653a52691ff613bed613df5a",
-            "ArchID": "arm64",
-            "Updated_at": "2023-10-26T14:50:01.413+03:00"
-        }
-    ]
+  "archs": [
+    {
+      "ID": "653a52611ff613bed613df59",
+      "ArchID": "amd64",
+      "Updated_at": "2023-10-26T14:49:53.815+03:00"
+    },
+    {
+      "ID": "653a52691ff613bed613df5a",
+      "ArchID": "arm64",
+      "Updated_at": "2023-10-26T14:50:01.413+03:00"
+    }
+  ]
 }
 ```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `archs` | array | Array of architecture objects |
+
+#### Architecture Object Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `ID` | string | Unique identifier of the architecture |
+| `ArchID` | string | Architecture identifier (e.g., amd64, arm64) |
+| `Updated_at` | string | Last update timestamp |
+
+## Notes
+
+- This endpoint returns all architectures available for application deployment
+- The `ArchID` field contains the standard architecture name used in uploads
+- Results are typically sorted by creation date (newest first)
+- Empty results array is returned if no architectures are configured

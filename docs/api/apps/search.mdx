@@ -4,104 +4,161 @@ title: Search application by name
 
 # Search application by name
 
-Search for all versions of an application by name.
+Search for all versions of an application by name with optional filtering.
 
-**Endpoint:**
+## Endpoint
 
-`GET /search?app_name=<app_name>`
+```
+GET /search?app_name=<app_name>
+```
 
-**Headers:**
+## Authentication
 
-`Authorization`: Bearer JWT token.
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <jwt_token>` |
 
-**Query Parameters:**
+## Query Parameters
 
-`app_name`: Name of the application.
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `app_name` | string | ✅ | Name of the application to search for |
+| `limit` | number | ❌ | Maximum number of records to return |
 
-`limit`: Maximum number of records to return in the response.
+### Optional Filters
 
-Optional filters:
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `channel` | string | Filter by channel name (e.g., stable, beta) |
+| `published` | boolean | Set to `true` to return only published versions |
+| `critical` | boolean | Set to `true` to return only critical versions |
+| `platform` | string | Filter by platform (e.g., linux, windows) |
+| `arch` | string | Filter by architecture (e.g., amd64, arm64) |
 
-`channel`: Name of the channel.
+## Example Request
 
-`published`: Set to `true` to return only published versions.
-
-`critical`: Set to `true` to return only critical versions.
-
-`platform`: Platform of the application to return.
-
-`arch`: Architecture of the application to return.
-
-**Request:**
+### Basic Search
 
 ```bash
 curl -X GET --location 'http://localhost:9000/search?app_name=secondapp' \
 --header 'Authorization: Bearer <jwt_token>'
 ```
 
-**Response:**
+### Search with Filters
+
+```bash
+curl -X GET --location 'http://localhost:9000/search?app_name=secondapp&channel=stable&published=true&limit=10' \
+--header 'Authorization: Bearer <jwt_token>'
+```
+
+## Response
+
+### Success Response (200 OK)
 
 ```json
 {
-    "apps": [
+  "apps": [
+    {
+      "ID": "653a5e4f51ce5114611f5abb",
+      "AppName": "secondapp",
+      "Version": "0.0.1",
+      "Channel": "stable",
+      "Published": true,
+      "Artifacts": [
         {
-            "ID": "653a5e4f51ce5114611f5abb",
-            "AppName": "secondapp",
-            "Version": "0.0.1",
-            "Channel": "stable",
-            "Published": true,
-            "Artifacts": [
-                {
-                    "Link": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.1.deb",
-                    "Platform": "linux",
-                    "Arch": "amd64",
-                    "Package": ".deb"
-                },
-                {
-                    "Link": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.1.rpm",
-                    "Platform": "linux",
-                    "Arch": "amd64",
-                    "Package": ".rpm"
-                }
-            ],
-            "Changelog": [
-                {
-                    "Version": "0.0.1",
-                    "Changes": "### Changelog\n\n- Added new feature X\n- Fixed bug Y",
-                    "Date": "2023-10-26"
-                }
-            ],
-            "Updated_at": "2023-10-26T15:40:47.226+03:00"
+          "Link": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.1.deb",
+          "Platform": "linux",
+          "Arch": "amd64",
+          "Package": ".deb"
         },
         {
-            "ID": "653a6268f51dee6a99a3d88c",
-            "AppName": "secondapp",
-            "Version": "0.0.3",
-            "Channel": "stable",
-            "Published": true,
-            "Artifacts": [
-                {
-                    "Link": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.3.deb",
-                    "Platform": "linux",
-                    "Arch": "amd64",
-                    "Package": ".deb"
-                },
-                {
-                    "Link": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.3.rpm",
-                    "Platform": "linux",
-                    "Arch": "amd64",
-                    "Package": ".rpm"
-                }
-            ],
-            "Changelog": [
-                {
-                    "Version": "0.0.3",
-                    "Changes": "### Changelog\n\n- Added new feature X\n- Fixed bug Y",
-                    "Date": "2023-10-26"
-                }
-            ],
-            "Updated_at": "2023-10-26T15:58:16.999+03:00"
+          "Link": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.1.rpm",
+          "Platform": "linux",
+          "Arch": "amd64",
+          "Package": ".rpm"
         }
-    ]
+      ],
+      "Changelog": [
+        {
+          "Version": "0.0.1",
+          "Changes": "### Changelog\n\n- Added new feature X\n- Fixed bug Y",
+          "Date": "2023-10-26"
+        }
+      ],
+      "Updated_at": "2023-10-26T15:40:47.226+03:00"
+    },
+    {
+      "ID": "653a6268f51dee6a99a3d88c",
+      "AppName": "secondapp",
+      "Version": "0.0.3",
+      "Channel": "stable",
+      "Published": true,
+      "Artifacts": [
+        {
+          "Link": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.3.deb",
+          "Platform": "linux",
+          "Arch": "amd64",
+          "Package": ".deb"
+        },
+        {
+          "Link": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.3.rpm",
+          "Platform": "linux",
+          "Arch": "amd64",
+          "Package": ".rpm"
+        }
+      ],
+      "Changelog": [
+        {
+          "Version": "0.0.3",
+          "Changes": "### Changelog\n\n- Added new feature X\n- Fixed bug Y",
+          "Date": "2023-10-26"
+        }
+      ],
+      "Updated_at": "2023-10-26T15:58:16.999+03:00"
+    }
+  ]
 }
 ```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `apps` | array | Array of application version objects |
+
+#### Application Version Object Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `ID` | string | Unique identifier of the application version |
+| `AppName` | string | Name of the application |
+| `Version` | string | Version number |
+| `Channel` | string | Release channel (e.g., stable, nightly) |
+| `Published` | boolean | Whether the version is published |
+| `Artifacts` | array | Array of artifact objects |
+| `Changelog` | array | Array of changelog entries |
+| `Updated_at` | string | Last update timestamp |
+
+#### Artifact Object Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Link` | string | Direct download URL for the artifact |
+| `Platform` | string | Target platform (e.g., linux, windows) |
+| `Arch` | string | Target architecture (e.g., amd64, arm64) |
+| `Package` | string | Package format (e.g., .deb, .rpm) |
+
+#### Changelog Entry Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Version` | string | Version number |
+| `Changes` | string | Changelog content in markdown format |
+| `Date` | string | Release date |
+
+## Notes
+
+- Results are typically sorted by version (newest first)
+- The `limit` parameter helps control response size for applications with many versions
+- Multiple filters can be combined for precise searching
+- Empty results array is returned if no matching applications are found

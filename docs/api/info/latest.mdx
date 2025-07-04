@@ -2,40 +2,65 @@
 title: Check Latest Version
 ---
 
-### Check Latest Version of application
+# Check Latest Version of application
 
-Check if there is a newer version of a specific application.
+Check if there is a newer version of a specific application available.
 
-**Endpoint:**
+## Endpoint
 
-`GET /checkVersion?app_name=<app_name>&version=<version>`
+```
+GET /checkVersion?app_name=<app_name>&version=<version>
+```
 
-**Query Parameters:**
+## Query Parameters
 
-`app_name`: Name of the app.
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `app_name` | string | ✅ | Name of the app to check |
+| `version` | string | ✅ | Current version of the app |
+| `channel` | string | ❌ | Channel (e.g., stable, beta) |
+| `platform` | string | ❌ | Platform (e.g., linux, windows) |
+| `arch` | string | ❌ | Architecture (e.g., amd64, arm64) |
+| `owner` | string | ✅ | Name of your admin user |
 
-`version`: Current version of the app.
-
-`channel` (string, optional): Channel (e.g., stable, beta).
-
-`platform` (string, optional): Platform (e.g., linux, windows).
-
-`arch` (string, optional): Architecture (e.g., amd64, arm64).
-
-`owner`: Name of your admin user.
-
-**Request:**
+## Example Request
 
 ```bash
 curl -X GET --location 'http://localhost:9000/checkVersion?app_name=secondapp&version=0.0.1&channel=stable&platform=linux&arch=amd64&owner=admin'
 ```
 
-**Response:**
+## Response
+
+### Success Response (200 OK)
 
 ```json
 {
-    "update_available": false,
-    "update_url_deb": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.1.deb",
-    "update_url_rpm": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.1.rpm"
+  "update_available": true,
+  "update_url_deb": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.2.deb",
+  "update_url_rpm": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.2.rpm",
+  "changelog": "### Changelog\n\n- Added new feature X\n- Fixed bug Y",
+  "critical": true,
+  "is_intermediate_required": true
 }
 ```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `update_available` | boolean | Indicates whether a newer version is available |
+| `update_url_deb` | string | Direct download URL for the .deb package |
+| `update_url_rpm` | string | Direct download URL for the .rpm package |
+| `changelog` | string | Changelog content for the latest version (in markdown format) |
+| `critical` | boolean | Indicates if this is a critical update that should be applied immediately |
+| `is_intermediate_required` | boolean | Indicates if an intermediate version must be installed before latest version |
+
+## Notes
+
+- This endpoint is designed for client applications to check for updates
+- The `update_available` field helps clients determine if they need to update
+- Download URLs are provided for different package formats
+- The `owner` parameter is required for proper access control
+- Version comparison is done automatically by the API
+- Critical updates should be prioritized and applied as soon as possible
+- Intermediate versions may be required for major version jumps or breaking changes

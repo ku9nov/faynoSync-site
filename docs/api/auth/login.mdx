@@ -2,34 +2,57 @@
 title: Login
 ---
 
-### Login
+# Login
 
-Authenticate and receive a jwt token for accessing the API.
+Authenticate and receive a JWT token for accessing the API.
 
-**Endpoint:**
+## Endpoint
 
-`POST /login`
-
-**Headers:**
-
-`Content-Type: application/json`
-
-**Body Parameters:**
-
-- **username** (string, required): The username of your account.
-
-- **password** (string, required): The password for the new account.
-
-**Request:**
-
-```bash
-curl -X POST -H "Content-Type: application/json" -d '{"username": "admin", "password": "password"}' http://localhost:9000/login
+```
+POST /login
 ```
 
-**Response:**
+## Headers
+
+| Header | Value |
+|--------|-------|
+| `Content-Type` | `application/json` |
+
+## Request Body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `username` | string | ✅ | The username of your account |
+| `password` | string | ✅ | The password for your account |
+
+## Example Request
+
+```bash
+curl -X POST -H "Content-Type: application/json" \
+-d '{"username": "admin", "password": "password"}' \
+http://localhost:9000/login
+```
+
+## Response
+
+### Success Response (200 OK)
 
 ```json
 {
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MjY3NDQ4NDMsInVzZXJuYW1lIjoiYWRtaW4ifQ.eYkCNem24-6rpw8aXo6NIcN6xtU9rqq2_2YYz1nS82Q"
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MjY3NDQ4NDMsInVzZXJuYW1lIjoiYWRtaW4ifQ.eYkCNem24-6rpw8aXo6NIcN6xtU9rqq2_2YYz1nS82Q"
 }
 ```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `token` | string | JWT token for authenticating subsequent API requests |
+
+## Notes
+
+- The JWT token should be included in the `Authorization` header as `Bearer <token>`
+- Tokens have an expiration time - you may need to re-authenticate periodically
+- Store the token securely and do not share it with unauthorized parties
+- Use this token for all authenticated API endpoints
+- If authentication fails, check your username and password credentials

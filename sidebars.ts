@@ -124,9 +124,9 @@ const sidebars: SidebarsConfig = {
     },
     'performance',
     'team_based_auth',
-    'troubleshooting',
-    'intermediate_build',
     'telemetry',
+    'intermediate_build',
+    'troubleshooting', 
   ],
 };
 

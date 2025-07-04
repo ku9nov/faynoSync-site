@@ -1,27 +1,36 @@
 ---
-title: Create arch 
+title: Create arch
 ---
-# Create arch 
 
-:::warning 
-After creating the first architecture, the arch field becomes required.
+# Create arch
+
+Create a deployment architecture for applications.
+
+:::warning
+After creating the first architecture, the arch field becomes required for all subsequent operations.
 :::
 
-Create a deployment architecture.
+## Endpoint
 
-**Endpoint:**
+```
+POST /arch/create
+```
 
-`POST /arch/create`
+## Authentication
 
-**Headers:**
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <jwt_token>` |
 
-`Authorization`: Bearer JWT token.
+## Request Body
 
-**Body Form Data:**
+The request uses `multipart/form-data` format with the following fields:
 
-`arch`: Architecture of the application.
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `arch` | string | ✅ | Architecture of the application (e.g., amd64, arm64) |
 
-**Request:**
+## Example Request
 
 ```bash
 curl --location 'http://localhost:9000/arch/create' \
@@ -29,10 +38,22 @@ curl --location 'http://localhost:9000/arch/create' \
 --form 'data="{\"arch\":\"amd64\"}"'
 ```
 
-**Response:**
+## Response
+
+### Success Response (200 OK)
 
 ```json
 {
-   "createArchResult.Created": "641459ffb8360d74164e7e3c"
+  "createArchResult.Created": "641459ffb8360d74164e7e3c"
 }
 ```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `createArchResult.Created` | string | The unique identifier (ID) of the created architecture |
+
+## Notes
+
+- Once created, architectures can be used when uploading application artifacts

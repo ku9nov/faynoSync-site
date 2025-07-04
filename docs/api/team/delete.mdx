@@ -4,21 +4,28 @@ title: Delete Specific User
 
 # Delete Specific User
 
-Delete a specific team user.
+Delete a specific team user by their unique identifier.
 
-**Endpoint:**
+## Endpoint
 
-`DELETE /user/delete`
+```
+DELETE /user/delete
+```
 
-**Headers:**
+## Authentication
 
-`Authorization`: Bearer JWT token.
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <jwt_token>` |
+| `Content-Type` | `application/json` |
 
-**Body:**
+## Request Body
 
-`id`: The unique identifier of the user to delete.
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | ✅ | The unique identifier of the user to delete |
 
-**Request:**
+## Example Request
 
 ```bash
 curl -X DELETE \
@@ -30,10 +37,26 @@ curl -X DELETE \
   }'
 ```
 
-**Response:**
+## Response
+
+### Success Response (200 OK)
 
 ```json
 {
-    "message": "Team user deleted successfully"
+  "message": "Team user deleted successfully"
 }
 ```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `message` | string | Confirmation message indicating successful user deletion |
+
+## Notes
+
+- This operation permanently deletes the team user
+- The deletion is irreversible - deleted users cannot be recovered
+- Only admin users can delete team users
+- The user's permissions and access rights are also removed
+- Ensure the user is not currently active before deletion

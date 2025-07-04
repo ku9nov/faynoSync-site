@@ -1,27 +1,36 @@
 ---
 title: Create Channel
 ---
+
 # Create Channel
 
-:::warning 
-After the first creation, the `channel` field becomes required.
+Create a new deployment channel for organizing application releases.
+
+:::warning
+After creating the first channel, the `channel` field becomes required for all subsequent operations.
 :::
 
-Creates a new deployment channel.
+## Endpoint
 
-**Endpoint:**
+```
+POST /channel/create
+```
 
-`POST /channel/create`
+## Authentication
 
-**Headers:**
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <jwt_token>` |
 
-`Authorization`: Bearer JWT token.
+## Request Body
 
-**Body Form Data:**
+The request uses `multipart/form-data` format with the following fields:
 
-`channel`: The name of the channel to be created.
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `channel` | string | ✅ | The name of the channel to be created (e.g., stable, beta, nightly) |
 
-**Request:**
+## Example Request
 
 ```bash
 curl --location 'http://localhost:9000/channel/create' \
@@ -29,10 +38,23 @@ curl --location 'http://localhost:9000/channel/create' \
 --form 'data="{\"channel\":\"nightly\"}"'
 ```
 
-**Response:**
+## Response
+
+### Success Response (200 OK)
 
 ```json
 {
-   "createChannelResult.Created": "641459ffb8360d74164e7e3c"
+  "createChannelResult.Created": "641459ffb8360d74164e7e3c"
 }
 ```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `createChannelResult.Created` | string | The unique identifier (ID) of the created channel |
+
+## Notes
+
+- Channels help organize different types of releases (production, testing, development)
+- Once created, channels can be used when uploading application versions

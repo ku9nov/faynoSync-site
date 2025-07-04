@@ -4,26 +4,50 @@ title: Create User
 
 # Create User
 
-Create a new team user with specific permissions.
+Create a new team user with specific permissions for different resources.
 
-**Endpoint:**
+## Endpoint
 
-`POST /user/create`
+```
+POST /user/create
+```
 
-**Headers:**
+## Authentication
 
-`Authorization`: Bearer JWT token.
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <jwt_token>` |
+| `Content-Type` | `application/json` |
 
-**Body:**
+## Request Body
 
-`username`: Username for the new team user.
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `username` | string | ✅ | Username for the new team user |
+| `password` | string | ✅ | Password for the new team user |
+| `permissions` | object | ✅ | Object containing permission settings for different resources |
 
-`password`: Password for the new team user.
+### Permissions Object Structure
 
-`permissions`: Object containing permission settings for different resources.
+| Resource | Type | Description |
+|----------|------|-------------|
+| `apps` | object | Permissions for application management |
+| `channels` | object | Permissions for channel management |
+| `platforms` | object | Permissions for platform management |
+| `archs` | object | Permissions for architecture management |
 
+### Permission Fields for Each Resource
 
-**Request:**
+| Field | Type | Description |
+|-------|------|-------------|
+| `create` | boolean | Permission to create new resources |
+| `delete` | boolean | Permission to delete resources |
+| `edit` | boolean | Permission to edit existing resources |
+| `download` | boolean | Permission to download files (apps only) |
+| `upload` | boolean | Permission to upload files (apps only) |
+| `allowed` | array | List of resource IDs the user has access to |
+
+## Example Request
 
 ```bash
 curl -X POST \
@@ -64,10 +88,25 @@ curl -X POST \
   }'
 ```
 
-**Response:**
+## Response
+
+### Success Response (200 OK)
 
 ```json
 {
-    "message": "Team user created successfully"
+  "message": "Team user created successfully"
 }
 ```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `message` | string | Confirmation message indicating successful user creation |
+
+## Notes
+
+- Team users have restricted access based on their assigned permissions
+- The `allowed` array contains IDs of specific resources the user can access
+- Passwords should follow security best practices
+- Only admin users can create team users

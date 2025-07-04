@@ -4,31 +4,52 @@ title: Delete Specific Channel
 
 # Delete Specific Channel
 
-Delete a specific deployment channel.
+Delete a specific deployment channel by its unique identifier.
 
-**Endpoint:**
+## Endpoint
 
-`DELETE /channel/delete?id=<id>`
+```
+DELETE /channel/delete?id=<id>
+```
 
-**Headers:**
+## Authentication
 
-`Authorization`: Bearer JWT token.
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <jwt_token>` |
 
-**Query Parameters:**
+## Query Parameters
 
-`id`: The unique identifier of the channel to delete.
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | string | ✅ | The unique identifier of the channel to delete |
 
-**Request:**
+## Example Request
 
 ```bash
-curl -X DELETE http://localhost:9000/channel/delete\?id\=64145ebaedd163d59d52e1dc \
+curl -X DELETE http://localhost:9000/channel/delete?id=64145ebaedd163d59d52e1dc \
 -H "Authorization: Bearer <jwt_token>"
 ```
 
-**Response:**
+## Response
+
+### Success Response (200 OK)
 
 ```json
 {
-   "deleteChannelResult.DeletedCount": 1
+  "deleteChannelResult.DeletedCount": 1
 }
 ```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `deleteChannelResult.DeletedCount` | number | Number of channels successfully deleted (should be 1 if successful) |
+
+## Notes
+
+- This operation permanently deletes the channel
+- The deletion is irreversible - deleted channels cannot be recovered
+- Ensure no applications are currently using this channel before deletion
+- You cannot delete the last remaining channel in the system

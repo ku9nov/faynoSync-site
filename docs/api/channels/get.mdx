@@ -1,39 +1,67 @@
 ---
 title: Get All Channels
 ---
+
 # Get All Channels
 
-Retrieve a list of all existing channels.
+Retrieve a list of all available deployment channels in the system.
 
-**Endpoint:**
+## Endpoint
 
-`GET /channel/list`
+```
+GET /channel/list
+```
 
-**Headers:**
+## Authentication
 
-`Authorization`: Bearer JWT token.
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <jwt_token>` |
 
-**Request:**
+## Example Request
 
 ```bash
 curl -X GET http://localhost:9000/channel/list -H "Authorization: Bearer <jwt_token>"
 ```
 
-**Response:**
+## Response
+
+### Success Response (200 OK)
 
 ```json
 {
-   "channels": [
-      {
-         "ID": "641459ffb8360d74164e7e3c",
-         "ChannelName": "nightly",
-         "Updated_at": "2023-03-17T14:15:59.818+02:00"
-      },
-      {
-         "ID": "64145ebaedd163d59d52e1dc",
-         "ChannelName": "stable",
-         "Updated_at": "2023-03-17T14:36:10.278+02:00"
-      }
-   ]
+  "channels": [
+    {
+      "ID": "641459ffb8360d74164e7e3c",
+      "ChannelName": "nightly",
+      "Updated_at": "2023-03-17T14:15:59.818+02:00"
+    },
+    {
+      "ID": "64145ebaedd163d59d52e1dc",
+      "ChannelName": "stable",
+      "Updated_at": "2023-03-17T14:36:10.278+02:00"
+    }
+  ]
 }
 ```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `channels` | array | Array of channel objects |
+
+#### Channel Object Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `ID` | string | Unique identifier of the channel |
+| `ChannelName` | string | Name of the channel (e.g., stable, nightly) |
+| `Updated_at` | string | Last update timestamp |
+
+## Notes
+
+- This endpoint returns all channels available for application deployment
+- The `ChannelName` field contains the channel identifier used in uploads and searches
+- Results are typically sorted by creation date (newest first)
+- Empty results array is returned if no channels are configured

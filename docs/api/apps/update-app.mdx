@@ -4,43 +4,61 @@ title: Update application
 
 # Update application
 
-Update an existing application.
-
-Optional with `description`, `logo`. 
+Update an existing application's metadata including name, logo, and description.
 
 :::warning
-Changing this value might prevent existing apps from checking for new versions, as the application name will have changed.
+Changing the application name might prevent existing apps from checking for new versions, as the application name will have changed.
 :::
 
-**Endpoint:**
+## Endpoint
 
-`POST /app/update`
+```
+POST /app/update
+```
 
-**Headers:**
+## Authentication
 
-`Authorization`: Bearer JWT token.
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <jwt_token>` |
 
-**Body Form Data:**
+## Request Body
 
-- `id`: The ID of the application you want to change.
+The request uses `multipart/form-data` format with the following fields:
 
-- `app`: New application name.
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | ✅ | The ID of the application you want to update |
+| `app` | string | ❌ | New application name |
+| `file` | file | ❌ | New logo for the application |
+| `description` | string | ❌ | New application description |
 
-- `file`: Logo of the app.
+## Example Request
 
-- `description`: App description.
-
-**Request:**
 ```bash
 curl --location 'http://localhost:9000/app/update' \
 -H "Authorization: Bearer <jwt_token>" \
 --form 'data="{\"id\":\"66ae13fe5b663c058367f893\", \"app\":\"new_name\"}"'
 ```
 
-**Response:**
+## Response
+
+### Success Response (200 OK)
 
 ```json
 {
-    "updateAppResult.Updated": true
+  "updateAppResult.Updated": true
 }
 ```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `updateAppResult.Updated` | boolean | Indicates whether the application was successfully updated |
+
+## Notes
+
+- Only the fields you provide will be updated - omitted fields remain unchanged
+- The `file` field accepts common image formats (PNG, JPG, etc.)
+- Application name changes should be done carefully as they may break existing client integrations

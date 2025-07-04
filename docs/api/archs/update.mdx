@@ -4,37 +4,58 @@ title: Update Arch
 
 # Update Arch
 
-Update an existing architecture.
+Update an existing architecture's identifier.
 
 :::warning
-Changing this value might prevent existing apps from checking for new versions, as the architecture name will have changed.
+Changing the architecture name might prevent existing apps from checking for new versions, as the architecture identifier will have changed.
 :::
 
-**Endpoint:**
+## Endpoint
 
-`POST /arch/update`
+```
+POST /arch/update
+```
 
-**Headers:**
+## Authentication
 
-`Authorization`: Bearer JWT token.
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <jwt_token>` |
 
-**Body Form Data:**
+## Request Body
 
-- `id`: The ID of the architecture you want to change.
+The request uses `multipart/form-data` format with the following fields:
 
-- `channel`: New architecture name.
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | ✅ | The ID of the architecture you want to update |
+| `arch` | string | ✅ | New architecture identifier |
 
-**Request:**
+## Example Request
+
 ```bash
 curl --location 'http://localhost:9000/arch/update' \
 -H "Authorization: Bearer <jwt_token>" \
 --form 'data="{\"id\":\"66ae13fe5b663c058367f893\", \"arch\":\"new_name\"}"'
 ```
 
-**Response:**
+## Response
+
+### Success Response (200 OK)
 
 ```json
 {
-    "updateArchResult.Updated": true
+  "updateArchResult.Updated": true
 }
 ```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `updateArchResult.Updated` | boolean | Indicates whether the architecture was successfully updated |
+
+## Notes
+
+- Architecture name changes should be done carefully as they may break existing client integrations
+- The change affects all future uploads using this architecture

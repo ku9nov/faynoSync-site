@@ -4,26 +4,50 @@ title: Update User
 
 # Update User
 
-Update an existing team user's permissions.
+Update an existing team user's permissions and credentials.
 
-**Endpoint:**
+## Endpoint
 
-`POST /user/update`
+```
+POST /user/update
+```
 
-**Headers:**
+## Authentication
 
-`Authorization`: Bearer JWT token.
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <jwt_token>` |
+| `Content-Type` | `application/json` |
 
-**Body:**
+## Request Body
 
-`username`: Username for the new team user.
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `username` | string | ✅ | Username of the team user to update |
+| `password` | string | ✅ | New password for the team user |
+| `permissions` | object | ✅ | Updated permission settings for different resources |
 
-`password`: Password for the new team user.
+### Permissions Object Structure
 
-`permissions`: Object containing permission settings for different resources.
+| Resource | Type | Description |
+|----------|------|-------------|
+| `apps` | object | Permissions for application management |
+| `channels` | object | Permissions for channel management |
+| `platforms` | object | Permissions for platform management |
+| `archs` | object | Permissions for architecture management |
 
+### Permission Fields for Each Resource
 
-**Request:**
+| Field | Type | Description |
+|-------|------|-------------|
+| `create` | boolean | Permission to create new resources |
+| `delete` | boolean | Permission to delete resources |
+| `edit` | boolean | Permission to edit existing resources |
+| `download` | boolean | Permission to download files (apps only) |
+| `upload` | boolean | Permission to upload files (apps only) |
+| `allowed` | array | List of resource IDs the user has access to |
+
+## Example Request
 
 ```bash
 curl -X POST \
@@ -64,10 +88,25 @@ curl -X POST \
   }'
 ```
 
-**Response:**
+## Response
+
+### Success Response (200 OK)
 
 ```json
 {
-    "message": "Team user updated successfully"
+  "message": "Team user updated successfully"
 }
 ```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `message` | string | Confirmation message indicating successful user update |
+
+## Notes
+
+- Only admin users can update team user permissions
+- Password changes take effect immediately
+- Permission changes affect the user's access rights immediately
+- The `allowed` array can be updated to grant or revoke access to specific resources

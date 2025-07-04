@@ -4,37 +4,58 @@ title: Update Channel
 
 # Update Channel
 
-Update an existing deployment channel.
+Update an existing deployment channel's name.
 
 :::warning
 Changing the channel name may disrupt existing client apps' ability to check for new versions due to the altered channel name.
 :::
 
-**Endpoint:**
+## Endpoint
 
-`POST /channel/update`
+```
+POST /channel/update
+```
 
-**Headers:**
+## Authentication
 
-`Authorization`: Bearer JWT token.
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <jwt_token>` |
 
-**Body Form Data:**
+## Request Body
 
-- `id`: The ID of the channel to update.
+The request uses `multipart/form-data` format with the following fields:
 
-- `channel`: The new name for the channel.
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | ✅ | The ID of the channel to update |
+| `channel` | string | ✅ | The new name for the channel |
 
-**Request:**
+## Example Request
+
 ```bash
 curl --location 'http://localhost:9000/channel/update' \
 -H "Authorization: Bearer <jwt_token>" \
 --form 'data="{\"id\":\"66ae13fe4b663c058367f893\", \"channel\":\"new_name\"}"'
 ```
 
-**Response:**
+## Response
+
+### Success Response (200 OK)
 
 ```json
 {
-    "updateChannelResult.Updated": true
+  "updateChannelResult.Updated": true
 }
 ```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `updateChannelResult.Updated` | boolean | Indicates whether the channel was successfully updated |
+
+## Notes
+
+- Channel name changes should be done carefully as they may break existing client integrations
+- The change affects all future uploads and searches using this channel

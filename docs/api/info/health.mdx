@@ -8,26 +8,43 @@ Check the health status of the **FaynoSync** service.
 
 The Health Check API allows you to verify the operational status of the FaynoSync application. This is useful for monitoring and ensuring that your service is running as expected.
 
-**Request:**
+## Endpoint
 
-To check the health status of the application, send a GET request to the following endpoint:
+```
+GET /health
+```
+
+## Example Request
 
 ```bash
 curl -X GET http://localhost:9000/health
 ```
 
-**Response:**
+## Response
 
-A successful request will return a JSON response indicating the health status of the application:
+### Success Response (200 OK)
 
 ```json
 {
-    "status": "healthy"
+  "status": "healthy"
 }
 ```
 
-### Usage
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `status` | string | Health status of the application (always "healthy" when functioning correctly) |
+
+## Usage
 
 You can use this endpoint in your monitoring tools or health checks to ensure that the **FaynoSync** application is running smoothly. If the application is functioning correctly, the response will always return a status of "healthy".
 
 If you encounter issues or receive a different status, further investigation may be necessary to identify and resolve any problems.
+
+## Notes
+
+- This endpoint does not require authentication
+- The response is immediate and lightweight
+- Use this for load balancer health checks and monitoring systems
+- A non-200 response indicates the service is not healthy

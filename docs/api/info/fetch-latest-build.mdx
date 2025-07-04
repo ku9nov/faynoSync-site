@@ -2,115 +2,118 @@
 title: Fetch Latest Version of App
 ---
 
-### Fetch Latest Version of App
+# Fetch Latest Version of App
 
 This API endpoint retrieves the latest version of a specific app based on the provided parameters.
 
-**Endpoint:**
+## Endpoint
 
-`GET /apps/latest?app_name=<app_name>&channel=stable&platform=linux&arch=amd64&owner=admin`
+```
+GET /apps/latest?app_name=<app_name>&channel=stable&platform=linux&arch=amd64&owner=admin
+```
 
-**Query Parameters:**
+## Query Parameters
 
-`app_name`: (Required) The name of the app you want to fetch.
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `app_name` | string | ✅ | The name of the app you want to fetch |
+| `channel` | string | ✅ | The release channel (e.g., stable, beta) |
+| `platform` | string | ❌ | The platform (e.g., linux, darwin) |
+| `arch` | string | ❌ | The architecture (e.g., amd64, arm64) |
+| `package` | string | ❌ | The package type (e.g., deb, rpm, dmg) |
+| `owner` | string | ✅ | Name of your admin user |
 
-`channel`: (Optional) The release channel (e.g., stable, beta).
+## Important Behavior
 
-`platform`: (Optional) The platform (e.g., linux, darwin).
+### 1. Channel Parameter
 
-`arch`: (Optional) The architecture (e.g., amd64, arm64).
+- If channels have been pre-defined, the channel parameter becomes mandatory.
 
-`package`: (Optional) The package type (e.g., deb, rpm, dmg).
+### 2. Single URL Redirection
 
-`owner`: Name of your admin user.
+- If the response contains only one URL, the API will automatically redirect the request to download the build at that URL. This simplifies the process when only one option is available.
 
-**Important Behavior:**
+### 3. Flexible Responses Based on Parameters
 
-1. Channel Parameter:
+The API responds dynamically based on the parameters you provide.
 
-    - If channels have been pre-defined, the channel parameter becomes mandatory.
+#### Example: Specific Parameters
 
-2. Single URL Redirection:
+```bash
+GET /apps/latest?app_name=secondapp&channel=stable&platform=linux&arch=amd64&owner=admin
+```
 
-    - If the response contains only one URL, the API will automatically redirect the request to download the build at that URL. This simplifies the process when only one option is available.
+Returns a list of available builds:
 
-3. Flexible Responses Based on Parameters:
-
-    - The API responds dynamically based on the parameters you provide. For example, the request:
-
-    ```bash
-    GET /apps/latest?app_name=secondapp&channel=stable&platform=linux&arch=amd64&owner=admin
-    ```
-
-    returns a list of available builds:
-
-    ```json
-    {
-        "stable": {
-            "linux": {
-                "amd64": {
-                    "deb": {
-                        "url": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.3.deb"
-                    },
-                    "rpm": {
-                        "url": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.3.rpm"
-                    }
-                }
-            }
+```json
+{
+  "stable": {
+    "linux": {
+      "amd64": {
+        "deb": {
+          "url": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.3.deb"
+        },
+        "rpm": {
+          "url": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.3.rpm"
         }
+      }
     }
-    ```
+  }
+}
+```
 
-    - If you further specify the package parameter like so:
+#### Example: With Package Specification
 
-    ```bash
-    GET /apps/latest?app_name=secondapp&channel=stable&platform=linux&arch=amd64&package=deb&owner=admin
-    ```
+```bash
+GET /apps/latest?app_name=secondapp&channel=stable&platform=linux&arch=amd64&package=deb&owner=admin
+```
 
-    the API will redirect directly to the .deb package download URL:
+The API will redirect directly to the .deb package download URL:
 
-    ```bash
-    https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.3.deb
-    ```
+```
+https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.3.deb
+```
 
-4. Omitting Platform and Arch:
+#### Example: Omitting Platform and Arch
 
-    - If you omit specific parameters such as platform or arch, the API will return all builds available under that channel. For example, this request:
+```bash
+GET /apps/latest?app_name=secondapp&channel=stable&owner=admin
+```
 
-    ```bash
-    GET /apps/latest?app_name=secondapp&channel=stable&owner=admin
-    ```
+Returns all available builds under that channel:
 
-    might return:
-
-    ```json
-    {
-        "stable": {
-            "linux": {
-                "amd64": {
-                    "deb": {
-                        "url": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.3.deb"
-                    },
-                    "rpm": {
-                        "url": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.3.rpm"
-                    }
-                }
-            },
-            "darwin": {
-                "arm64": {
-                    "dmg": {
-                        "url": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/darwin/arm64/secondapp-0.0.3.dmg"
-                    }
-                },
-                "amd64": {
-                    "pkg": {
-                        "url": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/darwin/amd64/secondapp-0.0.3.pkg"
-                    }
-                }
-            }
+```json
+{
+  "stable": {
+    "linux": {
+      "amd64": {
+        "deb": {
+          "url": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.3.deb"
+        },
+        "rpm": {
+          "url": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.3.rpm"
         }
+      }
+    },
+    "darwin": {
+      "arm64": {
+        "dmg": {
+          "url": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/darwin/arm64/secondapp-0.0.3.dmg"
+        }
+      },
+      "amd64": {
+        "pkg": {
+          "url": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/darwin/amd64/secondapp-0.0.3.pkg"
+        }
+      }
     }
-    ```
+  }
+}
+```
 
+## Notes
 
-The API will provide all available builds depending on what is uploaded in the specified channel, platform, and architecture.
+- The API provides all available builds depending on what is uploaded in the specified channel, platform, and architecture
+- Use specific parameters to narrow down results and get direct download URLs
+- The `owner` parameter is required for proper access control
+- Package types are automatically detected based on available files

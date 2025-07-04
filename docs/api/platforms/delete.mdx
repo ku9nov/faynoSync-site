@@ -4,31 +4,51 @@ title: Delete Specific Platform
 
 # Delete Specific Platform
 
-Delete a specific platform by its ID.
+Delete a specific platform by its unique identifier.
 
-**Endpoint:**
+## Endpoint
 
-`DELETE /platform/delete?id=<id>`
+```
+DELETE /platform/delete?id=<id>
+```
 
-**Headers:**
+## Authentication
 
-`Authorization`: Bearer JWT token.
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <jwt_token>` |
 
-**Query Parameters:**
+## Query Parameters
 
-`id`: The unique identifier of the platform.
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | string | ✅ | The unique identifier of the platform to delete |
 
-**Request:**
+## Example Request
 
 ```bash
 curl -X DELETE 'http://localhost:9000/platform/delete?id=64145ebaedd163d59d52e1dc' \
 -H "Authorization: Bearer <jwt_token>"
 ```
 
-**Response:**
+## Response
+
+### Success Response (200 OK)
 
 ```json
 {
-   "deletePlatformResult.DeletedCount": 1
+  "deletePlatformResult.DeletedCount": 1
 }
 ```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `deletePlatformResult.DeletedCount` | number | Number of platforms successfully deleted (should be 1 if successful) |
+
+## Notes
+
+- This operation permanently deletes the platform
+- The deletion is irreversible - deleted platforms cannot be recovered
+- Ensure no applications are currently using this platform before deletion

@@ -4,59 +4,81 @@ title: Update specific version of application
 
 # Update specific version of application
 
-Update existing specific version of application.
+Update an existing specific version of an application with new artifacts and metadata.
 
 :::warning
-You can't change `app_name`, `channel` and `version`. `app_name` and `version` are used for correct searching.
+You cannot change `app_name`, `channel` and `version`. `app_name` and `version` are used for correct searching.
 :::
 
-**Endpoint:**
+## Endpoint
 
-`POST /apps/update`
-
-**Headers:**
-
-`Authorization`: Bearer JWT token.
-
-**Body (multipart/form-data):**
-
-**file**: App binary file(s).
-
-**app_name** (string, required): Name of the application.
-
-**version** (string, required): Version of the application.
-
-**channel** (string, optional): Channel (e.g., stable, beta).
-
-**publish** (boolean, optional): Marks the version available for users.
-
-**critical** (boolean, optional): Marks the version as critical.
-
-**platform** (string, optional): Platform (e.g., linux, windows).
-
-**arch** (string, optional): Architecture (e.g., amd64, arm64).
-
-**changelog** (string, optional): Changelog in markdown format.
-
-**Request:**
 ```
+POST /apps/update
+```
+
+## Authentication
+
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <jwt_token>` |
+
+## Request Body
+
+The request uses `multipart/form-data` format with the following fields:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `file` | file | ❌ | App binary file(s) |
+| `app_name` | string | ✅ | Name of the application |
+| `version` | string | ✅ | Version of the application |
+| `channel` | string | ❌ | Channel (e.g., stable, beta) |
+| `publish` | boolean | ❌ | Marks the version available for users |
+| `critical` | boolean | ❌ | Marks the version as critical |
+| `platform` | string | ❌ | Platform (e.g., linux, windows) |
+| `arch` | string | ❌ | Architecture (e.g., amd64, arm64) |
+| `changelog` | string | ❌ | Changelog in markdown format |
+
+## Example Request
+
+### Single File Upload
+
+```bash
 curl --location 'http://localhost:9000/apps/update' \
 --header 'Authorization: Bearer <jwt_token>' \
 --form 'data="{\"id\": \"653a6268f51dee6a99a3d88c\", \"app_name\": \"secondapp\", \"version\": \"0.0.2\", \"channel\": \"stable\", \"publish\": true, \"platform\": \"linux\", \"arch\": \"amd64\", \"changelog\": \"\"}"' \
---form 'file=@"/path_to_file/secondapp.deb"' \
+--form 'file=@"/path_to_file/secondapp.deb"'
 ```
-**Multiple File Upload Example:**
-```
+
+### Multiple File Upload
+
+```bash
 curl --location 'http://localhost:9000/apps/update' \
 --header 'Authorization: Bearer <jwt_token>' \
 --form 'data="{\"id\": \"653a6268f51dee6a99a3d88c\", \"app_name\": \"secondapp\", \"version\": \"0.0.2\", \"channel\": \"stable\", \"publish\": true, \"platform\": \"linux\", \"arch\": \"amd64\", \"changelog\": \"\"}"' \
 --form 'file=@"/path_to_file/secondapp.deb"' \
 --form 'file=@"/path_to_file/secondapp.rpm"'
+```
 
-**Response:**
+## Response
+
+### Success Response (200 OK)
 
 ```json
 {
-    "updatedResult.Updated": true
+  "updatedResult.Updated": true
 }
 ```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `updatedResult.Updated` | boolean | Indicates whether the version was successfully updated |
+
+## Notes
+
+- You can upload multiple files for different platforms/architectures in a single request
+- The `changelog` field supports markdown formatting
+- Critical versions are typically used for security updates or critical bug fixes
+- Published versions are immediately available to end users
+- Only the fields you provide will be updated - omitted fields remain unchanged

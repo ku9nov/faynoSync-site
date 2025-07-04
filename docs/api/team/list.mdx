@@ -4,24 +4,30 @@ title: List Users
 
 # List Users
 
-Retrieve a list of all your team users.
+Retrieve a list of all your team users with their permissions and access rights.
 
-**Endpoint:**
+## Endpoint
 
-`GET /users/list`
+```
+GET /users/list
+```
 
-**Headers:**
+## Authentication
 
-`Authorization`: Bearer JWT token.
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <jwt_token>` |
 
-**Request:**
+## Example Request
 
 ```bash
 curl -X GET http://localhost:9000/users/list \
 -H "Authorization: Bearer <jwt_token>"
 ```
 
-**Response:**
+## Response
+
+### Success Response (200 OK)
 
 ```json
 {
@@ -70,3 +76,36 @@ curl -X GET http://localhost:9000/users/list \
   ]
 }
 ```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `users` | array | Array of team user objects |
+
+#### User Object Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique identifier of the user |
+| `username` | string | Username of the team user |
+| `permissions` | object | Detailed permissions for different resource types |
+| `updated_at` | string | Last update timestamp |
+
+#### Permission Object Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Create` | boolean | Permission to create new resources |
+| `Delete` | boolean | Permission to delete resources |
+| `Edit` | boolean | Permission to edit existing resources |
+| `Download` | boolean | Permission to download files (Apps only) |
+| `Upload` | boolean | Permission to upload files (Apps only) |
+| `Allowed` | array | List of resource IDs the user has access to |
+
+## Notes
+
+- This endpoint returns all team users created by the authenticated admin
+- The `Allowed` array contains IDs of specific resources the user can access
+- Only admin users can view the list of team users
+- Results are typically sorted by creation date (newest first)

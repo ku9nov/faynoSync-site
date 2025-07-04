@@ -4,31 +4,53 @@ title: Delete specific version of application
 
 # Delete specific version of application
 
-Delete specific version of application.
+Delete a specific version of an application by its unique identifier.
 
-:::warning
-You can't change `app_name` and `version`. They are used only for correct searching.
-:::
 
-**Endpoint:**
 
-`DELETE /apps/delete?id=<id>`
+## Endpoint
 
-**Headers:**
-
-`Authorization`: Bearer JWT token.
-
-**Request:**
 ```
-curl --location 'http://localhost:9000/apps/delete\?\id\=\653a5e4f51ce5114611f5abb' \
---header 'Authorization: Bearer <jwt_token>' \
+DELETE /apps/delete?id=<id>
 ```
 
+## Authentication
 
-**Response:**
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <jwt_token>` |
+
+## Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `id` | string | ✅ | The unique identifier of the specific version to delete |
+
+## Example Request
+
+```bash
+curl --location 'http://localhost:9000/apps/delete?id=653a5e4f51ce5114611f5abb' \
+--header 'Authorization: Bearer <jwt_token>'
+```
+
+## Response
+
+### Success Response (200 OK)
 
 ```json
 {
-   "deleteSpecificAppResult.DeletedCount":1
+  "deleteSpecificAppResult.DeletedCount": 1
 }
 ```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `deleteSpecificAppResult.DeletedCount` | number | Number of versions successfully deleted (should be 1 if successful) |
+
+## Notes
+
+- This operation permanently deletes the specific version and all its associated artifacts
+- The deletion is irreversible - deleted versions cannot be recovered
+- Only the specified version is deleted, other versions of the same application remain unaffected

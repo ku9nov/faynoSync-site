@@ -1,31 +1,37 @@
 ---
 title: Create Application
 ---
+
 # Create Application
 
-Creates a new application.
+Creates a new application with optional parameters including description, logo, and privacy settings.
 
-Optional with `description`, `logo`, `private`. 
+## Endpoint
 
-**Endpoint:**
+```
+POST /app/create
+```
 
-`POST /app/create`
+## Authentication
 
-**Headers:**
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <jwt_token>` |
 
-`Authorization`: Bearer JWT token.
+## Request Body
 
-**Body (multipart/form-data):**
+The request uses `multipart/form-data` format with the following fields:
 
-- `app`: The name of the application to be created.
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `app` | string | ✅ | The name of the application to be created |
+| `file` | file | ❌ | Logo of the application |
+| `description` | string | ❌ | App description |
+| `private` | boolean | ❌ | Lock app (if selected, the app will be stored in a private bucket and cannot be changed) |
 
-- `file`: Logo of the app.
+## Example Request
 
-- `description`: App description.
-
-- `private`: Lock app. (If selected, the app will be stored in a private bucket. Can't be changed.)
-
-**Request:**
+### cURL
 
 ```bash
 curl --location 'http://localhost:9000/app/create' \
@@ -33,10 +39,24 @@ curl --location 'http://localhost:9000/app/create' \
 --form 'data="{\"app\":\"appName\"}"'
 ```
 
-**Response:**
+## Response
+
+### Success Response (200 OK)
 
 ```json
 {
-   "createAppResult.Created":"641459ffb8760d74164e7e3c"
+  "createAppResult.Created": "641459ffb8760d74164e7e3c"
 }
 ```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `createAppResult.Created` | string | The unique identifier (ID) of the created application |
+
+## Notes
+
+- The `private` field is irreversible - once set to `true`, the app cannot be made public later
+- The `file` field accepts common image formats (PNG, JPG, etc.)
+- The `description` field is optional but recommended for better app management

@@ -1,27 +1,36 @@
 ---
 title: Create Platform
 ---
+
 # Create Platform
 
-:::warning 
-After creating the first platform, the `platform` field becomes required.
+Create a new deployment platform for organizing application releases.
+
+:::warning
+After creating the first platform, the `platform` field becomes required for all subsequent operations.
 :::
 
-Create a deployment platform.
+## Endpoint
 
-**Endpoint:**
+```
+POST /platform/create
+```
 
-`POST /platform/create`
+## Authentication
 
-**Headers:**
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <jwt_token>` |
 
-`Authorization`: Bearer JWT token.
+## Request Body
 
-**Body Form Data:**
+The request uses `multipart/form-data` format with the following fields:
 
-`platform`: Name of the platform.
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `platform` | string | ✅ | Name of the platform (e.g., linux, darwin, windows) |
 
-**Request:**
+## Example Request
 
 ```bash
 curl --location 'http://localhost:9000/platform/create' \
@@ -29,10 +38,23 @@ curl --location 'http://localhost:9000/platform/create' \
 --form 'data="{\"platform\":\"linux\"}"'
 ```
 
-**Response:**
+## Response
+
+### Success Response (200 OK)
 
 ```json
 {
-   "createPlatformResult.Created": "641459ffb8360d74164e7e3c"
+  "createPlatformResult.Created": "641459ffb8360d74164e7e3c"
 }
 ```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `createPlatformResult.Created` | string | The unique identifier (ID) of the created platform |
+
+## Notes
+
+- Platforms help organize different operating system targets
+- Once created, platforms can be used when uploading application versions

@@ -6,35 +6,37 @@ title: Upload App
 
 Upload a new version of an application, including the binary file and relevant metadata.
 
-**Endpoint:**
+## Endpoint
 
-`POST /upload`
+```
+POST /upload
+```
 
-**Headers:**
+## Authentication
 
-`Authorization`: Bearer JWT token.
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <jwt_token>` |
 
-**Body (multipart/form-data):**
+## Request Body
 
-**file**: App binary file(s).
+The request uses `multipart/form-data` format with the following fields:
 
-**app_name** (string, required): Name of the application.
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `file` | file | ✅ | App binary file(s) |
+| `app_name` | string | ✅ | Name of the application |
+| `version` | string | ✅ | Version of the application |
+| `channel` | string | ❌ | Channel (e.g., stable, beta) |
+| `publish` | boolean | ❌ | Marks the version available for users |
+| `critical` | boolean | ❌ | Marks the version as critical |
+| `platform` | string | ❌ | Platform (e.g., linux, windows) |
+| `arch` | string | ❌ | Architecture (e.g., amd64, arm64) |
+| `changelog` | string | ❌ | Changelog in markdown format |
 
-**version** (string, required): Version of the application.
+## Example Request
 
-**channel** (string, optional): Channel (e.g., stable, beta).
-
-**publish** (boolean, optional): Marks the version available for users.
-
-**critical** (boolean, optional): Marks the version as critical.
-
-**platform** (string, optional): Platform (e.g., linux, windows).
-
-**arch** (string, optional): Architecture (e.g., amd64, arm64).
-
-**changelog** (string, optional): Changelog in markdown format.
-
-**Request:**
+### Single File Upload
 
 ```bash
 curl -X POST --location 'http://localhost:9000/upload' \
@@ -43,15 +45,7 @@ curl -X POST --location 'http://localhost:9000/upload' \
 --form 'data="{\"app_name\":\"myapp\",\"version\":\"0.0.1\",\"channel\":\"stable\",\"publish\":true,\"platform\":\"linux\",\"arch\":\"amd64\",\"changelog\":\"### Changelog\\n\\n- Added new feature X\\n- Fixed bug Y\"}"'
 ```
 
-**Response:**
-
-```json
-{
-   "uploadResult.Uploaded": "6411c7c0ec4ff9a9a9bc18fa"
-}
-```
-
-**Multiple File Upload Example:**
+### Multiple File Upload
 
 ```bash
 curl -X POST --location 'http://localhost:9000/upload' \
@@ -60,3 +54,28 @@ curl -X POST --location 'http://localhost:9000/upload' \
 --form 'file=@"/path_to_file/myapp.rpm"' \
 --form 'data="{\"app_name\":\"myapp\",\"version\":\"0.0.1\",\"channel\":\"stable\",\"publish\":true,\"platform\":\"linux\",\"arch\":\"amd64\",\"changelog\":\"### Changelog\\n\\n- Added new feature X\\n- Fixed bug Y\"}"'
 ```
+
+## Response
+
+### Success Response (200 OK)
+
+```json
+{
+  "uploadResult.Uploaded": "6411c7c0ec4ff9a9a9bc18fa"
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `uploadResult.Uploaded` | string | The unique identifier (ID) of the uploaded version |
+
+## Notes
+
+- You can upload multiple files for different platforms/architectures in a single request
+- The `changelog` field supports markdown formatting
+- Critical versions are typically used for security updates or critical bug fixes
+- Published versions are immediately available to end users
+- The `channel` field helps organize releases (e.g., stable, beta, nightly)
+- File uploads support common package formats (.deb, .rpm, .exe, .dmg, etc.)
