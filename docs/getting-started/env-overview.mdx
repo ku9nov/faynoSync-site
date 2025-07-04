@@ -3,190 +3,331 @@ sidebar_position: 1
 ---
 
 # Environment Variables Overview
+
 To configure `FaynoSync`, you need to set the following environment variables. These settings ensure that your application communicates correctly with storage services, databases, and APIs.
 
-## Required Environment Variables
+---
 
-* `API_URL`
+## 📋 Quick Reference
 
-    Public URL to this API.
+| Category | Variables |
+|----------|-----------|
+| **Core** | `API_URL`, `STORAGE_DRIVER`, `PORT` |
+| **Storage** | `S3_*`, `GCS_*`, `MINIO_*` |
+| **Database** | `MONGODB_URL`, `MONGODB_URL_TESTS` |
+| **Security** | `API_KEY`, `JWT_SECRET` |
+| **Features** | `PERFORMANCE_MODE`, `ENABLE_TELEMETRY` |
+| **Redis** | `REDIS_*` |
+| **Slack** | `SLACK_*` |
 
-        Example: `API_URL=https://faynosync.example.com`
+---
 
-* `ENABLE_PRIVATE_APP_DOWNLOADING`
+## 🔧 Required Environment Variables
 
-    If enabled, then apps located in private S3 can be downloaded using the public API; if disabled, then download links require authentication.
+### Core Configuration
 
-        Example: `ENABLE_PRIVATE_APP_DOWNLOADING=false`
+<details>
+<summary><strong>API_URL</strong></summary>
 
-* `STORAGE_DRIVER`
+Public URL to this API.
 
-    Specifies the storage driver to use. 
+**Example:** `API_URL=https://faynosync.example.com`
 
-    Available options are:
+</details>
 
-    - **minio**: For local development or private S3-compatible object storage.
+<details>
+<summary><strong>ENABLE_PRIVATE_APP_DOWNLOADING</strong></summary>
 
-    - **aws**: For using `AWS S3` as your object storage solution.
+If enabled, then apps located in private S3 can be downloaded using the public API; if disabled, then download links require authentication.
 
-        Example: `STORAGE_DRIVER=minio`
+**Example:** `ENABLE_PRIVATE_APP_DOWNLOADING=false`
 
-* `S3_ACCESS_KEY`
+</details>
 
-    Your access key ID for **AWS** or **MinIO**. 
+<details>
+<summary><strong>STORAGE_DRIVER</strong></summary>
 
-    This key is required to authenticate and interact with your S3-compatible storage.
+Specifies the storage driver to use. 
 
-        Example: `S3_ACCESS_KEY=YOUR_ACCESS_KEY`
+**Available options:**
 
-* `S3_SECRET_KEY`
+- **minio**: For local development or private S3-compatible object storage.
+- **aws**: For using `AWS S3` as your object storage solution.
+- **digitalocean**: For using DigitalOcean Spaces as your object storage solution.
+- **gcp**: For using Google Cloud Storage as your object storage solution.
 
-    Your secret access key for **AWS** or **MinIO**. 
+**Example:** `STORAGE_DRIVER=minio`
 
-    This key is paired with the `S3_ACCESS_KEY` for secure access to your storage.
+</details>
 
-        Example: `S3_SECRET_KEY=YOUR_SECRET_KEY`
+<details>
+<summary><strong>DASHBOARD_URL</strong></summary>
 
-* `S3_REGION`
+The URL of your dashboard. This is used for configuring CORS (Cross-Origin Resource Sharing) to allow requests to the auto updater service from your dashboard.
 
-    The **AWS** region in which your S3 bucket is located. For **MinIO**, leave this value empty.
+**Example:** `DASHBOARD_URL=http://localhost:3000`
 
-        Example: `S3_REGION=us-east-1` or `S3_REGION=`
+</details>
 
-* `S3_BUCKET_NAME`
+<details>
+<summary><strong>PORT</strong></summary>
 
-    The name of your S3 bucket where application files will be stored. This bucket is used to manage versions and updates for your applications.
-    
-        Example: `S3_BUCKET_NAME=my-faynosync-bucket-private`
+The port on which the auto updater service will listen. By default, the service listens on port 9000.
 
-* `S3_BUCKET_NAME_PUBLIC`
+**Example:** `PORT=9000`
 
-    The name of your public S3 bucket. Artifacts will be uploaded here by default. This bucket is used to manage versions and updates for your applications.
-    
-        Example: `S3_BUCKET_NAME=my-faynosync-bucket-public`
+</details>
 
-* `S3_ENDPOINT`
+### Database Configuration
 
-    The S3 endpoint URL used to connect to your storage. This value will differ based on your cloud provider (e.g., MinIO or AWS).
+<details>
+<summary><strong>MONGODB_URL</strong></summary>
 
-        Example: `S3_ENDPOINT=https://s3.amazonaws.com`
+The MongoDB connection string used by `FaynoSync`. This string contains information such as the host, database name, and authentication details.
 
-* `S3_ENDPOINT_PUBLIC`
+**Example:** `MONGODB_URL=mongodb://root:password@127.0.0.1/faynosync_db?authSource=admin`
 
-    The public bucket endpoint for S3. Check the documentation of your cloud provider. Artifacts will be uploaded here by default.
+</details>
 
-        Example: `S3_ENDPOINT=https://s3.amazonaws.com`
+<details>
+<summary><strong>MONGODB_URL_TESTS</strong></summary>
 
-* `DASHBOARD_URL`
+The MongoDB connection string used by `FaynoSync` for tests running. This string contains information such as the host, database name, and authentication details.
 
-    The URL of your dashboard. This is used for configuring CORS (Cross-Origin Resource Sharing) to allow requests to the auto updater service from your dashboard.
+**Example:** `MONGODB_URL_TESTS=mongodb://root:password@127.0.0.1/faynosync_db_tests?authSource=admin`
 
-        Example: `DASHBOARD_URL=http://localhost:3000`
+</details>
 
-* `PORT`
+### Security Configuration
 
-    The port on which the auto updater service will listen. By default, the service listens on port 9000.
+<details>
+<summary><strong>API_KEY</strong></summary>
 
-        Example: `PORT=9000`
+This key is used for authentication during sign-up and other API interactions. 
 
-* `MONGODB_URL`
+Generate this key using `openssl rand -base64 16`.
 
-    The MongoDB connection string used by `FaynoSync`. This string contains information such as the host, database name, and authentication details.
+**Example:** `API_KEY=generated_api_key`
 
-        Example: `MONGODB_URL=mongodb://root:password@127.0.0.1/faynosync_db?authSource=admin`
+</details>
 
+<details>
+<summary><strong>JWT_SECRET</strong></summary>
 
-* `MONGODB_URL_TESTS`
+A secret key used for signing and verifying JWT (JSON Web Tokens) used by the application for secure communication.
 
-    The MongoDB connection string used by `FaynoSync` for tests running. This string contains information such as the host, database name, and authentication details.
+Generate this key using `openssl rand -base64 32`.
 
-        Example: `MONGODB_URL_TESTS=mongodb://root:password@127.0.0.1/faynosync_db_tests?authSource=admin`
+**Example:** `JWT_SECRET=your_jwt_secret`
 
-* `API_KEY`
+</details>
 
-    This key is used for authentication during sign-up and other API interactions. 
+### Performance & Features
 
-    Generate this key using `openssl rand -base64 16`.
+<details>
+<summary><strong>PERFORMANCE_MODE</strong></summary>
 
-        Example: `API_KEY=generated_api_key`
+This setting enables performance optimizations within the application when set to true. Use this for high-load environments where efficiency is a priority.
 
-* `JWT_SECRET`
+**Example:** `PERFORMANCE_MODE=true`
 
-    A secret key used for signing and verifying JWT (JSON Web Tokens) used by the application for secure communication.
+</details>
 
-    Generate this key using `openssl rand -base64 32`.
+<details>
+<summary><strong>ENABLE_TELEMETRY</strong></summary>
 
-        Example: `JWT_SECRET=your_jwt_secret`
+This setting enables statistics when set to true.
 
-* `PERFORMANCE_MODE`
+**Example:** `ENABLE_TELEMETRY=true`
 
-    This setting enables performance optimizations within the application when set to true. Use this for high-load environments where efficiency is a priority.
+</details>
 
-        Example: `PERFORMANCE_MODE=true`
+### Redis Configuration
 
-* `ENABLE_TELEMETRY`
+<details>
+<summary><strong>REDIS_HOST</strong></summary>
 
-    This setting enables statistics when set to true.
+The hostname or IP address of the Redis server. If not specified, it defaults to `localhost`.
 
-        Example: `ENABLE_TELEMETRY=true`
+**Example:** `REDIS_HOST=your_redis_host`
 
-* `REDIS_HOST`
+</details>
 
-    The hostname or IP address of the Redis server. If not specified, it defaults to `localhost`.
+<details>
+<summary><strong>REDIS_PORT</strong></summary>
 
-        Example: `REDIS_HOST=your_redis_host`
+The port number on which the Redis server is listening. The default value is 6379.
 
-* `REDIS_PORT`
+**Example:** `REDIS_PORT=6379`
 
-    The port number on which the Redis server is listening. The default value is 6379.
+</details>
 
-        Example: `REDIS_PORT=6379`
+<details>
+<summary><strong>REDIS_PASSWORD</strong></summary>
 
-* `REDIS_PASSWORD`
-    
-    The password for authenticating with the Redis server. Leave this empty if no password is set for your Redis instance.
+The password for authenticating with the Redis server. Leave this empty if no password is set for your Redis instance.
 
-        Example: `REDIS_PASSWORD=your_redis_password`
+**Example:** `REDIS_PASSWORD=your_redis_password`
 
-* `REDIS_DB`
+</details>
 
-    Specifies which Redis database number to use. The default is 0.
+<details>
+<summary><strong>REDIS_DB</strong></summary>
 
-        Example: `REDIS_DB=0`
+Specifies which Redis database number to use. The default is 0.
 
-* `SLACK_ENABLE`
+**Example:** `REDIS_DB=0`
 
-    Specifies whether Slack integration is enabled. If `SLACK_ENABLE=false`, no messages will be sent to Slack. The default is `false`.
+</details>
 
-        Example: `SLACK_ENABLE=true`
+### Slack Integration
 
-* `SLACK_BOT_TOKEN`
+<details>
+<summary><strong>SLACK_ENABLE</strong></summary>
 
-    The authentication token for the Slack bot used to access the API. It should be in the format xoxb-*.
+Specifies whether Slack integration is enabled. If `SLACK_ENABLE=false`, no messages will be sent to Slack. The default is `false`.
 
-        Example: `SLACK_BOT_TOKEN=xoxb-123456789012-1234567890123-abcdef123456`
+**Example:** `SLACK_ENABLE=true`
 
-* `SLACK_CHANNEL`
+</details>
 
-    Specifies the name of the Slack channel where messages will be sent.
+<details>
+<summary><strong>SLACK_BOT_TOKEN</strong></summary>
 
-        Example: `SLACK_CHANNEL=test-channel`
+The authentication token for the Slack bot used to access the API. It should be in the format xoxb-*.
 
-## Setting Up Environment Variables
+**Example:** `SLACK_BOT_TOKEN=xoxb-123456789012-1234567890123-abcdef123456`
+
+</details>
+
+<details>
+<summary><strong>SLACK_CHANNEL</strong></summary>
+
+Specifies the name of the Slack channel where messages will be sent.
+
+**Example:** `SLACK_CHANNEL=test-channel`
+
+</details>
+
+---
+
+## 🗄️ Storage Configuration
+
+### MinIO (Local or Cloud S3-compatible Storage)
+
+For local development or private S3-compatible object storage:
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `STORAGE_DRIVER` | Set to `minio` for MinIO storage. | `STORAGE_DRIVER=minio` |
+| `MINIO_SECURE` | Specifies whether to use secure connections (HTTPS) for MinIO. Set to `false` for local development. | `MINIO_SECURE=false` |
+| `S3_ACCESS_KEY` | Your MinIO access key ID. | `S3_ACCESS_KEY=your_minio_access_key` |
+| `S3_SECRET_KEY` | Your MinIO secret access key. | `S3_SECRET_KEY=your_minio_secret_key` |
+| `S3_BUCKET_NAME` | The name of your MinIO bucket for private storage. | `S3_BUCKET_NAME=cb-faynosync-s3` |
+| `S3_BUCKET_NAME_PUBLIC` | The name of your MinIO bucket for public storage. | `S3_BUCKET_NAME_PUBLIC=cb-faynosync-s3-public` |
+| `S3_ENDPOINT` | The MinIO endpoint URL. | `S3_ENDPOINT=localhost:9010` |
+| `S3_ENDPOINT_PUBLIC` | The public MinIO endpoint URL. | `S3_ENDPOINT_PUBLIC=localhost:9010` |
+
+### AWS S3 (Amazon Simple Storage Service)
+
+For using AWS S3 as your object storage solution:
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `STORAGE_DRIVER` | Set to `aws` for AWS S3 storage. | `STORAGE_DRIVER=aws` |
+| `S3_ACCESS_KEY` | Your AWS access key ID. | `S3_ACCESS_KEY=your_aws_access_key` |
+| `S3_SECRET_KEY` | Your AWS secret access key. | `S3_SECRET_KEY=your_aws_secret_key` |
+| `S3_REGION` | The AWS region in which your S3 bucket is located. | `S3_REGION=us-east-1` |
+| `S3_BUCKET_NAME` | The name of your AWS S3 bucket for private storage. | `S3_BUCKET_NAME=your-private-bucket` |
+| `S3_BUCKET_NAME_PUBLIC` | The name of your AWS S3 bucket for public storage. | `S3_BUCKET_NAME_PUBLIC=your-public-bucket` |
+| `S3_ENDPOINT` | The AWS S3 endpoint URL. | `S3_ENDPOINT=https://your-bucket-name.s3.amazonaws.com` |
+| `S3_ENDPOINT_PUBLIC` | The public AWS S3 endpoint URL. | `S3_ENDPOINT_PUBLIC=https://your-public-bucket.s3.amazonaws.com` |
+
+### DigitalOcean Spaces (S3-compatible Storage from DigitalOcean)
+
+For using DigitalOcean Spaces as your object storage solution:
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `STORAGE_DRIVER` | Set to `digitalocean` for DigitalOcean Spaces storage. | `STORAGE_DRIVER=digitalocean` |
+| `S3_ACCESS_KEY` | Your DigitalOcean Spaces access key. | `S3_ACCESS_KEY=DO00EXAMPLEKEY` |
+| `S3_SECRET_KEY` | Your DigitalOcean Spaces secret key. | `S3_SECRET_KEY=EXAMPLE_SECRET_KEY` |
+| `S3_REGION` | The DigitalOcean region where your Space is located. | `S3_REGION=nyc3` |
+| `S3_BUCKET_NAME` | The name of your DigitalOcean Space for private storage. | `S3_BUCKET_NAME=your-private-space` |
+| `S3_BUCKET_NAME_PUBLIC` | The name of your DigitalOcean Space for public storage. | `S3_BUCKET_NAME_PUBLIC=your-public-space` |
+| `S3_ENDPOINT` | The DigitalOcean Spaces endpoint URL. | `S3_ENDPOINT=nyc3.digitaloceanspaces.com` |
+
+### Google Cloud Storage (GCP)
+
+For using Google Cloud Storage as your object storage solution:
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `STORAGE_DRIVER` | Set to `gcp` for Google Cloud Storage. | `STORAGE_DRIVER=gcp` |
+| `GCS_CREDENTIALS_FILE` | Path to Google Cloud service account credentials JSON file. | `GCS_CREDENTIALS_FILE=/path/to/credentials.json` |
+| `GCS_SERVICE_ACCOUNT_EMAIL` | GCS service account email for presigned URL generation. | `GCS_SERVICE_ACCOUNT_EMAIL=your-service-account@project.iam.gserviceaccount.com` |
+| `GCS_PRIVATE_KEY` | GCS private key for presigned URL generation. | `GCS_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\nMIIEv...\n-----END PRIVATE KEY-----\n` |
+| `S3_BUCKET_NAME` | The name of your GCS bucket for private storage. | `S3_BUCKET_NAME=your-private-gcs-bucket` |
+| `S3_BUCKET_NAME_PUBLIC` | The name of your GCS bucket for public storage. | `S3_BUCKET_NAME_PUBLIC=your-public-gcs-bucket` |
+
+---
+
+## ⚙️ Setting Up Environment Variables
 
 You can set these environment variables in a `.env` file in the root directory of the application. Here's an example of what your `.env` file might look like:
 
 ```bash
+# =============================================================================
+# MINIO (local or cloud S3-compatible storage)
+# =============================================================================
 STORAGE_DRIVER=minio
-S3_ACCESS_KEY=YOUR_ACCESS_KEY
-S3_SECRET_KEY=YOUR_SECRET_KEY
-S3_REGION=
-S3_BUCKET_NAME_PUBLIC=my-faynosync-bucket
-S3_ENDPOINT_PUBLIC=http://localhost:9010
+MINIO_SECURE=false
+S3_BUCKET_NAME=cb-faynosync-s3
+S3_ENDPOINT=localhost:9010
+S3_ACCESS_KEY=
+S3_SECRET_KEY=
+S3_BUCKET_NAME_PUBLIC=cb-faynosync-s3-public
+S3_ENDPOINT_PUBLIC=localhost:9010
+
+# =============================================================================
+# AWS S3 (Amazon Simple Storage Service)
+# =============================================================================
+#STORAGE_DRIVER=aws
+#S3_ACCESS_KEY=
+#S3_SECRET_KEY=
+#S3_REGION=
+# S3_BUCKET_NAME=
+# S3_BUCKET_NAME_PUBLIC=
+#S3_ENDPOINT=https://<bucket_name>.s3.amazonaws.com # for example in us-east-1
+#S3_ENDPOINT_PUBLIC=https://<bucket_name>.s3.amazonaws.com # for example in us-east-1
+
+# =============================================================================
+# DIGITALOCEAN SPACES (S3-compatible storage from DigitalOcean)
+# =============================================================================
+# STORAGE_DRIVER=digitalocean
+# S3_ENDPOINT=nyc3.digitaloceanspaces.com
+# S3_REGION=nyc3
+# S3_ACCESS_KEY=DO00EXAMPLEKEY
+# S3_SECRET_KEY=EXAMPLE_SECRET_KEY
+# S3_BUCKET_NAME=
+# S3_BUCKET_NAME_PUBLIC=
+
+# =============================================================================
+# GOOGLE CLOUD STORAGE (GCP)
+# =============================================================================
+# STORAGE_DRIVER=gcp
+# GCS_CREDENTIALS_FILE=/path/to/credentials.json
+# GCS_SERVICE_ACCOUNT_EMAIL=your-service-account@project.iam.gserviceaccount.com
+# GCS_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\nMIIEv...\n-----END PRIVATE KEY-----\n
+# S3_BUCKET_NAME=
+# S3_BUCKET_NAME_PUBLIC=
+
+# =============================================================================
+# Other Configuration
+# =============================================================================
 DASHBOARD_URL=http://localhost:3000
 PORT=9000
 MONGODB_URL=mongodb://root:password@127.0.0.1/faynosync_db?authSource=admin
-SYSTEM_KEY=generated_system_key
 API_KEY=generated_api_key
 API_URL=http://localhost:9000
 ENABLE_PRIVATE_APP_DOWNLOADING=false
