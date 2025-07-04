@@ -223,10 +223,10 @@ For local development or private S3-compatible object storage:
 | `MINIO_SECURE` | Specifies whether to use secure connections (HTTPS) for MinIO. Set to `false` for local development. | `MINIO_SECURE=false` |
 | `S3_ACCESS_KEY` | Your MinIO access key ID. | `S3_ACCESS_KEY=your_minio_access_key` |
 | `S3_SECRET_KEY` | Your MinIO secret access key. | `S3_SECRET_KEY=your_minio_secret_key` |
-| `S3_BUCKET_NAME` | The name of your MinIO bucket for private storage. | `S3_BUCKET_NAME=cb-faynosync-s3` |
-| `S3_BUCKET_NAME_PUBLIC` | The name of your MinIO bucket for public storage. | `S3_BUCKET_NAME_PUBLIC=cb-faynosync-s3-public` |
-| `S3_ENDPOINT` | The MinIO endpoint URL. | `S3_ENDPOINT=localhost:9010` |
-| `S3_ENDPOINT_PUBLIC` | The public MinIO endpoint URL. | `S3_ENDPOINT_PUBLIC=localhost:9010` |
+| `S3_BUCKET_NAME_PRIVATE` | The name of your MinIO bucket for private storage. | `S3_BUCKET_NAME_PRIVATE=cb-faynosync-s3` |
+| `S3_BUCKET_NAME` | The name of your MinIO bucket for public storage. | `S3_BUCKET_NAME=cb-faynosync-s3-public` |
+| `S3_ENDPOINT_PRIVATE` | The MinIO endpoint URL. | `S3_ENDPOINT_PRIVATE=localhost:9010` |
+| `S3_ENDPOINT` | The public MinIO endpoint URL. | `S3_ENDPOINT=localhost:9010` |
 
 ### AWS S3 (Amazon Simple Storage Service)
 
@@ -238,10 +238,10 @@ For using AWS S3 as your object storage solution:
 | `S3_ACCESS_KEY` | Your AWS access key ID. | `S3_ACCESS_KEY=your_aws_access_key` |
 | `S3_SECRET_KEY` | Your AWS secret access key. | `S3_SECRET_KEY=your_aws_secret_key` |
 | `S3_REGION` | The AWS region in which your S3 bucket is located. | `S3_REGION=us-east-1` |
-| `S3_BUCKET_NAME` | The name of your AWS S3 bucket for private storage. | `S3_BUCKET_NAME=your-private-bucket` |
-| `S3_BUCKET_NAME_PUBLIC` | The name of your AWS S3 bucket for public storage. | `S3_BUCKET_NAME_PUBLIC=your-public-bucket` |
-| `S3_ENDPOINT` | The AWS S3 endpoint URL. | `S3_ENDPOINT=https://your-bucket-name.s3.amazonaws.com` |
-| `S3_ENDPOINT_PUBLIC` | The public AWS S3 endpoint URL. | `S3_ENDPOINT_PUBLIC=https://your-public-bucket.s3.amazonaws.com` |
+| `S3_BUCKET_NAME_PRIVATE` | The name of your AWS S3 bucket for private storage. | `S3_BUCKET_NAME_PRIVATE=your-private-bucket` |
+| `S3_BUCKET_NAME` | The name of your AWS S3 bucket for public storage. | `S3_BUCKET_NAME=your-public-bucket` |
+| `S3_ENDPOINT_PRIVATE` | The AWS S3 endpoint URL. | `S3_ENDPOINT_PRIVATE=https://your-bucket-name.s3.amazonaws.com` |
+| `S3_ENDPOINT` | The public AWS S3 endpoint URL. | `S3_ENDPOINT=https://your-public-bucket.s3.amazonaws.com` |
 
 ### DigitalOcean Spaces (S3-compatible Storage from DigitalOcean)
 
@@ -253,9 +253,9 @@ For using DigitalOcean Spaces as your object storage solution:
 | `S3_ACCESS_KEY` | Your DigitalOcean Spaces access key. | `S3_ACCESS_KEY=DO00EXAMPLEKEY` |
 | `S3_SECRET_KEY` | Your DigitalOcean Spaces secret key. | `S3_SECRET_KEY=EXAMPLE_SECRET_KEY` |
 | `S3_REGION` | The DigitalOcean region where your Space is located. | `S3_REGION=nyc3` |
-| `S3_BUCKET_NAME` | The name of your DigitalOcean Space for private storage. | `S3_BUCKET_NAME=your-private-space` |
-| `S3_BUCKET_NAME_PUBLIC` | The name of your DigitalOcean Space for public storage. | `S3_BUCKET_NAME_PUBLIC=your-public-space` |
-| `S3_ENDPOINT` | The DigitalOcean Spaces endpoint URL. | `S3_ENDPOINT=nyc3.digitaloceanspaces.com` |
+| `S3_BUCKET_NAME_PRIVATE` | The name of your DigitalOcean Space for private storage. | `S3_BUCKET_NAME_PRIVATE=your-private-space` |
+| `S3_BUCKET_NAME` | The name of your DigitalOcean Space for public storage. | `S3_BUCKET_NAME=your-public-space` |
+| `S3_ENDPOINT_PRIVATE` | The DigitalOcean Spaces endpoint URL. | `S3_ENDPOINT_PRIVATE=nyc3.digitaloceanspaces.com` |
 
 ### Google Cloud Storage (GCP)
 
@@ -267,8 +267,8 @@ For using Google Cloud Storage as your object storage solution:
 | `GCS_CREDENTIALS_FILE` | Path to Google Cloud service account credentials JSON file. | `GCS_CREDENTIALS_FILE=/path/to/credentials.json` |
 | `GCS_SERVICE_ACCOUNT_EMAIL` | GCS service account email for presigned URL generation. | `GCS_SERVICE_ACCOUNT_EMAIL=your-service-account@project.iam.gserviceaccount.com` |
 | `GCS_PRIVATE_KEY` | GCS private key for presigned URL generation. | `GCS_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\nMIIEv...\n-----END PRIVATE KEY-----\n` |
-| `S3_BUCKET_NAME` | The name of your GCS bucket for private storage. | `S3_BUCKET_NAME=your-private-gcs-bucket` |
-| `S3_BUCKET_NAME_PUBLIC` | The name of your GCS bucket for public storage. | `S3_BUCKET_NAME_PUBLIC=your-public-gcs-bucket` |
+| `S3_BUCKET_NAME_PRIVATE` | The name of your GCS bucket for private storage. | `S3_BUCKET_NAME_PRIVATE=your-private-gcs-bucket` |
+| `S3_BUCKET_NAME` | The name of your GCS bucket for public storage. | `S3_BUCKET_NAME=your-public-gcs-bucket` |
 
 ---
 
@@ -282,12 +282,12 @@ You can set these environment variables in a `.env` file in the root directory o
 # =============================================================================
 STORAGE_DRIVER=minio
 MINIO_SECURE=false
-S3_BUCKET_NAME=cb-faynosync-s3
-S3_ENDPOINT=localhost:9010
+S3_BUCKET_NAME_PRIVATE=cb-faynosync-s3
+S3_ENDPOINT_PRIVATE=localhost:9010
 S3_ACCESS_KEY=
 S3_SECRET_KEY=
-S3_BUCKET_NAME_PUBLIC=cb-faynosync-s3-public
-S3_ENDPOINT_PUBLIC=localhost:9010
+S3_BUCKET_NAME=cb-faynosync-s3-public
+S3_ENDPOINT=localhost:9010
 
 # =============================================================================
 # AWS S3 (Amazon Simple Storage Service)
@@ -296,21 +296,21 @@ S3_ENDPOINT_PUBLIC=localhost:9010
 #S3_ACCESS_KEY=
 #S3_SECRET_KEY=
 #S3_REGION=
+# S3_BUCKET_NAME_PRIVATE=
 # S3_BUCKET_NAME=
-# S3_BUCKET_NAME_PUBLIC=
+#S3_ENDPOINT_PRIVATE=https://<bucket_name>.s3.amazonaws.com # for example in us-east-1
 #S3_ENDPOINT=https://<bucket_name>.s3.amazonaws.com # for example in us-east-1
-#S3_ENDPOINT_PUBLIC=https://<bucket_name>.s3.amazonaws.com # for example in us-east-1
 
 # =============================================================================
 # DIGITALOCEAN SPACES (S3-compatible storage from DigitalOcean)
 # =============================================================================
 # STORAGE_DRIVER=digitalocean
-# S3_ENDPOINT=nyc3.digitaloceanspaces.com
+# S3_ENDPOINT_PRIVATE=nyc3.digitaloceanspaces.com
 # S3_REGION=nyc3
 # S3_ACCESS_KEY=DO00EXAMPLEKEY
 # S3_SECRET_KEY=EXAMPLE_SECRET_KEY
+# S3_BUCKET_NAME_PRIVATE=
 # S3_BUCKET_NAME=
-# S3_BUCKET_NAME_PUBLIC=
 
 # =============================================================================
 # GOOGLE CLOUD STORAGE (GCP)
@@ -319,8 +319,8 @@ S3_ENDPOINT_PUBLIC=localhost:9010
 # GCS_CREDENTIALS_FILE=/path/to/credentials.json
 # GCS_SERVICE_ACCOUNT_EMAIL=your-service-account@project.iam.gserviceaccount.com
 # GCS_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\nMIIEv...\n-----END PRIVATE KEY-----\n
+# S3_BUCKET_NAME_PRIVATE=
 # S3_BUCKET_NAME=
-# S3_BUCKET_NAME_PUBLIC=
 
 # =============================================================================
 # Other Configuration
