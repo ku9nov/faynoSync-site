@@ -1,0 +1,123 @@
+.apiStatsContainer {
+  margin: 2rem 0 3rem 0;
+  padding: 2rem;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.apiStatsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.apiStatCard {
+  display: flex;
+  align-items: center;
+  padding: 1.25rem;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.apiStatCard:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.apiStatIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin-right: 1rem;
+  background: linear-gradient(135deg, var(--ifm-color-primary) 0%, var(--ifm-color-primary-lighter) 100%);
+  border-radius: 10px;
+  color: white;
+  flex-shrink: 0;
+}
+
+.apiStatContent {
+  flex: 1;
+}
+
+.apiStatNumber {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--ifm-color-content);
+  line-height: 1;
+  margin-bottom: 0.25rem;
+}
+
+.apiStatLabel {
+  font-size: 0.875rem;
+  color: var(--ifm-color-content-secondary);
+  opacity: 0.8;
+  font-weight: 500;
+}
+
+.apiStatsFooter {
+  text-align: center;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.lastUpdated {
+  font-size: 0.875rem;
+  color: var(--ifm-color-content-secondary);
+  opacity: 0.7;
+}
+
+/* Dark theme adjustments */
+[data-theme='dark'] .apiStatsContainer {
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.1) 100%);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme='dark'] .apiStatCard {
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.1) 100%);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme='dark'] .apiStatCard:hover {
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .apiStatsContainer {
+    padding: 1.5rem;
+    margin: 1.5rem 0 2rem 0;
+  }
+  
+  .apiStatsGrid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .apiStatCard {
+    padding: 1rem;
+  }
+  
+  .apiStatIcon {
+    width: 40px;
+    height: 40px;
+    margin-right: 0.75rem;
+  }
+  
+  .apiStatNumber {
+    font-size: 1.5rem;
+  }
+  
+  .apiStatLabel {
+    font-size: 0.8125rem;
+  }
+} 

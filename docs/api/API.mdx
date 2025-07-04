@@ -1,16 +1,23 @@
 ---
 title: API Reference
 ---
+
+import ApiStats from '@site/src/components/ApiStats';
+import ApiCardList from '@site/src/components/ApiCardList';
+
+<div className="api-reference-page">
+  
 # API Reference
 
 Welcome to the FaynoSync API Reference! This section provides detailed information about all the API requests supported by the FaynoSync application. Each endpoint is documented with its purpose, request parameters, and example responses.
 
 You can find a comprehensive [Postman collection](https://github.com/ku9nov/faynoSync/blob/main/examples/faynoSync.postman_collection.json) to help you explore and test the API here. This collection includes all the endpoints and their respective examples, making it easy to get started with integrating FaynoSync into your applications.
 
-Explore the links below to find specific API endpoints and their details:
+<ApiStats />
 
-import DocCardList from '@theme/DocCardList';
+Explore the API categories below to find specific endpoints and their details:
 
-<DocCardList />
+<ApiCardList />
 
 If you have any questions or need further assistance, please feel free to reach out or create discussions on our GitHub repository.
+</div>

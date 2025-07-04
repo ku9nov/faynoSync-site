@@ -21,7 +21,8 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'Getting Started',
       link: {
-        type: 'generated-index',
+        type: 'doc',
+        id: 'getting-started/index',
       },
       collapsed: false,
       items: [
