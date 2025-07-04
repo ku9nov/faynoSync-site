@@ -3,6 +3,7 @@ import Link from '@docusaurus/Link'
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext'
 import Layout from '@theme/Layout'
 import { ArrowRight, Cloud, Hash, Zap, Globe, Rocket, Wrench, Laptop, Globe2, Smartphone, Shield, Zap as Lightning, Users, BarChart2, GitMerge } from 'lucide-react'
+import AnimatedBanner from '../AnimatedBanner';
 
 // Shared card color palette for features and platforms
 const featureColors = [
@@ -96,14 +97,17 @@ export default function HomePage() {
   return (
     <Layout title="FaynoSync" description="Effortless Updates, Maximum Flexibility">
       <div className="bg-gradient">
+        {/* Animated FaynoSync Banner */}
+        <AnimatedBanner fadeOut={false} />
+        <div style={{ marginBottom: '2.5rem' }} />
         {/* Hero Section */}
-        <section className="flex flex-col items-center justify-center min-h-[80vh] text-white px-4 py-16">
-          <img 
+        <section className="flex flex-col items-center justify-center min-h-[20vh] text-white px-4 py-8">
+          {/* <img 
             src={require('@site/static/img/banner.png').default}
             alt="FaynoSync Banner" 
             className="max-w-[550px] w-full h-auto mb-6 object-contain"
             style={{ imageRendering: 'crisp-edges' }}
-          />
+          /> */}
           <p className="text-xl md:text-2xl text-center mb-12 max-w-2xl">
             {siteConfig.tagline}
           </p>
