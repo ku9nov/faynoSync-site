@@ -81,7 +81,6 @@ const config: Config = {
           sidebarId: 'docs',
           position: 'left',
           label: 'Documentation',
-          className: 'navbar__link--active',
         },
         {to: '/blog', label: 'Blog', position: 'left'},
         {
