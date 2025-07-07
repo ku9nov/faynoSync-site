@@ -8,10 +8,25 @@ interface AnimatedBannerProps {
 
 const ANIMATION_DURATION = 8000; // ms, total duration of all steps
 
+// Custom hook to detect mobile
+function useIsMobile(breakpoint = 900) {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    function handleResize() {
+      setIsMobile(window.innerWidth <= breakpoint);
+    }
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [breakpoint]);
+  return isMobile;
+}
+
 export const AnimatedBanner: React.FC<AnimatedBannerProps> = ({ fadeOut = false, onAnimationEnd }) => {
   const [step, setStep] = useState(0); // 0: nothing, 1: spiral, 2: text, 3: arrows, 4: done
   const [hide, setHide] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const isMobile = useIsMobile(900);
 
   useEffect(() => {
     // Step-by-step animation
@@ -29,6 +44,10 @@ export const AnimatedBanner: React.FC<AnimatedBannerProps> = ({ fadeOut = false,
   useEffect(() => {
     if (step === 4 && onAnimationEnd) onAnimationEnd();
   }, [step, onAnimationEnd]);
+
+  // Choose x coordinates based on device
+  const faynoX = isMobile ? '20%' : 120;
+  const syncX = isMobile ? '60%' : 570;
 
   return (
     <div
@@ -49,6 +68,7 @@ export const AnimatedBanner: React.FC<AnimatedBannerProps> = ({ fadeOut = false,
         xmlns="http://www.w3.org/2000/svg"
         aria-hidden="true"
         style={{ width: '100%', height: 'auto', maxWidth: 1000 }}
+        preserveAspectRatio="xMidYMid meet"
       >
         {/* Purple Up Arrow */}
         <g className={styles.arrowUp}>
@@ -66,8 +86,8 @@ export const AnimatedBanner: React.FC<AnimatedBannerProps> = ({ fadeOut = false,
         </g>
         {/* Text */}
         <g className={styles.text}>
-          <text x="120" y="180" fontFamily="Montserrat,Arial,sans-serif" fontWeight="bold" fontSize="80" fill="url(#textGradient)" letterSpacing="6">FAYNO</text>
-          <text x="570" y="180" fontFamily="Montserrat,Arial,sans-serif" fontWeight="bold" fontSize="80" fill="url(#textGradient2)" letterSpacing="6">SYNC</text>
+          <text x={faynoX} y="180" fontFamily="Montserrat,Arial,sans-serif" fontWeight="bold" fontSize="80" fill="url(#textGradient)" letterSpacing="6">FAYNO</text>
+          <text x={syncX} y="180" fontFamily="Montserrat,Arial,sans-serif" fontWeight="bold" fontSize="80" fill="url(#textGradient2)" letterSpacing="6">SYNC</text>
         </g>
         <defs>
           <linearGradient id="arrowUpGradient" x1="180" y1="250" x2="400" y2="140" gradientUnits="userSpaceOnUse">
