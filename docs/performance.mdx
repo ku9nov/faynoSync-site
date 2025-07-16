@@ -35,6 +35,84 @@ Enabling Performance Mode allows us to:
 
 - The API always executes queries against the database without checking the cache. This may lead to increased response times, especially for frequently repeated requests.
 
+## Advanced Performance Optimization with Nginx
+
+For even better performance, you can configure Nginx to provide additional caching layer for the `/checkVersion` endpoint. This is particularly useful because this endpoint performs database checks for channels, platforms, and architectures, which can create additional load.
+
+### Nginx Configuration
+
+Add the following configuration to your `nginx.conf`:
+
+```nginx
+# Add this to your global 'http' block in nginx.conf
+# Enables caching for the /checkVersion endpoint
+proxy_cache_path /tmp/nginx_cache levels=1:2 keys_zone=checkversion_cache:10m inactive=60s max_size=100m;
+
+# Optional: enable rate limiting (used in /checkVersion block below)
+limit_req_zone $binary_remote_addr zone=req_limit:10m rate=10r/s;
+```
+
+And in your `server` block:
+
+```nginx
+# Optimized location for version check with caching
+location = /checkVersion {
+    proxy_pass http://127.0.0.1:9000;
+
+    # Enable microcaching for 60 seconds
+    proxy_cache checkversion_cache;
+    proxy_cache_valid 200 60s;
+    proxy_cache_key "$scheme$request_method$host$request_uri";
+
+    # Use stale cache if backend is slow or returns error
+    proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
+
+    # Lock to prevent multiple upstream requests for the same key
+    proxy_cache_lock               on;
+    proxy_cache_lock_timeout      65s;
+    proxy_cache_background_update on;
+
+    # Add custom header to inspect cache hits/misses
+    add_header X-Cache-Status $upstream_cache_status;
+
+    # Optional: enable rate limiting to prevent abuse
+    # Uncomment if needed
+    # limit_req zone=req_limit burst=20 nodelay;
+
+    # Standard proxy headers
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection 'upgrade';
+    proxy_set_header Host $host;
+    proxy_cache_bypass $http_upgrade;
+
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    # Timeouts
+    proxy_connect_timeout 60;
+    proxy_send_timeout    60;
+    proxy_read_timeout    60;
+    send_timeout          60;
+}
+```
+
+### Benefits of Nginx Caching
+
+* **Reduced Database Load:** Nginx cache prevents requests from reaching the backend for frequently accessed data
+* **Faster Response Times:** Cached responses are served directly by Nginx without backend processing
+* **Better Resource Utilization:** Reduces the number of database queries for channel, platform, and architecture validation
+* **Graceful Degradation:** Uses stale cache if the backend is slow or returns errors
+
+### Cache Monitoring
+
+You can monitor cache performance by checking the `X-Cache-Status` header in responses:
+- `HIT`: Response served from Nginx cache
+- `MISS`: Response fetched from backend
+- `UPDATING`: Cache is being updated in background
+- `STALE`: Stale cache used due to backend issues
+
 ## Checking Performance
 You can test the performance of the API using the following command:
 
@@ -48,6 +126,7 @@ end_time=$(date +%s);
 total_time=$((end_time - start_time)); 
 echo "Total execution time: $total_time seconds"
 ```
+
 :::tip
 Note on Functionality
 The Performance Mode is currently implemented only for the `checkVersion` request.
@@ -57,3 +136,5 @@ In the case of uploading a new application with `publish` set to `true`, the Red
 ## Conclusion
 
 Performance Mode is a vital tool for enhancing the speed and efficiency of our API. By caching the results of requests, we can reduce database load and provide faster data access for our users. It is recommended to activate Performance Mode in environments expecting high API load.
+
+For maximum performance, consider implementing both Redis caching (Performance Mode) and Nginx caching for a multi-layer caching strategy that provides optimal response times and resource utilization.
