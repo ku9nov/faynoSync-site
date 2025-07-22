@@ -46,8 +46,8 @@ export const AnimatedBanner: React.FC<AnimatedBannerProps> = ({ fadeOut = false,
   }, [step, onAnimationEnd]);
 
   // Choose x coordinates based on device
-  const faynoX = isMobile ? '20%' : 120;
-  const syncX = isMobile ? '60%' : 570;
+  const faynoX = isMobile ? '20%' : 140;
+  const syncX = isMobile ? '55%' : 570;
 
   return (
     <div
@@ -62,7 +62,7 @@ export const AnimatedBanner: React.FC<AnimatedBannerProps> = ({ fadeOut = false,
       aria-label="FaynoSync animated logo banner"
     >
       <svg
-        viewBox="0 0 1000 320"
+        viewBox="0 0 1050 340"
         className={styles.bannerSvg}
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
@@ -72,11 +72,13 @@ export const AnimatedBanner: React.FC<AnimatedBannerProps> = ({ fadeOut = false,
       >
         {/* Purple Up Arrow */}
         <g className={styles.arrowUp}>
-          <path d="M180 250 C 220 120, 340 80, 400 140 L 390 110 L 440 160 L 370 170 L 400 140" fill="url(#arrowUpGradient)" />
+          <path d="M60 320 C 180 80, 400 20, 650 140" stroke="url(#arrowUpGradient)" strokeWidth="40" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          <polygon points="630,90 700,150 620,180" fill="url(#arrowUpGradient)" />
         </g>
         {/* Orange Down Arrow */}
         <g className={styles.arrowDown}>
-          <path d="M820 70 C 780 200, 660 240, 600 180 L 610 210 L 560 160 L 630 150 L 600 180" fill="url(#arrowDownGradient)" />
+          <path d="M940 20 C 820 260, 600 320, 350 200" stroke="url(#arrowDownGradient)" strokeWidth="40" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          <polygon points="370,260 300,180 420,160" fill="url(#arrowDownGradient)" />
         </g>
         {/* Spiral */}
         <g className={styles.spiral}>
@@ -90,11 +92,11 @@ export const AnimatedBanner: React.FC<AnimatedBannerProps> = ({ fadeOut = false,
           <text x={syncX} y="180" fontFamily="Montserrat,Arial,sans-serif" fontWeight="bold" fontSize="80" fill="url(#textGradient2)" letterSpacing="6">SYNC</text>
         </g>
         <defs>
-          <linearGradient id="arrowUpGradient" x1="180" y1="250" x2="400" y2="140" gradientUnits="userSpaceOnUse">
+          <linearGradient id="arrowUpGradient" x1="160" y1="280" x2="450" y2="140" gradientUnits="userSpaceOnUse">
             <stop stopColor="#A084F6" />
             <stop offset="1" stopColor="#6D28D9" />
           </linearGradient>
-          <linearGradient id="arrowDownGradient" x1="820" y1="70" x2="600" y2="180" gradientUnits="userSpaceOnUse">
+          <linearGradient id="arrowDownGradient" x1="840" y1="60" x2="550" y2="180" gradientUnits="userSpaceOnUse">
             <stop stopColor="#FFB86C" />
             <stop offset="1" stopColor="#FF6A3D" />
           </linearGradient>
