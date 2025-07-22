@@ -129,8 +129,8 @@ export default function HomePage() {
             {features.map((feature, idx) => (
               <div
                 key={feature.title}
-                className="sharedCard"
-                style={{ '--card-color': feature.color } as React.CSSProperties}
+                className={"sharedCard featureFadeIn"}
+                style={{ '--card-color': feature.color, animationDelay: `${idx * 120}ms` } as React.CSSProperties}
               >
                 <div className="sharedCardIcon">
                   <span>{feature.icon}</span>
