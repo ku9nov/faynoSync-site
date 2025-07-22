@@ -1,6 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+@import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;700&display=swap');
 
 :root {
   /* Light theme variables */
@@ -1885,4 +1886,8 @@
 [data-theme='dark'] details,
 [data-theme='dark'] details summary {
   color: #fff !important;
+}
+
+body {
+  font-family: 'Urbanist', 'sans-serif';
 }
