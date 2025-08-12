@@ -21,6 +21,9 @@ const config: Config = {
 
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
+  
+  // Static files configuration
+  staticDirectories: ['static'],
 
   // Even if you don't use internationalization, you can use this field to set
   // useful metadata like html lang. For example, if your site is Chinese, you
@@ -83,6 +86,7 @@ const config: Config = {
           label: 'Documentation',
         },
         {to: '/blog', label: 'Blog', position: 'left'},
+        {to: '/demo', label: 'Demo Dashboard', position: 'left'},
         {
           href: 'https://github.com/ku9nov/faynoSync',
           label: 'GitHub',

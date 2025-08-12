@@ -28,3 +28,16 @@
   align-items: center;
   justify-content: center;
 }
+
+/* Fix arrow alignment in index page buttons */
+.buttons .button-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.buttons .button-primary svg {
+  vertical-align: middle;
+  display: inline-flex;
+  align-items: center;
+}

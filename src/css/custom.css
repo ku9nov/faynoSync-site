@@ -182,10 +182,21 @@
   background-color: var(--button-primary);
   color: var(--text-primary);
   transition: background-color 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .button-primary:hover {
   background-color: var(--button-primary-hover);
+}
+
+/* Fix arrow alignment in buttons */
+.button-primary svg,
+.button-primary .inline {
+  vertical-align: middle;
+  display: inline-flex;
+  align-items: center;
 }
 
 .button-secondary {
@@ -872,6 +883,17 @@
   }
 }
 
+@keyframes featureFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .sharedCard {
   animation: cardEntrance 0.6s ease-out;
 }
@@ -883,6 +905,10 @@
 .sharedCard:nth-child(5) { animation-delay: 0.5s; }
 .sharedCard:nth-child(6) { animation-delay: 0.6s; }
 .sharedCard:nth-child(7) { animation-delay: 0.7s; }
+
+.featureFadeIn {
+  animation: featureFadeIn 0.6s ease-out;
+}
 
 /* ===== SIDEBAR STYLES ===== */
 .theme-doc-sidebar-container {
