@@ -4,7 +4,7 @@ title: Check Latest Version
 
 # Check Latest Version of application
 
-Check if there is a newer version of a specific application available.
+Check if there is a newer version of a specific application available. The response format can be customized based on the updater type specified.
 
 ## Endpoint
 
@@ -22,16 +22,31 @@ GET /checkVersion?app_name=<app_name>&version=<version>&owner=admin
 | `platform` | string | ❌ | Platform (e.g., linux, windows) |
 | `arch` | string | ❌ | Architecture (e.g., amd64, arm64) |
 | `owner` | string | ✅ | Name of your admin user |
+| `updater` | string | ❌ | Updater type to use for response format (manual, squirrel_darwin, squirrel_windows, electron-builder) |
 
-## Example Request
+:::info
+If no `updater` parameter is specified, the API will use the default updater configured for the platform.
+:::
+
+## Example Requests
+
+### Standard Request (Uses Platform Default Updater)
 
 ```bash
 curl -X GET --location 'http://localhost:9000/checkVersion?app_name=secondapp&version=0.0.1&channel=stable&platform=linux&arch=amd64&owner=admin'
 ```
 
-## Response
+### Request with Specific Updater
 
-### Success Response (200 OK)
+```bash
+curl -X GET --location 'http://localhost:9000/checkVersion?app_name=secondapp&version=0.0.1&channel=stable&platform=linux&arch=amd64&owner=admin&updater=electron-builder'
+```
+
+## Response Formats
+
+### Manual Updater (Default)
+
+Standard FaynoSync response format:
 
 ```json
 {
@@ -44,23 +59,64 @@ curl -X GET --location 'http://localhost:9000/checkVersion?app_name=secondapp&ve
 }
 ```
 
-### Response Fields
+### Squirrel Darwin (macOS)
+
+Optimized for Squirrel macOS updates:
+
+```json
+{
+  "update_available": true,
+  "url": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/darwin/amd64/secondapp-0.0.2.zip",
+  "changelog": "### Changelog\n\n- Added new feature X\n- Fixed bug Y",
+  "critical": true,
+  "is_intermediate_required": true
+}
+```
+
+### Electron Builder
+
+Returns YAML content for electron-builder:
+
+```yaml
+version: 0.0.2
+files:
+  - url: secondapp-0.0.2.exe
+    sha512: <sha512_hash>
+    size: <file_size>
+path: secondapp-0.0.2.exe
+sha512: <sha512_hash>
+releaseDate: '2024-01-15T10:00:00.000Z'
+```
+
+## Response Fields
+
+### Standard Response Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `update_available` | boolean | Indicates whether a newer version is available |
 | `update_url_deb` | string | Direct download URL for the .deb package |
 | `update_url_rpm` | string | Direct download URL for the .rpm package |
+| `url` | string | Direct download URL (Squirrel Darwin format) |
 | `changelog` | string | Changelog content for the latest version (in markdown format) |
 | `critical` | boolean | Indicates if this is a critical update that should be applied immediately |
 | `is_intermediate_required` | boolean | Indicates if an intermediate version must be installed before latest version |
 
+### Updater-Specific Differences
+
+| Updater Type | Key Differences |
+|--------------|----------------|
+| `manual` | Standard response with `update_url_zip`, `update_url_deb`, `update_url_rpm` |
+| `squirrel_darwin` | Uses `url` field instead of `update_url_zip`, only ZIP archives |
+| `squirrel_windows` | Standard format but optimized for Windows Squirrel |
+| `electron-builder` | Returns YAML content instead of JSON |
+
 ## Notes
 
-- This endpoint is designed for client applications to check for updates
-- The `update_available` field helps clients determine if they need to update
-- Download URLs are provided for different package formats
-- The `owner` parameter is required for proper access control
-- Version comparison is done automatically by the API
-- Critical updates should be prioritized and applied as soon as possible
-- Intermediate versions may be required for major version jumps or breaking changes
+- **Default Updater**: If no `updater` parameter is specified, the platform's default updater is used
+- **Response Format**: The response format varies based on the updater type to ensure compatibility
+- **Platform Configuration**: Updaters must be configured for the platform before they can be used
+- **Version Comparison**: Version comparison is done automatically by the API
+- **Critical Updates**: Critical updates should be prioritized and applied as soon as possible
+- **Intermediate Versions**: Intermediate versions may be required for major version jumps or breaking changes
+- **Download URLs**: URLs are provided in the format expected by each updater type

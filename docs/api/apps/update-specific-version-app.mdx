@@ -4,7 +4,7 @@ title: Update specific version of application
 
 # Update specific version of application
 
-Update an existing specific version of an application with new artifacts and metadata.
+Update an existing specific version of an application with new artifacts and metadata. You can specify an updater type for artifact isolation when updating files for updaters that generate special files.
 
 :::warning
 You cannot change `app_name`, `channel` and `version`. `app_name` and `version` are used for correct searching.
@@ -37,10 +37,15 @@ The request uses `multipart/form-data` format with the following fields:
 | `platform` | string | ❌ | Platform (e.g., linux, windows) |
 | `arch` | string | ❌ | Architecture (e.g., amd64, arm64) |
 | `changelog` | string | ❌ | Changelog in markdown format |
+| `updater` | string | ❌ | Updater type for artifact isolation (manual, squirrel_darwin, squirrel_windows, electron-builder) |
 
-## Example Request
+:::info
+The `updater` parameter is useful when updating files for updaters that generate special files (like RELEASES for Squirrel Windows or *.yml for electron-builder). It ensures files are stored in isolated folders specific to that updater.
+:::
 
-### Single File Upload
+## Example Requests
+
+### Single File Upload (Standard)
 
 ```bash
 curl --location 'http://localhost:9000/apps/update' \
@@ -49,7 +54,27 @@ curl --location 'http://localhost:9000/apps/update' \
 --form 'file=@"/path_to_file/secondapp.deb"'
 ```
 
-### Multiple File Upload
+### Update with Updater Parameter (Squirrel Windows)
+
+```bash
+curl --location 'http://localhost:9000/apps/update' \
+--header 'Authorization: Bearer <jwt_token>' \
+--form 'data="{\"id\": \"653a6268f51dee6a99a3d88c\", \"app_name\": \"secondapp\", \"version\": \"0.0.2\", \"channel\": \"stable\", \"publish\": true, \"platform\": \"windows\", \"arch\": \"amd64\", \"updater\": \"squirrel_windows\", \"changelog\": \"\"}"' \
+--form 'file=@"/path_to_file/secondapp.exe"' \
+--form 'file=@"/path_to_file/RELEASES"'
+```
+
+### Update with Updater Parameter (Electron Builder)
+
+```bash
+curl --location 'http://localhost:9000/apps/update' \
+--header 'Authorization: Bearer <jwt_token>' \
+--form 'data="{\"id\": \"653a6268f51dee6a99a3d88c\", \"app_name\": \"secondapp\", \"version\": \"0.0.2\", \"channel\": \"stable\", \"publish\": true, \"platform\": \"windows\", \"arch\": \"amd64\", \"updater\": \"electron-builder\", \"changelog\": \"\"}"' \
+--form 'file=@"/path_to_file/secondapp.exe"' \
+--form 'file=@"/path_to_file/latest.yml"'
+```
+
+### Multiple File Upload (Standard)
 
 ```bash
 curl --location 'http://localhost:9000/apps/update' \
@@ -75,6 +100,42 @@ curl --location 'http://localhost:9000/apps/update' \
 |-------|------|-------------|
 | `updatedResult.Updated` | boolean | Indicates whether the version was successfully updated |
 
+## Updater-Specific File Organization
+
+When you specify an `updater` parameter, files are organized in isolated folders:
+
+### File Structure Examples
+
+**Standard Update (No Updater):**
+```
+/secondapp/stable/linux/amd64/
+├── secondapp-0.0.1.deb
+└── secondapp-0.0.1.rpm
+```
+
+**Squirrel Windows Update:**
+```
+/squirrel_windows/secondapp/stable/windows/amd64/0.0.2/
+├── secondapp.exe
+└── RELEASES
+```
+
+**Electron Builder Update:**
+```
+/electron-builder/secondapp/stable/windows/amd64/0.0.2/
+├── secondapp.exe
+└── latest.yml
+```
+
+## Supported Updater Types
+
+| Updater | Generated Files | Use Case |
+|---------|-----------------|----------|
+| `manual` | None | Standard FaynoSync updates |
+| `squirrel_darwin` | None | Squirrel macOS applications |
+| `squirrel_windows` | RELEASES | Squirrel Windows applications |
+| `electron-builder` | *.yml | Electron applications |
+
 ## Notes
 
 - You can upload multiple files for different platforms/architectures in a single request
@@ -82,3 +143,6 @@ curl --location 'http://localhost:9000/apps/update' \
 - Critical versions are typically used for security updates or critical bug fixes
 - Published versions are immediately available to end users
 - Only the fields you provide will be updated - omitted fields remain unchanged
+- **Updater Parameter**: Use the `updater` parameter when updating files for updaters that generate special files (RELEASES, *.yml)
+- **Artifact Isolation**: Files updated with an updater parameter are stored in isolated folders to prevent conflicts
+- **File Organization**: Generated files (RELEASES, *.yml) are properly organized when using updater-specific updates

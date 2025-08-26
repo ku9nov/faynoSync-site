@@ -2,7 +2,7 @@ import React from 'react'
 import Link from '@docusaurus/Link'
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext'
 import Layout from '@theme/Layout'
-import { ArrowRight, Cloud, Hash, Zap, Globe, Rocket, Wrench, Laptop, Globe2, Smartphone, Shield, Zap as Lightning, Users, BarChart2, GitMerge } from 'lucide-react'
+import { ArrowRight, Cloud, Hash, Zap, Globe, Rocket, Wrench, Laptop, Globe2, Smartphone, Shield, Zap as Lightning, Users, BarChart2, GitMerge, RefreshCw } from 'lucide-react'
 import AnimatedBanner from '../AnimatedBanner';
 
 // Shared card color palette for features and platforms
@@ -29,12 +29,12 @@ const features = [
     description: 'Keep your S3 buckets and applications private — downloads are only accessible through authenticated access.',
     color: featureColors[1],
   },
-  {
-    icon: <Lightning className="h-8 w-8" />,
-    title: 'Speed',
-    description: 'Fast and efficient system operation with minimal user intervention.',
-    color: featureColors[2],
-  },
+  // {
+  //   icon: <Lightning className="h-8 w-8" />,
+  //   title: 'Speed',
+  //   description: 'Fast and efficient system operation with minimal user intervention.',
+  //   color: featureColors[2],
+  // },
   {
     icon: <Rocket className="h-8 w-8" />,
     title: 'Application Management',
@@ -64,6 +64,12 @@ const features = [
     title: 'Required Intermediate Builds',
     description: 'Enforce specific update paths for breaking changes and critical updates, ensuring safe and controlled application upgrades.',
     color: featureColors[0],
+  },
+  {
+    icon: <RefreshCw className="h-8 w-8" />,
+    title: 'Multi-Updater Support',
+    description: 'Support for various update mechanisms including Squirrel Windows/macOS, Electron Builder, and custom manual updates.',
+    color: featureColors[1],
   },
   {
     icon: <Globe className="h-8 w-8" />,

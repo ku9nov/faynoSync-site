@@ -4,7 +4,7 @@ title: Update Platform
 
 # Update Platform
 
-Update an existing platform's name.
+Update an existing platform's name and updater configuration.
 
 :::warning
 Changing the platform name might prevent existing apps from checking for new versions, as the platform name will have changed.
@@ -24,19 +24,77 @@ POST /platform/update
 
 ## Request Body
 
-The request uses `multipart/form-data` format with the following fields:
+The request uses `application/json` format with the following fields:
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `id` | string | ✅ | The ID of the platform you want to update |
 | `platform` | string | ✅ | New platform name |
+| `updaters` | array | ❌ | Array of updater configurations (see Updater Configuration below) |
 
-## Example Request
+### Updater Configuration
+
+Each updater in the array should have the following structure:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `type` | string | ✅ | Updater type: `manual`, `squirrel_darwin`, `squirrel_windows`, `electron-builder` |
+| `default` | boolean | ❌ | Whether this updater is the default (only one can be default) |
+
+### Supported Updater Types
+
+| Type | Description |
+|------|-------------|
+| `manual` | Standard FaynoSync update flow |
+| `squirrel_darwin` | Squirrel macOS update mechanism |
+| `squirrel_windows` | Squirrel Windows update mechanism |
+| `electron-builder` | Electron Builder update mechanism |
+
+## Example Requests
+
+### Update Platform Name Only
 
 ```bash
 curl --location 'http://localhost:9000/platform/update' \
 -H "Authorization: Bearer <jwt_token>" \
---form 'data="{\"id\":\"66ae13fe5b663c058367f893\", \"platform\":\"new_name\"}"'
+-H "Content-Type: application/json" \
+--data '{
+  "id": "66ae13fe5b663c058367f893",
+  "platform": "new_name"
+}'
+```
+
+### Update Platform with Updaters Configuration
+
+```bash
+curl --location 'http://localhost:9000/platform/update' \
+-H "Authorization: Bearer <jwt_token>" \
+-H "Content-Type: application/json" \
+--data '{
+  "id": "66ae13fe5b663c058367f893",
+  "platform": "updated_platform",
+  "updaters": [
+    {"type": "manual", "default": true},
+    {"type": "squirrel_windows", "default": false},
+    {"type": "electron-builder"}
+  ]
+}'
+```
+
+### Update Updaters Only (Keep Platform Name)
+
+```bash
+curl --location 'http://localhost:9000/platform/update' \
+-H "Authorization: Bearer <jwt_token>" \
+-H "Content-Type: application/json" \
+--data '{
+  "id": "66ae13fe5b663c058367f893",
+  "platform": "existing_name",
+  "updaters": [
+    {"type": "squirrel_darwin", "default": true},
+    {"type": "manual"}
+  ]
+}'
 ```
 
 ## Response
@@ -57,5 +115,8 @@ curl --location 'http://localhost:9000/platform/update' \
 
 ## Notes
 
-- Platform name changes should be done carefully as they may break existing client integrations
-- The change affects all future uploads and searches using this platform
+- **Platform Name Changes**: Platform name changes should be done carefully as they may break existing client integrations
+- **Updater Configuration**: You can update updaters without changing the platform name
+- **Default Updater**: Only one updater can be set as default per platform
+- **Impact**: Changes affect all future uploads and searches using this platform
+- **Backward Compatibility**: Existing applications will continue to work with the default updater unless changed

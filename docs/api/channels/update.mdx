@@ -24,7 +24,7 @@ POST /channel/update
 
 ## Request Body
 
-The request uses `multipart/form-data` format with the following fields:
+The request uses `application/json` format with the following fields:
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -36,7 +36,11 @@ The request uses `multipart/form-data` format with the following fields:
 ```bash
 curl --location 'http://localhost:9000/channel/update' \
 -H "Authorization: Bearer <jwt_token>" \
---form 'data="{\"id\":\"66ae13fe4b663c058367f893\", \"channel\":\"new_name\"}"'
+-H "Content-Type: application/json" \
+--data '{
+  "id": "66ae13fe4b663c058367f893",
+  "channel": "new_name"
+}'
 ```
 
 ## Response

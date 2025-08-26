@@ -4,7 +4,7 @@ title: Upload App
 
 # Upload App
 
-Upload a new version of an application, including the binary file and relevant metadata.
+Upload a new version of an application, including the binary file and relevant metadata. You can specify an updater type for artifact isolation when uploading files for updaters that generate special files.
 
 ## Endpoint
 
@@ -33,10 +33,15 @@ The request uses `multipart/form-data` format with the following fields:
 | `platform` | string | ❌ | Platform (e.g., linux, windows) |
 | `arch` | string | ❌ | Architecture (e.g., amd64, arm64) |
 | `changelog` | string | ❌ | Changelog in markdown format |
+| `updater` | string | ❌ | Updater type for artifact isolation (manual, squirrel_darwin, squirrel_windows, electron-builder) |
 
-## Example Request
+:::info
+The `updater` parameter is useful when uploading files for updaters that generate special files (like RELEASES for Squirrel Windows or *.yml for electron-builder). It ensures files are stored in isolated folders specific to that updater.
+:::
 
-### Single File Upload
+## Example Requests
+
+### Single File Upload (Standard)
 
 ```bash
 curl -X POST --location 'http://localhost:9000/upload' \
@@ -45,7 +50,27 @@ curl -X POST --location 'http://localhost:9000/upload' \
 --form 'data="{\"app_name\":\"myapp\",\"version\":\"0.0.1\",\"channel\":\"stable\",\"publish\":true,\"platform\":\"linux\",\"arch\":\"amd64\",\"changelog\":\"### Changelog\\n\\n- Added new feature X\\n- Fixed bug Y\"}"'
 ```
 
-### Multiple File Upload
+### Upload with Updater Parameter (Squirrel Windows)
+
+```bash
+curl -X POST --location 'http://localhost:9000/upload' \
+--header 'Authorization: Bearer <jwt_token>' \
+--form 'file=@"/path_to_file/myapp.exe"' \
+--form 'file=@"/path_to_file/RELEASES"' \
+--form 'data="{\"app_name\":\"myapp\",\"version\":\"0.0.1\",\"channel\":\"stable\",\"publish\":true,\"platform\":\"windows\",\"arch\":\"amd64\",\"updater\":\"squirrel_windows\",\"changelog\":\"### Changelog\\n\\n- Added new feature X\\n- Fixed bug Y\"}"'
+```
+
+### Upload with Updater Parameter (Electron Builder)
+
+```bash
+curl -X POST --location 'http://localhost:9000/upload' \
+--header 'Authorization: Bearer <jwt_token>' \
+--form 'file=@"/path_to_file/myapp.exe"' \
+--form 'file=@"/path_to_file/latest.yml"' \
+--form 'data="{\"app_name\":\"myapp\",\"version\":\"0.0.1\",\"channel\":\"stable\",\"publish\":true,\"platform\":\"windows\",\"arch\":\"amd64\",\"updater\":\"electron-builder\",\"changelog\":\"### Changelog\\n\\n- Added new feature X\\n- Fixed bug Y\"}"'
+```
+
+### Multiple File Upload (Standard)
 
 ```bash
 curl -X POST --location 'http://localhost:9000/upload' \
@@ -71,6 +96,42 @@ curl -X POST --location 'http://localhost:9000/upload' \
 |-------|------|-------------|
 | `uploadResult.Uploaded` | string | The unique identifier (ID) of the uploaded version |
 
+## Updater-Specific File Organization
+
+When you specify an `updater` parameter, files are organized in isolated folders:
+
+### File Structure Examples
+
+**Standard Upload (No Updater):**
+```
+/myapp/stable/linux/amd64/
+├── myapp-0.0.1.deb
+└── myapp-0.0.1.rpm
+```
+
+**Squirrel Windows Upload:**
+```
+/squirrel_windows/myapp/stable/windows/amd64/0.0.1/
+├── myapp.exe
+└── RELEASES
+```
+
+**Electron Builder Upload:**
+```
+/electron-builder/myapp/stable/windows/amd64/0.0.1/
+├── myapp.exe
+└── latest.yml
+```
+
+## Supported Updater Types
+
+| Updater | Generated Files | Use Case |
+|---------|-----------------|----------|
+| `manual` | None | Standard FaynoSync uploads |
+| `squirrel_darwin` | None | Squirrel macOS applications |
+| `squirrel_windows` | RELEASES | Squirrel Windows applications |
+| `electron-builder` | *.yml | Electron applications |
+
 ## Notes
 
 - You can upload multiple files for different platforms/architectures in a single request
@@ -79,3 +140,6 @@ curl -X POST --location 'http://localhost:9000/upload' \
 - Published versions are immediately available to end users
 - The `channel` field helps organize releases (e.g., stable, beta, nightly)
 - File uploads support common package formats (.deb, .rpm, .exe, .dmg, etc.)
+- **Updater Parameter**: Use the `updater` parameter when uploading files for updaters that generate special files (RELEASES, *.yml)
+- **Artifact Isolation**: Files uploaded with an updater parameter are stored in isolated folders to prevent conflicts
+- **File Organization**: Generated files (RELEASES, *.yml) are properly organized when using updater-specific uploads

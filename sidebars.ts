@@ -116,6 +116,7 @@ const sidebars: SidebarsConfig = {
           link: { type: 'doc', id: 'api/info/info-introduction' },
           items: [
             'api/info/latest',
+            'api/info/squirrel-windows',
             'api/info/health',
             'api/info/fetch-latest-build',
             'api/info/whoami',
@@ -126,8 +127,9 @@ const sidebars: SidebarsConfig = {
     'performance',
     'team_based_auth',
     'telemetry',
-    'intermediate_build',
-    'troubleshooting', 
+    'intermediate_build', 
+    'updaters',
+    'troubleshooting',
   ],
 };
 

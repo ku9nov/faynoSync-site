@@ -4,7 +4,7 @@ title: Create Platform
 
 # Create Platform
 
-Create a new deployment platform for organizing application releases.
+Create a new deployment platform for organizing application releases with configurable updaters.
 
 :::warning
 After creating the first platform, the `platform` field becomes required for all subsequent operations.
@@ -24,18 +24,73 @@ POST /platform/create
 
 ## Request Body
 
-The request uses `multipart/form-data` format with the following fields:
+The request uses `application/json` format with the following fields:
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `platform` | string | ✅ | Name of the platform (e.g., linux, darwin, windows) |
+| `updaters` | array | ❌ | Array of updater configurations (see Updater Configuration below) |
 
-## Example Request
+### Updater Configuration
+
+Each updater in the array should have the following structure:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `type` | string | ✅ | Updater type: `manual`, `squirrel_darwin`, `squirrel_windows`, `electron-builder` |
+| `default` | boolean | ❌ | Whether this updater is the default (only one can be default) |
+
+### Supported Updater Types
+
+| Type | Description |
+|------|-------------|
+| `manual` | Standard FaynoSync update flow (default if none specified) |
+| `squirrel_darwin` | Squirrel macOS update mechanism |
+| `squirrel_windows` | Squirrel Windows update mechanism |
+| `electron-builder` | Electron Builder update mechanism |
+
+## Example Requests
+
+### Basic Platform Creation (Manual Updater Default)
 
 ```bash
 curl --location 'http://localhost:9000/platform/create' \
 --header 'Authorization: Bearer <jwt_token>' \
---form 'data="{\"platform\":\"linux\"}"'
+--header 'Content-Type: application/json' \
+--data '{
+  "platform": "linux"
+}'
+```
+
+### Platform with Multiple Updaters
+
+```bash
+curl --location 'http://localhost:9000/platform/create' \
+--header 'Authorization: Bearer <jwt_token>' \
+--header 'Content-Type: application/json' \
+--data '{
+  "platform": "windows",
+  "updaters": [
+    {"type": "manual", "default": true},
+    {"type": "squirrel_windows", "default": false},
+    {"type": "electron-builder"}
+  ]
+}'
+```
+
+### Platform with Electron Builder as Default
+
+```bash
+curl --location 'http://localhost:9000/platform/create' \
+--header 'Authorization: Bearer <jwt_token>' \
+--header 'Content-Type: application/json' \
+--data '{
+  "platform": "darwin",
+  "updaters": [
+    {"type": "manual"},
+    {"type": "squirrel_darwin", "default": true}
+  ]
+}'
 ```
 
 ## Response
@@ -56,5 +111,7 @@ curl --location 'http://localhost:9000/platform/create' \
 
 ## Notes
 
-- Platforms help organize different operating system targets
-- Once created, platforms can be used when uploading application versions
+- **Default Updater**: If no updaters are specified, `manual` will be automatically set as the default
+- **Single Default**: Only one updater can be set as default per platform
+- **Updater Compatibility**: Choose updaters that match your application's update mechanism
+- **Platform Organization**: Platforms help organize different operating system targets and update strategies

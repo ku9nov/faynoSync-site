@@ -1,0 +1,182 @@
+---
+sidebar_position: 10
+---
+
+# Updaters Support
+
+FaynoSync is designed as a universal platform for application management and updates. The updaters feature allows FaynoSync to work with different update mechanisms and adapt its response or workflow to ensure smooth and proper client application updates.
+
+## Overview
+
+Different applications use various update mechanisms, each with their own protocols and expected server responses. FaynoSync's updaters system allows you to configure how the platform responds to update requests based on the specific updater type being used.
+
+## Supported Updaters
+
+| Updater Type | Description | Use Case | Generates Files |
+|--------------|-------------|----------|-----------------|
+| `manual` | Standard FaynoSync update flow | Default updater, works with custom update logic | No |
+| `squirrel_darwin` | Squirrel macOS update mechanism | Applications using Squirrel for macOS updates | No |
+| `squirrel_windows` | Squirrel Windows update mechanism | Applications using Squirrel for Windows updates | Yes (RELEASES) |
+| `electron-builder` | Electron Builder update mechanism | Electron applications using electron-builder | Yes (*.yml) |
+
+:::info
+More updaters will be added as FaynoSync continues to evolve as a universal update platform.
+:::
+
+## Platform Configuration
+
+Updaters are configured at the platform level. Each platform can have multiple updaters configured, with one designated as the default.
+
+### Updater Configuration Structure
+
+```json
+{
+  "type": "updater_type",
+  "default": boolean
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `type` | string | ✅ | The updater type (manual, squirrel_darwin, squirrel_windows, electron-builder) |
+| `default` | boolean | ❌ | Whether this updater is the default for the platform (only one can be default) |
+
+### Example Platform Configuration
+
+```json
+{
+  "id": "689f076f9ed9e38071926986",
+  "platform": "darwin",
+  "updaters": [
+    { "type": "manual", "default": true },
+    { "type": "squirrel_darwin", "default": false },
+    { "type": "electron-builder" }
+  ]
+}
+```
+
+:::warning
+Only one updater can be set as default per platform. If no updaters are specified during platform creation, `manual` will be automatically set as default.
+:::
+
+## Updater-Specific Behaviors
+
+### Manual Updater (Default)
+
+The standard FaynoSync update flow with custom update logic.
+
+**Response Format:**
+- Standard JSON response with `update_url_(extension)` field
+- Compatible with custom update mechanisms
+
+### Squirrel Darwin (macOS)
+
+Returns only ZIP archive links for macOS Squirrel updates.
+
+**Key Changes:**
+- Response contains `url` field instead of `update_url_zip`
+- Only ZIP archive links are returned
+- Optimized for Squirrel macOS update mechanism
+
+### Squirrel Windows
+
+Uses URL-based routing instead of query parameters for Windows Squirrel updates.
+
+**URL Format:**
+```
+GET /update/{owner}/{app_name}/{channel}/{platform}/{arch}/{version}/
+```
+
+**Example:**
+```bash
+curl --location 'http://localhost:9000/update/admin/secondapp/stable/windows/amd64/0.0.0.1/'
+```
+
+:::note
+Squirrel Windows automatically appends `RELEASES` to the end of the URL and checks for updates.
+:::
+
+### Electron Builder
+
+Returns YAML content required for electron-builder updates.
+
+**Response Format:**
+- YAML configuration files
+- Compatible with electron-builder update mechanism
+
+## File Generation and Artifact Isolation
+
+Some updaters generate special files that contain package names and update information:
+
+### Updaters That Generate Files
+
+| Updater | Generated Files | Purpose |
+|---------|-----------------|---------|
+| `squirrel_windows` | `RELEASES` | Contains package names and metadata for Squirrel Windows updates |
+| `electron-builder` | `*.yml` | Contains package information and update metadata for electron-builder |
+
+### Upload with Updater Parameter
+
+When uploading applications for updaters that generate files, you can specify the `updater` parameter in the upload request. This ensures that all uploaded files are placed in an isolated folder specific to that updater.
+
+**Upload Request with Updater:**
+```bash
+curl -X POST --location 'http://localhost:9000/upload' \
+--header 'Authorization: Bearer <jwt_token>' \
+--form 'file=@"/path_to_file/myapp.exe"' \
+--form 'file=@"/path_to_file/RELEASES"' \
+--form 'data="{\"app_name\":\"myapp\",\"version\":\"0.0.1\",\"channel\":\"stable\",\"publish\":true,\"platform\":\"windows\",\"arch\":\"amd64\",\"updater\":\"squirrel_windows\",\"changelog\":\"### Changelog\\n\\n- Added new feature X\\n- Fixed bug Y\"}"'
+```
+
+**Benefits of Updater-Specific Uploads:**
+
+1. **Isolated Artifacts**: Files are stored in separate folders for each updater type
+2. **Clean Organization**: Prevents conflicts between different updater file formats
+3. **Proper File Structure**: Ensures generated files (RELEASES, *.yml) are properly organized
+4. **Update Compatibility**: Guarantees that update mechanisms receive the correct file structure
+
+### File Structure Example
+
+When using updater-specific uploads, files are organized as follows:
+
+```
+/updater/myapp/stable/windows/amd64/0.0.1/
+├── myapp.exe
+├── RELEASES (for squirrel_windows)
+└── latest.yml (for electron-builder)
+```
+
+## Using Updaters in API Calls
+
+### Check Latest Version with Specific Updater
+
+To get a response in a specific updater format, add the `updater` parameter to your request:
+
+```bash
+# Standard request (uses default updater)
+curl -X GET 'http://localhost:9000/checkVersion?app_name=myapp&version=1.0.0&channel=stable&platform=windows&arch=amd64&owner=admin'
+
+# Request with specific updater
+curl -X GET 'http://localhost:9000/checkVersion?app_name=myapp&version=1.0.0&channel=stable&platform=windows&arch=amd64&owner=admin&updater=electron-builder'
+```
+
+### Frontend Dashboard
+
+The FaynoSync frontend dashboard provides a user-friendly interface for configuring updaters:
+
+- **Platform Management**: Configure updaters when creating or updating platforms
+- **Visual Configuration**: Easy-to-use interface for setting default updaters
+- **Real-time Testing**: Test different updater configurations
+
+:::tip
+While the API provides full control, the frontend dashboard is recommended for easier management of updater configurations.
+:::
+
+## Best Practices
+
+1. **Choose Appropriate Updaters**: Select updaters that match your application's update mechanism
+2. **Set Default Updater**: Always designate one updater as default for each platform
+3. **Use Updater Parameter for Uploads**: When uploading files for updaters that generate special files, always include the `updater` parameter
+4. **Test Configurations**: Verify that your updater configuration works with your client applications
+5. **Monitor Updates**: Use the dashboard to monitor update success rates for different updaters
+6. **File Organization**: Keep generated files (RELEASES, *.yml) organized by using updater-specific uploads

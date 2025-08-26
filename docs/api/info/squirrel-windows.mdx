@@ -1,0 +1,84 @@
+---
+title: Squirrel Windows Update
+---
+
+# Squirrel Windows Update Endpoint
+
+Special endpoint for Squirrel Windows applications that uses URL-based routing instead of query parameters.
+
+## Overview
+
+Squirrel Windows has a specific update mechanism that expects URLs in a particular format. Instead of using query parameters like the standard `checkVersion` endpoint, Squirrel Windows uses URL path segments.
+
+## Endpoint
+
+```
+GET /update/{owner}/{app_name}/{channel}/{platform}/{arch}/{version}/
+```
+
+## URL Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `owner` | string | ✅ | Name of your admin user |
+| `app_name` | string | ✅ | Name of the application |
+| `channel` | string | ✅ | Channel (e.g., stable, beta) |
+| `platform` | string | ✅ | Platform (e.g., windows) |
+| `arch` | string | ✅ | Architecture (e.g., amd64) |
+| `version` | string | ✅ | Current version of the application |
+
+## Example Request
+
+```bash
+curl --location 'http://localhost:9000/update/admin/secondapp/stable/windows/amd64/0.0.0.1/RELEASES'
+```
+
+## Response
+
+### Success Response (200 OK)
+
+The response will be in the format expected by Squirrel Windows, typically containing update information and download URLs.
+
+
+## How Squirrel Windows Works
+
+1. **URL Construction**: Squirrel Windows constructs the update URL using the pattern: `{base_url}/update/{owner}/{app_name}/{channel}/{platform}/{arch}/{version}/`
+
+2. **RELEASES File**: Squirrel Windows automatically appends `RELEASES` to the end of the URL and checks for updates
+
+3. **Final URL**: The complete URL becomes: `{base_url}/update/{owner}/{app_name}/{channel}/{platform}/{arch}/{version}/RELEASES`
+
+## Configuration Requirements
+
+To use this endpoint, ensure that:
+
+1. **Platform Configuration**: The platform must have `squirrel_windows` updater configured
+2. **Default Updater**: You can set `squirrel_windows` as the default updater for the platform
+3. **Application Setup**: Your Squirrel Windows application must be configured to use this URL pattern
+
+## Example Platform Configuration
+
+```json
+{
+  "id": "689f076f9ed9e38071926986",
+  "platform": "windows",
+  "updaters": [
+    { "type": "manual", "default": false },
+    { "type": "squirrel_windows", "default": true }
+  ]
+}
+```
+
+## Comparison with Standard Endpoint
+
+| Aspect | Standard checkVersion | Squirrel Windows |
+|--------|----------------------|------------------|
+| **URL Format** | Query parameters | Path segments |
+
+## Notes
+
+- **URL Pattern**: The URL pattern is fixed and must match exactly what Squirrel Windows expects
+- **Automatic RELEASES**: Squirrel Windows automatically appends `RELEASES` to the URL
+- **Platform Specific**: This endpoint is specifically designed for Windows platforms using Squirrel
+- **Configuration**: Ensure the platform has the `squirrel_windows` updater configured
+- **Compatibility**: This endpoint is compatible with Squirrel Windows update mechanism out of the box 
