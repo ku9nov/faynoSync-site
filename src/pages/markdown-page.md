@@ -1,5 +1,5 @@
 ---
-title: Markdown page example
+title: Markdown Page Example - FaynoSync Documentation
 ---
 
 # Markdown page example

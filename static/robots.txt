@@ -1,0 +1,39 @@
+# FaynoSync Robots.txt
+# Auto-updater service for desktop applications
+
+User-agent: *
+Allow: /
+
+# Allow all important pages
+Allow: /docs/
+Allow: /blog/
+Allow: /demo
+
+# Disallow admin and private areas (if any)
+Disallow: /admin/
+Disallow: /private/
+Disallow: /api/
+
+# Disallow search results to avoid duplicate content
+Disallow: /search
+Disallow: /*?search=
+Disallow: /*?q=
+
+# Disallow temporary and development files
+Disallow: /temp/
+Disallow: /tmp/
+Disallow: /.env
+Disallow: /config.local
+
+# Allow important static assets
+Allow: /static/
+Allow: /img/
+Allow: /css/
+Allow: /js/
+Allow: /videos/
+
+# Sitemap location
+Sitemap: https://faynosync.com/sitemap.xml
+
+# Crawl delay for respectful crawling
+Crawl-delay: 1 

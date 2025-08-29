@@ -1,5 +1,7 @@
 ---
 sidebar_position: 1
+title: Introduction to FaynoSync
+description: Complete guide to FaynoSync auto-updater service for desktop applications and software distribution
 ---
 
 # Introduction to FaynoSync

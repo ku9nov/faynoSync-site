@@ -101,7 +101,7 @@ export default function HomePage() {
   const { siteConfig } = useDocusaurusContext()
   
   return (
-    <Layout title="FaynoSync" description="Effortless Updates, Maximum Flexibility">
+    <Layout title="FaynoSync - Auto-Updater Service" description="FaynoSync is a powerful auto-updater service for desktop applications. Effortless updates with maximum flexibility, supporting multiple platforms and update mechanisms.">
       <div className="bg-gradient">
         {/* Animated FaynoSync Banner */}
         <AnimatedBanner fadeOut={false} />
@@ -114,6 +114,9 @@ export default function HomePage() {
             className="max-w-[550px] w-full h-auto mb-6 object-contain"
             style={{ imageRendering: 'crisp-edges' }}
           /> */}
+          <h1 className="text-4xl md:text-6xl font-bold text-center mb-6">
+            FaynoSync
+          </h1>
           <p className="text-xl md:text-2xl text-center mb-12 max-w-2xl">
             {siteConfig.tagline}
           </p>

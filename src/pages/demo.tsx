@@ -21,7 +21,7 @@ export default function Demo(): JSX.Element {
   return (
     <Layout
       title={`Demo Dashboard - ${siteConfig.title}`}
-      description="See FaynoSync dashboard in action with our interactive demo video">
+      description="Watch FaynoSync dashboard in action with our interactive demo video. See how to manage applications, track updates, and monitor your auto-updater service in real-time.">
       <main className={styles.main}>
         <div className={styles.container}>
           <div className={styles.header}>

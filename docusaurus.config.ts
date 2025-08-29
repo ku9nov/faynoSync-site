@@ -3,7 +3,7 @@ import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
-  title: 'FaynoSync',
+  title: 'FaynoSync - Auto-Updater Service',
   tagline: 'The auto-updater service that puts simplicity, reliability, and user control at the forefront.',
   favicon: 'img/favicon.png',
 
@@ -24,6 +24,8 @@ const config: Config = {
   
   // Static files configuration
   staticDirectories: ['static'],
+
+
 
   // Even if you don't use internationalization, you can use this field to set
   // useful metadata like html lang. For example, if your site is Chinese, you
@@ -63,6 +65,12 @@ const config: Config = {
         },
         theme: {
           customCss: './src/css/custom.css',
+        },
+        sitemap: {
+          changefreq: 'weekly',
+          priority: 0.5,
+          ignorePatterns: ['/search/**'],
+          filename: 'sitemap.xml',
         },
       } satisfies Preset.Options,
     ],
