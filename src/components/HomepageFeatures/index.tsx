@@ -101,7 +101,7 @@ export default function HomePage() {
   const { siteConfig } = useDocusaurusContext()
   
   return (
-    <Layout title="FaynoSync - Auto-Updater Service" description="FaynoSync is a powerful auto-updater service for desktop applications. Effortless updates with maximum flexibility, supporting multiple platforms and update mechanisms.">
+    <Layout title="FaynoSync - Auto-Updater" description="FaynoSync is a powerful auto-updater service for desktop applications. Effortless updates with maximum flexibility and multi-platform support.">
       <div className="bg-gradient">
         {/* Animated FaynoSync Banner */}
         <AnimatedBanner fadeOut={false} />
