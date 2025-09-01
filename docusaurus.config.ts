@@ -80,7 +80,7 @@ const config: Config = {
     // Replace with your project's social card
     image: 'img/docusaurus-social-card.jpg',
     navbar: {
-      title: 'FaynoSync',
+      // title: 'FaynoSync',
       logo: {
         alt: 'faynoSync Logo',
         src: 'img/favicon.png',
@@ -107,62 +107,104 @@ const config: Config = {
       style: 'dark',
       links: [
         {
-          title: 'Docs',
+          title: 'Documentation',
           items: [
             {
-              label: 'Documentation',
-              to: '/docs/intro',
+              label: 'Getting Started',
+              to: '/docs/getting-started',
             },
+            {
+              label: 'API Reference',
+              to: '/docs/api',
+            },
+            // {
+            //   label: 'Troubleshooting',
+            //   to: '/docs/troubleshooting',
+            // },
+            // {
+            //   label: 'Performance',
+            //   to: '/docs/performance',
+            // },
+          ],
+        },
+        {
+          title: 'Resources',
+          items: [
             {
               label: 'Blog',
               to: '/blog',
             },
+            {
+              label: 'Medium Articles',
+              href: 'https://medium.com/@sergeyku9nov',
+            },
+            {
+              label: 'Dev.to Posts',
+              href: 'https://dev.to/faynosync',
+            },
+            {
+              label: 'Tutorials & Guides',
+              to: '/blog/tags/development',
+            },
           ],
         },
-        // {
-        //   title: 'Community',
-        //   items: [
-        //     {
-        //       label: 'Stack Overflow',
-        //       href: 'https://stackoverflow.com/questions/tagged/docusaurus',
-        //     },
-        //     {
-        //       label: 'Discord',
-        //       href: 'https://discordapp.com/invite/docusaurus',
-        //     },
-        //     {
-        //       label: 'Twitter',
-        //       href: 'https://twitter.com/docusaurus',
-        //     },
-        //   ],
-        // },
         {
-          title: 'GitHub',
+          title: 'Open Source',
           items: [
-            // {
-            //   label: 'Blog',
-            //   to: '/blog',
-            // },
+            {
+              label: 'Main API',
+              href: 'https://github.com/ku9nov/faynoSync',
+            },
+            {
+              label: 'Dashboard UI',
+              href: 'https://github.com/ku9nov/faynoSync-dashboard',
+            },
             {
               label: 'Website',
               href: 'https://github.com/ku9nov/faynoSync-site',
             },
             {
-              label: 'API',
-              href: 'https://github.com/ku9nov/faynoSync',
-            },
-            {
-              label: 'Dashboard',
-              href: 'https://github.com/ku9nov/faynoSync-dashboard',
-            },
-            {
-              label: 'Admin',
+              label: 'Admin Panel',
               href: 'https://github.com/ku9nov/faynoSync-mongodb-dashboard',
             },
           ],
         },
+        {
+          title: 'Community',
+          items: [
+            // {
+            //   label: 'GitHub Discussions',
+            //   href: 'https://github.com/ku9nov/faynoSync/discussions',
+            // },
+            {
+              label: 'Report Issues',
+              href: 'https://github.com/ku9nov/faynoSync/issues',
+            },
+            {
+              label: 'Feature Requests',
+              href: 'https://github.com/ku9nov/faynoSync/issues/new?template=feature_request.md',
+            },
+            // {
+            //   label: 'Contributing',
+            //   href: 'https://github.com/ku9nov/faynoSync/blob/main/CONTRIBUTING.md',
+            // },
+          ],
+        },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} faynoSync.`,
+      copyright: `
+        <div class="footer-copyright-enhanced">
+          <div class="footer-brand">
+            <img src="/img/favicon.png" alt="FaynoSync" class="footer-logo" />
+            <span class="footer-brand-text">FaynoSync</span>
+          </div>
+          <div class="footer-tagline">
+            Powerful auto-updater service for modern applications
+          </div>
+          <div class="footer-copyright-text">
+            Copyright © ${new Date().getFullYear()} FaynoSync. Built with 💜 for developers.
+          </div>
+        </div>
+      `,
     },
     prism: {
       theme: prismThemes.vsLight,
