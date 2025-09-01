@@ -2206,6 +2206,95 @@ body {
   overflow: hidden;
 }
 
+/* Advanced staggered card animations */
+.staggered-card-hidden {
+  opacity: 0;
+  transform: translateY(80px) scale(0.8) rotateX(15deg);
+  transition: all 0.9s cubic-bezier(0.23, 1, 0.32, 1);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+.staggered-card-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1) rotateX(0deg);
+  transition: all 0.9s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* Different animation directions for variety */
+.staggered-card-hidden:nth-child(3n+1) {
+  transform: translateY(80px) translateX(-40px) scale(0.8) rotateY(10deg);
+}
+
+.staggered-card-hidden:nth-child(3n+2) {
+  transform: translateY(80px) scale(0.8) rotateX(15deg);
+}
+
+.staggered-card-hidden:nth-child(3n+3) {
+  transform: translateY(80px) translateX(40px) scale(0.8) rotateY(-10deg);
+}
+
+/* Enhanced hover states for visible cards */
+.staggered-card-visible:hover {
+  transform: translateY(-12px) scale(1.02);
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* Add a subtle bounce effect on card appearance */
+.staggered-card-visible {
+  animation: cardBounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+}
+
+@keyframes cardBounce {
+  0% {
+    opacity: 0;
+    transform: translateY(80px) scale(0.8);
+  }
+  60% {
+    opacity: 0.8;
+    transform: translateY(-10px) scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Improved performance for mobile */
+@media (max-width: 768px) {
+  .staggered-card-hidden,
+  .staggered-card-visible {
+    transform: translateY(40px);
+    transition: all 0.6s ease;
+  }
+  
+  .staggered-card-hidden:nth-child(3n+1),
+  .staggered-card-hidden:nth-child(3n+3) {
+    transform: translateY(40px);
+  }
+  
+  .staggered-card-visible:hover {
+    transform: translateY(-5px) scale(1.01);
+  }
+  
+  .cardBounce {
+    animation: none;
+  }
+}
+
+/* Accessibility: respect user's motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .staggered-card-hidden,
+  .staggered-card-visible {
+    transition: opacity 0.3s ease;
+    transform: none;
+  }
+  
+  .cardBounce {
+    animation: none;
+  }
+}
+
 .enhanced-feature-card::after {
   content: '';
   position: absolute;

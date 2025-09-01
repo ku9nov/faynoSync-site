@@ -8,6 +8,7 @@ import AnimatedBanner from '../AnimatedBanner';
 // Hook for scroll-triggered animations
 const useScrollAnimation = () => {
   const [visibleSections, setVisibleSections] = useState<Set<string>>(new Set<string>());
+  const [visibleCards, setVisibleCards] = useState<Set<string>>(new Set<string>());
   
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -15,6 +16,13 @@ const useScrollAnimation = () => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             setVisibleSections((prev) => new Set([...Array.from(prev), entry.target.id]));
+            
+            // Special handling for features section to trigger card animations
+            if (entry.target.id === 'features') {
+              setTimeout(() => {
+                setVisibleCards((prev) => new Set([...Array.from(prev), 'features-cards']));
+              }, 300); // Delay before starting card animations
+            }
           }
         });
       },
@@ -27,7 +35,7 @@ const useScrollAnimation = () => {
     return () => observer.disconnect();
   }, []);
 
-  return visibleSections;
+  return { visibleSections, visibleCards };
 };
 
 // Floating particles component
@@ -334,7 +342,7 @@ const useCases = [
 
 export default function HomePage() {
   const { siteConfig } = useDocusaurusContext()
-  const visibleSections = useScrollAnimation()
+  const { visibleSections, visibleCards } = useScrollAnimation()
   
   return (
     <Layout title="FaynoSync - Auto-Updater" description="FaynoSync is a powerful auto-updater service for desktop applications. Effortless updates with maximum flexibility and multi-platform support.">
@@ -440,8 +448,12 @@ export default function HomePage() {
             {features.map((feature, idx) => (
               <div
                 key={feature.title}
-                className={"enhanced-feature-card sharedCard featureFadeIn"}
-                style={{ '--card-color': feature.color, animationDelay: `${idx * 120}ms` } as React.CSSProperties}
+                className={`enhanced-feature-card sharedCard ${visibleCards.has('features-cards') ? 'staggered-card-visible' : 'staggered-card-hidden'}`}
+                style={{ 
+                  '--card-color': feature.color, 
+                  '--animation-delay': `${idx * 150}ms`,
+                  animationDelay: visibleCards.has('features-cards') ? `${idx * 150}ms` : '0ms'
+                } as React.CSSProperties}
               >
                 <div className="sharedCardIcon enhanced-icon-container">
                   <span className="enhanced-icon">{feature.icon}</span>

@@ -1,9 +1,38 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Layout from '@theme/Layout';
 import Link from '@docusaurus/Link';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import { ArrowRight, Play, Download, Github } from 'lucide-react';
 import styles from './demo.module.css';
+
+// Hook for demo page scroll-triggered animations
+const useDemoScrollAnimation = () => {
+  const [visibleCards, setVisibleCards] = useState<Set<string>>(new Set<string>());
+  
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            if (entry.target.id === 'demo-features') {
+              setTimeout(() => {
+                setVisibleCards((prev) => new Set([...Array.from(prev), 'demo-features-cards']));
+              }, 400); // Slightly longer delay for demo page
+            }
+          }
+        });
+      },
+      { threshold: 0.1, rootMargin: '0px 0px -100px 0px' }
+    );
+
+    const sections = document.querySelectorAll('[data-demo-scroll]');
+    sections.forEach((section) => observer.observe(section));
+
+    return () => observer.disconnect();
+  }, []);
+
+  return visibleCards;
+};
 
 // Floating particles component for demo page
 const DemoParticles = () => {
@@ -87,6 +116,7 @@ const DemoParticles = () => {
 
 export default function Demo(): JSX.Element {
   const {siteConfig} = useDocusaurusContext();
+  const visibleCards = useDemoScrollAnimation();
   
   const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
     console.error('Video error:', e);
@@ -138,49 +168,37 @@ export default function Demo(): JSX.Element {
             </div>
           </div>
 
-          <div className={`${styles.features} fade-in-up`} style={{ animationDelay: '0.6s' }}>
-            <div 
-              className="enhanced-feature-card sharedCard featureFadeIn"
-              style={{ '--card-color': '#8B5CF6', animationDelay: '0.7s' } as React.CSSProperties}
-            >
-              <div className="sharedCardIcon enhanced-icon-container">
-                <span className="enhanced-icon" style={{ fontSize: '2rem' }}>🚀</span>
-                <div className="icon-glow"></div>
+          <div 
+            className={`${styles.features} fade-in-up`} 
+            style={{ animationDelay: '0.6s' }}
+            data-demo-scroll
+            id="demo-features"
+          >
+            {[
+              { icon: '🚀', title: 'Easy Setup', description: 'See how quickly you can get started with FaynoSync', color: '#8B5CF6' },
+              { icon: '📊', title: 'Real-time Monitoring', description: 'Watch live updates and deployment tracking', color: '#06B6D4' },
+              { icon: '🔧', title: 'Simple Management', description: 'Experience the intuitive interface for managing your apps', color: '#10B981' }
+            ].map((feature, idx) => (
+              <div 
+                key={feature.title}
+                className={`enhanced-feature-card sharedCard ${visibleCards.has('demo-features-cards') ? 'staggered-card-visible' : 'staggered-card-hidden'}`}
+                style={{ 
+                  '--card-color': feature.color,
+                  '--animation-delay': `${idx * 200}ms`,
+                  animationDelay: visibleCards.has('demo-features-cards') ? `${idx * 200}ms` : '0ms'
+                } as React.CSSProperties}
+              >
+                <div className="sharedCardIcon enhanced-icon-container">
+                  <span className="enhanced-icon" style={{ fontSize: '2rem' }}>{feature.icon}</span>
+                  <div className="icon-glow"></div>
+                </div>
+                <div className="sharedCardContent">
+                  <h3 className="sharedCardTitle enhanced-card-title">{feature.title}</h3>
+                  <p className="sharedCardDescription enhanced-card-description">{feature.description}</p>
+                </div>
+                <div className="card-hover-effect"></div>
               </div>
-              <div className="sharedCardContent">
-                <h3 className="sharedCardTitle enhanced-card-title">Easy Setup</h3>
-                <p className="sharedCardDescription enhanced-card-description">See how quickly you can get started with FaynoSync</p>
-              </div>
-              <div className="card-hover-effect"></div>
-            </div>
-            <div 
-              className="enhanced-feature-card sharedCard featureFadeIn"
-              style={{ '--card-color': '#06B6D4', animationDelay: '0.8s' } as React.CSSProperties}
-            >
-              <div className="sharedCardIcon enhanced-icon-container">
-                <span className="enhanced-icon" style={{ fontSize: '2rem' }}>📊</span>
-                <div className="icon-glow"></div>
-              </div>
-              <div className="sharedCardContent">
-                <h3 className="sharedCardTitle enhanced-card-title">Real-time Monitoring</h3>
-                <p className="sharedCardDescription enhanced-card-description">Watch live updates and deployment tracking</p>
-              </div>
-              <div className="card-hover-effect"></div>
-            </div>
-            <div 
-              className="enhanced-feature-card sharedCard featureFadeIn"
-              style={{ '--card-color': '#10B981', animationDelay: '0.9s' } as React.CSSProperties}
-            >
-              <div className="sharedCardIcon enhanced-icon-container">
-                <span className="enhanced-icon" style={{ fontSize: '2rem' }}>🔧</span>
-                <div className="icon-glow"></div>
-              </div>
-              <div className="sharedCardContent">
-                <h3 className="sharedCardTitle enhanced-card-title">Simple Management</h3>
-                <p className="sharedCardDescription enhanced-card-description">Experience the intuitive interface for managing your apps</p>
-              </div>
-              <div className="card-hover-effect"></div>
-            </div>
+            ))}
           </div>
 
           <div className={`${styles.cta} fade-in-up enhanced-cta-section`} style={{ animationDelay: '1s' }}>
