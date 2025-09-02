@@ -255,7 +255,7 @@ const features = [
   {
     icon: <RefreshCw className="h-8 w-8" />,
     title: 'Multi-Updater Support',
-    description: 'Support for various update mechanisms including Squirrel Windows/macOS, Electron Builder, and custom manual updates.',
+    description: 'Support for various update mechanisms including Squirrel Windows/macOS, Electron Builder, Tauri and custom manual updates.',
     color: featureColors[1],
   },
   {
@@ -298,7 +298,7 @@ const benefits = [
   {
     icon: <RefreshCw className="h-6 w-6" />,
     title: 'Multiple Updater Support',
-    description: 'Compatible with Squirrel Windows/macOS, Electron Builder, and custom update mechanisms for maximum flexibility.'
+    description: 'Compatible with Squirrel Windows/macOS, Electron Builder, Tauri and custom update mechanisms for maximum flexibility.'
   },
   {
     icon: <Clock className="h-6 w-6" />,
