@@ -127,7 +127,7 @@ openssl rand -base64 32
 
 ### 4. Docker Compose Configuration
 
-Create a `docker-compose.yml` file:
+Create a `docker-compose.yaml` file:
 
 :::tip
 **Note**: Change `image: ku9nov/faynosync:latest` to `image: ku9nov/faynosync:<LatestVersion fallbackVersion="v1.4.5" />` to use the latest stable release.
@@ -152,7 +152,7 @@ services:
 Start the container:
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 You should see output similar to:
@@ -288,7 +288,7 @@ For detailed information about all available environment variables, see the [Env
 To view FaynoSync logs:
 
 ```bash
-docker-compose logs -f backend
+docker compose logs -f backend
 ```
 
 To view Nginx logs:
@@ -304,12 +304,12 @@ To update to the latest version:
 
 1. Pull the latest image:
    ```bash
-   docker-compose pull
+   docker compose pull
    ```
 
 2. Restart the service:
    ```bash
-   docker-compose up -d
+   docker compose up -d
    ```
 
 ## Security Considerations

@@ -50,7 +50,7 @@
   --ifm-heading-color: white;
   --ifm-toc-link-color: white;
   --ifm-font-color-base: white;
-  --ifm-link-color: white;
+  --ifm-link-color: rgba(174, 196, 240, 0.898);
   --ifm-color-content-secondary: white;
   --ifm-breadcrumb-color-active: white;
 }

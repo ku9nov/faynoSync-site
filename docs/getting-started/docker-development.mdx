@@ -28,7 +28,7 @@ cd faynoSync
 Now you can build and run the FaynoSync API along with all its dependencies using the following command:
 
 ```bash
-docker-compose up --build
+docker compose up --build
 ```
 
 This command will build the necessary Docker images and start the containers as defined in `docker-compose.yaml` file.
@@ -54,7 +54,7 @@ This command runs tests directly inside the `faynoSync_backend` container.
 If you prefer to work locally with **Golang** installed, you can start only the dependency services required for **FaynoSync** development by using this command:
 
 ```bash
-docker-compose -f docker-compose.yaml -f docker-compose.development.yaml up
+docker compose -f docker-compose.yaml -f docker-compose.development.yaml up
 ```
 
 This setup will start essential services like **MongoDB** and **MinIO** without running the full API in a container.

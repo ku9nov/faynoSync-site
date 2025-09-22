@@ -72,7 +72,7 @@ Ideal for quick setup and testing, or when you want to avoid installing dependen
 
 #### 1. Full Container Setup
 ```bash
-docker-compose up --build
+docker compose up --build
 ```
 Perfect for:
 - 🚀 Quick testing
@@ -81,7 +81,7 @@ Perfect for:
 
 #### 2. Hybrid Approach
 ```bash
-docker-compose -f docker-compose.yaml -f docker-compose.development.yaml up
+docker compose -f docker-compose.yaml -f docker-compose.development.yaml up
 ```
 This starts only the dependencies (MongoDB and MinIO) while you run faynoSync locally.
 
@@ -92,7 +92,7 @@ This starts only the dependencies (MongoDB and MinIO) while you run faynoSync lo
 - 🧪 Easy testing
 
 ### Testing Your Setup:
-After running `docker-compose up --build`, wait until the s3-service successfully creates the bucket, then run:
+After running `docker compose up --build`, wait until the s3-service successfully creates the bucket, then run:
 ```bash
 docker exec -it faynoSync_backend "/usr/bin/faynoSync_tests"
 ```

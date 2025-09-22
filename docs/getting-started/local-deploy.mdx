@@ -46,7 +46,7 @@ VITE_API_URL=http://localhost:8000
 
 ### 2. Create Docker Compose Configuration
 
-Create a file named `docker-compose.yml` with the following content. 
+Create a file named `docker-compose.yaml` with the following content. 
 
 :::tip
 **Note**: Change <code>image: ku9nov/faynosync:latest</code> to <code>image: ku9nov/faynosync:<LatestVersion fallbackVersion="v1.4.5" /></code> to get the latest stable release.
@@ -175,7 +175,7 @@ Before deployment, make sure you're using the latest version of FaynoSync. The c
 Once you have both files in your `faynosync-local-deployment` folder, run the following command:
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 This will start all the necessary services:
@@ -214,17 +214,17 @@ The Secret Key `UHp3aKb40fwpoKZluZByWQ` is configured in your `.env.faynosync` f
 To view logs from all services:
 
 ```bash
-docker-compose logs -f
+docker compose logs -f
 ```
 
 To view logs from a specific service:
 
 ```bash
-docker-compose logs -f backend
-docker-compose logs -f frontend
-docker-compose logs -f db
-docker-compose logs -f cache
-docker-compose logs -f s3
+docker compose logs -f backend
+docker compose logs -f frontend
+docker compose logs -f db
+docker compose logs -f cache
+docker compose logs -f s3
 ```
 
 ## Stopping Services
@@ -232,13 +232,13 @@ docker-compose logs -f s3
 To stop all services:
 
 ```bash
-docker-compose down
+docker compose down
 ```
 
 To stop and remove all data volumes:
 
 ```bash
-docker-compose down -v
+docker compose down -v
 ```
 
 ## What's Included
