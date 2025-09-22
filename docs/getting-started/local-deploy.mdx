@@ -1,0 +1,239 @@
+---
+title: Local Deployment
+description: Quick local deployment of FaynoSync for testing your application updates without cloning repositories or building from source
+---
+
+import LatestVersion from '@site/src/components/LatestVersion';
+
+# Local Deployment
+
+This guide shows you how to quickly deploy FaynoSync locally for testing your application updates. Perfect for when you're developing an application locally and want to test auto-updates without the complexity of cloning repositories and building from source.
+
+## Quick Setup
+
+Create a folder called `faynosync-local-deployment` and add two files to get started.
+
+### 1. Create Environment Configuration
+
+Create a file named `.env.faynosync` with the following content:
+
+```env
+STORAGE_DRIVER=minio
+MINIO_SECURE=false
+S3_ACCESS_KEY=MdnaDEXKy9nOc4beIvNcgy
+S3_SECRET_KEY=4dd38d62a67e659f410deb9e32b54843268bbfae
+S3_BUCKET_NAME_PRIVATE=cb-faynosync-s3-private
+S3_BUCKET_NAME=cb-faynosync-s3-public
+S3_ENDPOINT_PRIVATE=localhost:9000
+S3_ENDPOINT=localhost:9000
+PORT=8000
+MINIO_ROOT_USER=MdnaDEXKy9nOc4beIvNcgy
+MINIO_ROOT_PASSWORD=4dd38d62a67e659f410deb9e32b54843268bbfae
+ALLOWED_CORS=http://localhost:3000
+MONGODB_URL=mongodb://root:MheCk6sSKB1m4xKNw5I@172.25.0.4/cb_faynosync_db?authSource=admin
+API_KEY=UHp3aKb40fwpoKZluZByWQ
+MONGODB_URL_TESTS=mongodb://root:MheCk6sSKB1m4xKNw5I@172.25.0.4/cb_faynosync_db_tests?authSource=admin
+JWT_SECRET=MdnaDEXKy9nOc4beIvNcgyBjjctVsoSg4FKkT81VKt18
+PERFORMANCE_MODE=true
+REDIS_HOST=172.25.0.7
+REDIS_PORT=6379
+REDIS_PASSWORD=
+REDIS_DB=0
+ENABLE_TELEMETRY=true
+
+VITE_API_URL=http://localhost:8000
+```
+
+### 2. Create Docker Compose Configuration
+
+Create a file named `docker-compose.yml` with the following content. 
+
+:::tip
+**Note**: Change <code>image: ku9nov/faynosync:latest</code> to <code>image: ku9nov/faynosync:<LatestVersion fallbackVersion="v1.4.5" /></code> to get the latest stable release.
+:::
+
+```yaml
+networks:
+  faynosync_network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: "172.25.0.0/16"
+volumes:
+  data:
+  data-s3:
+  cache:
+    driver: local
+
+services:
+  backend:
+    image: ku9nov/faynosync:latest
+    container_name: "faynoSync_backend"
+    command: faynoSync --migration --loglevel=debug
+    networks:
+      faynosync_network:
+        ipv4_address: 172.25.0.6
+    ports:
+      - "8000:8000"
+    volumes:
+      -  .env.faynosync:/app/.env
+    extra_hosts:
+      - "localhost:172.25.0.2"
+
+  frontend:
+    image: ku9nov/faynosync-dashboard:latest
+    container_name: "faynoSync_frontend"
+    command: yarn dev --host 0.0.0.0
+    networks:
+      faynosync_network:
+        ipv4_address: 172.25.0.5
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.faynosync
+
+  db:
+    image: mongo:8.0.13
+    container_name: "faynoSync_db"
+    restart: always
+    volumes:
+      - data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=cb_faynosync_db
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=MheCk6sSKB1m4xKNw5I
+    ports:
+      - "27017:27017"
+    networks:
+      faynosync_network:
+        ipv4_address: 172.25.0.4
+
+  cache:
+    image: redis:latest
+    container_name: "faynoSync_redis"
+    networks:
+      faynosync_network:
+        ipv4_address: 172.25.0.7
+    restart: always
+    ports:
+      - '6379:6379'
+    command: redis-server --save 20 1 --loglevel warning
+    volumes: 
+      - cache:/data
+
+  s3:
+    image: minio/minio
+    networks:
+      faynosync_network:
+        ipv4_address: 172.25.0.2
+    container_name: "faynoSync_s3"
+    ports:
+      - "9001:9001"
+      - "9000:9000"
+    volumes:
+      - data-s3:/data
+    environment:
+      MINIO_ROOT_USER: MdnaDEXKy9nOc4beIvNcgy
+      MINIO_ROOT_PASSWORD: 4dd38d62a67e659f410deb9e32b54843268bbfae
+    command: server --address 0.0.0.0:9000 --console-address :9001 /data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    env_file:
+      - .env.faynosync
+
+  s3-service:
+    image: minio/mc
+    networks:
+      faynosync_network:
+        ipv4_address: 172.25.0.3
+    container_name: "faynoSync_s3_service"
+    depends_on:
+      s3:
+        condition: service_healthy
+    restart: on-failure
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set faynoSync http://s3:9000 MdnaDEXKy9nOc4beIvNcgy 4dd38d62a67e659f410deb9e32b54843268bbfae;
+      /usr/bin/mc mb faynoSync/cb-faynosync-s3-private;
+      /usr/bin/mc mb faynoSync/cb-faynosync-s3-public;
+      /usr/bin/mc anonymous set public faynoSync/cb-faynosync-s3-public;
+      "
+    env_file:
+      - .env.faynosync
+```
+
+## Getting the Latest Version
+
+Before deployment, make sure you're using the latest version of FaynoSync. The current latest version is <LatestVersion fallbackVersion="v1.4.5" />. You can check for the latest release on [GitHub](https://github.com/ku9nov/faynoSync/releases).
+
+## Deployment
+
+Once you have both files in your `faynosync-local-deployment` folder, run the following command:
+
+```bash
+docker-compose up -d
+```
+
+This will start all the necessary services:
+- **Backend API** on port 8000
+- **Frontend Dashboard** on port 3000
+- **MongoDB Database** on port 27017
+- **Redis Cache** on port 6379
+- **MinIO S3 Storage** on ports 9000 and 9001
+
+## Accessing Services
+
+After deployment, you can access:
+
+- **FaynoSync Dashboard**: http://localhost:3000
+- **API Endpoint**: http://localhost:8000
+- **MinIO Console**: http://localhost:9001
+- **MongoDB**: localhost:27017
+
+## Monitoring and Logs
+
+To view logs from all services:
+
+```bash
+docker-compose logs -f
+```
+
+To view logs from a specific service:
+
+```bash
+docker-compose logs -f backend
+docker-compose logs -f frontend
+docker-compose logs -f db
+docker-compose logs -f cache
+docker-compose logs -f s3
+```
+
+## Stopping Services
+
+To stop all services:
+
+```bash
+docker-compose down
+```
+
+To stop and remove all data volumes:
+
+```bash
+docker-compose down -v
+```
+
+## What's Included
+
+This local deployment includes:
+
+- **FaynoSync Backend** (<LatestVersion fallbackVersion="v1.4.5" />) - The main API service
+- **FaynoSync Dashboard** - Web interface for managing applications
+- **MongoDB** - Database for storing application metadata
+- **Redis** - Caching layer for improved performance
+- **MinIO** - S3-compatible object storage for application files
+
+All services are configured with performance mode enabled and telemetry enabled for optimal local development experience.

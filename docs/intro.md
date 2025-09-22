@@ -44,6 +44,7 @@ FaynoSync supports multiple update mechanisms to ensure compatibility with vario
 - **Squirrel Windows**: Native support for Windows applications using Squirrel update mechanism
 - **Squirrel macOS**: Optimized updates for macOS applications using Squirrel
 - **Electron Builder**: Full compatibility with Electron applications using electron-builder
+- **Tauri**: Full compatibility with Tauri applications
 
 ## Getting Started
 

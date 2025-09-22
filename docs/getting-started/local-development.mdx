@@ -83,5 +83,67 @@ go test
 
 This will ensure that all components are correctly configured and that your local development environment is ready for use.
 
+
+
+## Setting Up Admin Dashboard
+
+The FaynoSync Admin Dashboard provides a web interface for managing your FaynoSync API server. Here's how to set it up locally:
+
+### Clone the Dashboard Repository
+
+First, clone the admin dashboard repository:
+
+```bash
+git clone https://github.com/ku9nov/faynoSync-dashboard.git
+cd faynoSync-dashboard
+```
+
+### Environment Configuration
+
+Copy the example environment file and configure it:
+
+```bash
+cp .env.example .env
+```
+
+The `.env` file should contain:
+
+```env
+VITE_API_URL=http://localhost:9000
+VITE_PORT=3000
+```
+
+Make sure the `VITE_API_URL` points to your running FaynoSync API server (default port 9000).
+
+### Install Dependencies
+
+Install all necessary dependencies using yarn:
+
+```bash
+yarn install
+```
+
+### Run the Dashboard
+
+Start the dashboard in development mode:
+
+```bash
+yarn dev
+```
+
+This will launch the dashboard on `http://localhost:3000` (or the port specified in your `.env` file).
+
+### First-Time Setup
+
+1. Open the dashboard in your browser
+2. Register a new account using your `API_KEY`
+3. Once registered, you can start using the dashboard to manage your FaynoSync server
+
+The dashboard provides an intuitive interface for:
+- Managing applications and versions
+- Configuring channels and platforms
+- Monitoring server health and statistics
+- User and team management
+
 If you encounter any issues during setup, feel free to consult the linked guides or reach out to our community on GitHub.
 
