@@ -27,9 +27,10 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       items: [
         'getting-started/env-overview',
+        'getting-started/local-deploy',
+        'getting-started/production-deploy',
         'getting-started/docker-development',
         'getting-started/local-development',
-        'getting-started/local-deploy',
         'getting-started/logging',
       ],
     },

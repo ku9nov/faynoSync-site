@@ -1,0 +1,340 @@
+---
+title: Production Deployment
+description: Complete guide to deploying FaynoSync in production environment on Linux servers
+---
+
+import LatestVersion from '@site/src/components/LatestVersion';
+
+# Production Deployment
+
+This guide covers deploying FaynoSync in a production environment on Linux servers. FaynoSync is designed to be lightweight and doesn't require complex clustering or expensive infrastructure, making it suitable for simple production deployments.
+
+We recommend using Linux servers as they are convenient, more reliable, and easier to use.
+
+## Prerequisites Installation
+
+Before deploying FaynoSync, ensure the following software is installed on your server:
+
+:::tip
+**Quick Start Option**: For your convenience, you can also use Docker Compose configurations from other pages in this documentation, adapt them for your server environment, and deploy directly. This can be especially useful if you want to start with a working configuration and modify it for production use.
+:::
+
+### 1. MongoDB
+
+Install MongoDB following the [official MongoDB installation guide](https://www.mongodb.com/docs/manual/installation/).
+
+### 2. Docker and Docker Compose
+
+Install Docker Engine and Docker Compose:
+- [Docker Engine Installation](https://docs.docker.com/engine/install/)
+- [Docker Compose Installation](https://docs.docker.com/compose/install/linux/#install-the-plugin-manually)
+
+### 3. Redis (Optional)
+
+Install Redis if you plan to use performance mode and collect telemetry from clients for statistics display:
+- [Redis Installation Guide](https://redis.io/docs/latest/operate/oss_and_stack/install/archive/install-redis/)
+
+### 4. Web Server (Nginx)
+
+Install Nginx for reverse proxy and static file serving:
+- [Nginx Installation Guide](https://docs.nginx.com/nginx/admin-guide/installing-nginx/installing-nginx-open-source/)
+
+### 5. Cloud Storage Access
+
+Set up access to your cloud storage provider. FaynoSync supports:
+- **AWS S3**
+- **DigitalOcean Spaces** 
+- **Google Cloud Storage (GCP)**
+
+Create two buckets:
+- One **public** bucket for publicly accessible applications
+- One **private** bucket for private applications
+
+For detailed setup instructions, refer to your cloud provider's documentation.
+
+## FaynoSync Installation and Configuration
+
+### 1. Create Project Directory
+
+```bash
+mkdir faynosync
+cd faynosync
+```
+
+### 2. Environment Configuration
+
+Create a `.env` file with the following content:
+
+```env
+# Storage Configuration
+STORAGE_DRIVER=aws  # or digitalocean, gcp
+S3_ACCESS_KEY=your_access_key
+S3_SECRET_KEY=your_secret_key
+S3_BUCKET_NAME_PRIVATE=your-private-bucket
+S3_BUCKET_NAME=your-public-bucket
+S3_ENDPOINT_PRIVATE=https://bucket-name-private.s3.amazonaws.com
+S3_ENDPOINT=https://bucket-name.s3.amazonaws.com
+S3_REGION=us-east-1
+
+# For DigitalOcean Spaces example:
+# S3_ENDPOINT_PRIVATE=fra1.digitaloceanspaces.com
+# S3_ENDPOINT=fra1.digitaloceanspaces.com
+# S3_REGION=fra1
+
+# For GCP, the above three environment variables are not needed
+
+# Core Configuration
+PORT=9000
+ALLOWED_CORS=https://your-faynosync-dashboard.com
+MONGODB_URL=mongodb://myDatabaseUser:D1fficultP%40ssw0rd@mongodb0.example.com:27017/myDefaultDB?authSource=admin
+API_KEY=your_generated_api_key
+MONGODB_URL_TESTS=mongodb://myDatabaseUser:D1fficultP%40ssw0rd@mongodb0.example.com:27017/myDefaultDBTest?authSource=admin
+JWT_SECRET=your_generated_jwt_secret
+
+# Performance and Features
+PERFORMANCE_MODE=true  # or false
+ENABLE_TELEMETRY=true  # or false
+
+# Redis Configuration (if using performance mode or telemetry)
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=your_redis_password
+REDIS_DB=0
+
+# Security
+ENABLE_PRIVATE_APP_DOWNLOADING=true  # or false
+
+# Slack Integration (optional)
+SLACK_ENABLE=true  # or false
+SLACK_BOT_TOKEN=xoxb-your-slack-bot-token
+SLACK_CHANNEL=faynosync-releases
+
+# API Configuration
+API_URL=https://faynosync-api.example.com
+```
+
+### 3. Generate Security Keys
+
+Generate secure API key and JWT secret:
+
+```bash
+# Generate API Key
+openssl rand -base64 16
+
+# Generate JWT Secret
+openssl rand -base64 32
+```
+
+### 4. Docker Compose Configuration
+
+Create a `docker-compose.yml` file:
+
+:::tip
+**Note**: Change `image: ku9nov/faynosync:latest` to `image: ku9nov/faynosync:<LatestVersion fallbackVersion="v1.4.5" />` to use the latest stable release.
+:::
+
+```yaml
+services:
+  backend:
+    image: ku9nov/faynosync:latest
+    container_name: "faynoSync_backend"
+    restart: always
+    ports:
+      - "9000:9000"
+    volumes:
+      -  ./.env:/app/.env
+    environment:
+      GIN_MODE: release
+```
+
+### 5. Deploy FaynoSync
+
+Start the container:
+
+```bash
+docker-compose up -d
+```
+
+You should see output similar to:
+
+```
+faynoSync_backend  | time="2025-09-17T11:19:18Z" level=info msg="Connected to MongoDB!"
+faynoSync_backend  | time="2025-09-17T11:19:18Z" level=info msg="Migrations completed"
+faynoSync_backend  | time="2025-09-17T11:19:18Z" level=info msg="Redis connection is required. Connecting to Redis."
+faynoSync_backend  | time="2025-09-17T11:19:18Z" level=info msg="Connected to Redis successfully"
+```
+
+## Web Server Configuration (Nginx)
+
+### 1. Create Nginx Configuration
+
+Create the configuration file:
+
+```bash
+sudo nano /etc/nginx/sites-available/faynosync.conf
+```
+
+Add the following content:
+
+```nginx
+server {
+    server_name faynosync.example.com;
+    client_max_body_size 1000M;
+    
+    # Pass all requests to the backend API server
+    location / {
+        proxy_pass http://127.0.0.1:9000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+
+        # Additional headers for the API
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Timeout settings
+        proxy_connect_timeout 60;
+        proxy_send_timeout 60;
+        proxy_read_timeout 60;
+        send_timeout 60;
+    }
+    
+    # Optional: Cache checkVersion endpoint to reduce server load
+    location = /checkVersion {
+        proxy_pass http://127.0.0.1:9000;
+
+        # Cache configuration
+        proxy_cache checkversion_cache;
+        proxy_cache_valid 200 60s;
+        proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
+        proxy_cache_lock on;
+        proxy_cache_lock_timeout 65s;
+        proxy_cache_background_update on;
+        proxy_cache_key "$scheme$request_method$host$request_uri";
+        add_header X-Cache-Status $upstream_cache_status;
+
+        # Rate limiting (optional)
+        # limit_req zone=req_limit burst=20 nodelay;
+
+        # Headers
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Timeouts
+        proxy_connect_timeout 60;
+        proxy_send_timeout 60;
+        proxy_read_timeout 60;
+        send_timeout 60;
+    }
+
+    access_log /var/log/nginx/faynosync.access.log;
+    error_log /var/log/nginx/faynosync.error.log;
+
+    listen 80;
+}
+```
+
+### 2. Enable the Site
+
+Create a symbolic link to enable the site:
+
+```bash
+sudo ln -s /etc/nginx/sites-available/faynosync.conf /etc/nginx/sites-enabled/
+```
+
+### 3. Test and Restart Nginx
+
+Test the configuration:
+
+```bash
+sudo nginx -t
+```
+
+If the test passes, restart Nginx:
+
+```bash
+sudo systemctl restart nginx
+```
+
+Your API should now be accessible to the world!
+
+:::info
+**HTTPS Configuration**: Setting up HTTPS is beyond the scope of this documentation. Use your SSL certificates and SSL configuration, or use Certbot to obtain free certificates from Let's Encrypt.
+:::
+
+## Dashboard Setup
+
+For the FaynoSync dashboard, we recommend using any CDN provider to serve the FaynoSync dashboard, as it's a static application. For more details, refer to your cloud provider's documentation.
+
+Alternatively, you can use Nginx for proxying static content. See the [Nginx static content serving guide](https://docs.nginx.com/nginx/admin-guide/web-server/serving-static-content/).
+
+## Environment Variables Reference
+
+For detailed information about all available environment variables, see the [Environment Variables Overview](/docs/getting-started/env-overview).
+
+## Monitoring and Maintenance
+
+### View Logs
+
+To view FaynoSync logs:
+
+```bash
+docker-compose logs -f backend
+```
+
+To view Nginx logs:
+
+```bash
+sudo tail -f /var/log/nginx/faynosync.access.log
+sudo tail -f /var/log/nginx/faynosync.error.log
+```
+
+### Update FaynoSync
+
+To update to the latest version:
+
+1. Pull the latest image:
+   ```bash
+   docker-compose pull
+   ```
+
+2. Restart the service:
+   ```bash
+   docker-compose up -d
+   ```
+
+## Security Considerations
+
+1. **Change default credentials**: Ensure all default passwords and keys are changed
+2. **Use HTTPS**: Always use HTTPS in production
+3. **Firewall**: Configure your firewall to only allow necessary ports
+4. **Regular updates**: Keep all components updated
+5. **Monitor logs**: Regularly check logs for any suspicious activity
+
+## Troubleshooting
+
+### Common Issues
+
+1. **MongoDB connection failed**: Check MongoDB URL and credentials
+2. **Redis connection failed**: Verify Redis is running and accessible
+3. **Storage access denied**: Verify cloud storage credentials and bucket permissions
+4. **Nginx 502 error**: Check if FaynoSync backend is running on the correct port
+
+### Health Check
+
+You can check if FaynoSync is running properly by accessing:
+
+```bash
+curl http://your-domain.com/health
+```
+
+This should return a JSON response with the service status.

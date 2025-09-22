@@ -19,6 +19,20 @@ const steps: Step[] = [
     href: '/docs/getting-started/env-overview',
   },
   {
+    title: 'Local Deployment',
+    description: 'Quick local deployment for testing your application updates.',
+    icon: '🚀',
+    color: '#EF4444',
+    href: '/docs/getting-started/local-deploy',
+  },
+  {
+    title: 'Production Deployment',
+    description: 'Deploy FaynoSync to production environment.',
+    icon: '🏭',
+    color: '#7C3AED',
+    href: '/docs/getting-started/production-deploy',
+  },
+  {
     title: 'Docker Development',
     description: 'Run FaynoSync using Docker for easy local setup.',
     icon: '🐳',
