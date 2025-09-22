@@ -194,6 +194,21 @@ After deployment, you can access:
 - **MinIO Console**: http://localhost:9001
 - **MongoDB**: localhost:27017
 
+## First-Time Setup
+
+After successful deployment, you need to create your admin account:
+
+1. **Navigate to registration**: Go to http://localhost:3000/signup
+2. **Fill in the form**:
+   - Enter your name
+   - Enter your password (twice for confirmation)
+   - In the **Secret Key** field, enter: `UHp3aKb40fwpoKZluZByWQ`
+3. **Complete registration** and you're ready to use FaynoSync!
+
+:::info
+The Secret Key `UHp3aKb40fwpoKZluZByWQ` is configured in your `.env.faynosync` file as `API_KEY`. This ensures secure access to your local FaynoSync instance.
+:::
+
 ## Monitoring and Logs
 
 To view logs from all services:
