@@ -35,5 +35,9 @@ Allow: /videos/
 # Sitemap location
 Sitemap: https://faynosync.com/sitemap.xml
 
+# RSS and Atom feeds
+Allow: /blog/rss.xml
+Allow: /blog/atom.xml
+
 # Crawl delay for respectful crawling
 Crawl-delay: 1 

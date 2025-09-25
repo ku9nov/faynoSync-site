@@ -47,3 +47,13 @@ auto-update:
   label: Auto-Update
   permalink: /auto-update
   description: Auto-Update documentation for FaynoSync
+
+telemetry:
+  label: Telemetry
+  permalink: /telemetry
+  description: Telemetry and analytics documentation for FaynoSync
+
+analytics:
+  label: Analytics
+  permalink: /analytics
+  description: Analytics documentation for FaynoSync
