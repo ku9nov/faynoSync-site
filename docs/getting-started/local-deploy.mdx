@@ -160,7 +160,7 @@ services:
       /usr/bin/mc alias set faynoSync http://s3:9000 MdnaDEXKy9nOc4beIvNcgy 4dd38d62a67e659f410deb9e32b54843268bbfae;
       /usr/bin/mc mb faynoSync/cb-faynosync-s3-private;
       /usr/bin/mc mb faynoSync/cb-faynosync-s3-public;
-      /usr/bin/mc anonymous set public faynoSync/cb-faynosync-s3-public;
+      /usr/bin/mc anonymous set download faynoSync/cb-faynosync-s3-public;
       "
     env_file:
       - .env.faynosync

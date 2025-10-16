@@ -225,7 +225,7 @@ For local development or private S3-compatible object storage:
 | `MINIO_SECURE` | Specifies whether to use secure connections (HTTPS) for MinIO. Set to `false` for local development. | `MINIO_SECURE=false` |
 | `S3_ACCESS_KEY` | Your MinIO access key ID. | `S3_ACCESS_KEY=your_minio_access_key` |
 | `S3_SECRET_KEY` | Your MinIO secret access key. | `S3_SECRET_KEY=your_minio_secret_key` |
-| `S3_BUCKET_NAME_PRIVATE` | The name of your MinIO bucket for private storage. | `S3_BUCKET_NAME_PRIVATE=cb-faynosync-s3` |
+| `S3_BUCKET_NAME_PRIVATE` | The name of your MinIO bucket for private storage. | `S3_BUCKET_NAME_PRIVATE=cb-faynosync-s3-private` |
 | `S3_BUCKET_NAME` | The name of your MinIO bucket for public storage. | `S3_BUCKET_NAME=cb-faynosync-s3-public` |
 | `S3_ENDPOINT_PRIVATE` | The MinIO endpoint URL. | `S3_ENDPOINT_PRIVATE=localhost:9010` |
 | `S3_ENDPOINT` | The public MinIO endpoint URL. | `S3_ENDPOINT=localhost:9010` |
@@ -284,7 +284,7 @@ You can set these environment variables in a `.env` file in the root directory o
 # =============================================================================
 STORAGE_DRIVER=minio
 MINIO_SECURE=false
-S3_BUCKET_NAME_PRIVATE=cb-faynosync-s3
+S3_BUCKET_NAME_PRIVATE=cb-faynosync-s3-private
 S3_ENDPOINT_PRIVATE=localhost:9010
 S3_ACCESS_KEY=
 S3_SECRET_KEY=
