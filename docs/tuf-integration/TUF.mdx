@@ -1,0 +1,61 @@
+---
+title: TUF Integration
+description: Implementation details and process of TUF framework integration into faynoSync API
+---
+
+# TUF Integration
+
+## Important Notice
+
+:::danger Danger Zone
+
+**This documentation is NOT:**
+- Official TUF framework documentation
+- Official faynoSync API documentation
+
+**This documentation IS:**
+- A description of the process and implementation regarding the integration of the TUF framework into the faynoSync API
+- A developer's perspective on how TUF integration was approached and implemented
+
+**Critical Warnings:**
+
+1. This documentation does not position itself as documentation for TUF, or for the integration of TUF into a real API.
+
+2. These documents may contain incorrect implementations and critical errors.
+
+3. **This documentation does not reflect the current state of the codebase.** It may not even be committed, and it is definitely not released. This is not the final implementation and may not reflect actual functionality.
+
+4. This documentation has **not been verified by TUF developers** and we cannot be certain that everything is implemented and understood correctly at this time.
+
+:::
+
+## Overview
+
+This section documents the integration of TUF (The Update Framework) into the faynoSync API. It describes the implementation process, architectural decisions, and the approach taken to integrate TUF functionality.
+
+## Development Approach
+
+Initially, we attempted to implement TUF integration primitively, based on examples and surface-level information found on the internet. However, we were not satisfied with the result and the implementation quality.
+
+As a result, a decision was made to:
+- Deeply understand how the TUF framework works
+- Implement it more correctly based on existing API services built around TUF
+- Study real-world implementations and best practices
+
+Those interested in how TUF works may find this documentation useful, but please keep in mind the warnings above.
+
+## Documentation Structure
+
+This section contains:
+
+- **[Bootstrap Key Generation](./generate/generation)** - Details about generating TUF bootstrap keys and initializing the repository
+- **[Bootstrap Process](./bootstrap/bootstrap)** - Information about the bootstrap initialization process, status checking, and management
+
+## Current Status
+
+:::warning Work in Progress
+
+The implementation described in these documents is currently under development and may not reflect the final production state. Use this information as a reference for understanding the approach, but verify against the actual codebase before making any decisions.
+
+:::
+

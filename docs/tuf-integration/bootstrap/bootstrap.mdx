@@ -1,0 +1,308 @@
+---
+title: Bootstrap Process
+description: Learn how to initialize and manage the TUF repository bootstrap process
+---
+
+# Bootstrap Process
+
+After generating keys via `POST /tuf/v1/bootstrap/generate`, the next step is to initialize the TUF repository through the bootstrap process. The `bootstrap.go` file contains the logic for managing the bootstrap process, including status checking, locking, and asynchronous initialization.
+
+## API Endpoints for Bootstrap
+
+All endpoints require:
+- **Authentication** (`authMiddleware`)
+- **Administrator privileges** (`adminMiddleware`)
+
+### GET `/tuf/v1/bootstrap` - Bootstrap Status
+
+**Method:** `GET`  
+**Path:** `/tuf/v1/bootstrap`  
+**Purpose:** Checks the current bootstrap process status for the administrator
+
+The function checks:
+1. **Existence of root metadata** in the repository
+2. **Redis lock** `BOOTSTRAP_<adminName>` to determine bootstrap status
+3. **Pre-locks** (temporary locks during bootstrap execution)
+
+#### Example Successful Response (bootstrap not performed)
+
+```json
+{
+  "data": {
+    "bootstrap": false,
+    "state": null,
+    "id": "",
+    "redis_locks": {
+      "bootstrap_lock": "",
+      "pre_locks": []
+    }
+  },
+  "message": "System available for bootstrap."
+}
+```
+
+#### Example Successful Response (bootstrap completed)
+
+```json
+{
+  "data": {
+    "bootstrap": true,
+    "state": null,
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "redis_locks": {
+      "bootstrap_lock": "550e8400-e29b-41d4-a716-446655440000",
+      "pre_locks": []
+    }
+  },
+  "message": "Bootstrap already completed for this admin."
+}
+```
+
+### GET `/tuf/v1/bootstrap/locks` - Detailed Lock Information
+
+**Method:** `GET`  
+**Path:** `/tuf/v1/bootstrap/locks`  
+**Purpose:** Returns detailed information about all bootstrap locks in Redis
+
+The function returns information about:
+- **BOOTSTRAP lock** for the administrator
+- **Pre-locks** (temporary locks)
+- **Bootstrap settings** (settings stored in Redis)
+
+#### Example Response
+
+```json
+{
+  "data": {
+    "BOOTSTRAP": {
+      "key": "BOOTSTRAP_admin1",
+      "value": "550e8400-e29b-41d4-a716-446655440000",
+      "exists": true
+    },
+    "pre_locks": [
+      {
+        "key": "pre-550e8400-e29b-41d4-a716-446655440000",
+        "value": "550e8400-e29b-41d4-a716-446655440000",
+        "exists": true
+      }
+    ],
+    "settings": [
+      {
+        "key": "bootstrap:settings:550e8400-e29b-41d4-a716-446655440000",
+        "value": "...",
+        "exists": true
+      }
+    ]
+  },
+  "message": "Bootstrap locks status retrieved successfully"
+}
+```
+
+### POST `/tuf/v1/bootstrap` - Initialize Bootstrap
+
+**Method:** `POST`  
+**Path:** `/tuf/v1/bootstrap`  
+**Purpose:** Initializes the TUF repository with the provided bootstrap payload
+
+#### Workflow
+
+The `postBootstrap` function performs the following steps:
+
+1. **Check for active bootstrap** for the administrator
+2. **Validate payload** from request body
+3. **Generate task_id** (UUID)
+4. **Create pre-lock** in Redis
+5. **Start bootstrap process** in background (goroutine)
+6. **Return task_id** to client
+
+#### Request Body
+
+```json
+{
+  "settings": {
+    "roles": {
+      "root": {
+        "expiration": 365
+      },
+      "timestamp": {
+        "expiration": 1
+      },
+      "snapshot": {
+        "expiration": 7
+      },
+      "targets": {
+        "expiration": 365
+      },
+      "bins": {
+        "expiration": 1,
+        "number_of_delegated_bins": 4
+      }
+    }
+  },
+  "metadata": {
+    "root": {
+      "signatures": [...],
+      "signed": {...}
+    }
+  },
+  "timeout": 300
+}
+```
+
+#### Successful Response (HTTP 202 Accepted)
+
+```json
+{
+  "data": {
+    "task_id": "550e8400-e29b-41d4-a716-446655440000",
+    "last_update": "2024-01-15T10:30:00Z"
+  },
+  "message": "Bootstrap accepted and started in background"
+}
+```
+
+#### Errors
+
+**409 Conflict** - Bootstrap already in progress:
+```json
+{
+  "error": "Bootstrap already in progress for this admin",
+  "data": {
+    "task_id": "550e8400-e29b-41d4-a716-446655440000",
+    "admin": "admin1",
+    "status": "in_progress"
+  }
+}
+```
+
+**409 Conflict** - Bootstrap already completed:
+```json
+{
+  "error": "Bootstrap already completed for this admin",
+  "data": {
+    "task_id": "550e8400-e29b-41d4-a716-446655440000",
+    "admin": "admin1",
+    "status": "completed"
+  }
+}
+```
+
+**404 Not Found** - System already has metadata:
+```json
+{
+  "error": "System already has a Metadata. Bootstrap already completed."
+}
+```
+
+**400 Bad Request** - Invalid payload format:
+```json
+{
+  "error": "Missing required field: settings.roles.root.expiration"
+}
+```
+
+## Redis Locks and Bootstrap States
+
+### Redis Key Structure
+
+The system uses the following Redis keys to manage the bootstrap process:
+
+1. **`BOOTSTRAP_<adminName>`** - Main lock for the administrator
+   - During execution: `"pre-<task_id>"`
+   - After completion: `"<task_id>"` (without "pre-" prefix)
+
+2. **`pre-<task_id>`** - Temporary lock during bootstrap execution
+   - Deleted after process completion
+   - Value: `"<task_id>"`
+
+3. **`bootstrap:settings:<task_id>`** - Bootstrap settings (if used)
+
+4. **`ROOT_SIGNING_<adminName>`** - Root metadata signing state
+   - Cleared after bootstrap completion
+
+5. **Role settings** (with `_<adminName>` suffix):
+   - `ROOT_EXPIRATION_<adminName>`
+   - `ROOT_THRESHOLD_<adminName>`
+   - `ROOT_NUM_KEYS_<adminName>`
+   - `TARGETS_EXPIRATION_<adminName>`
+   - `TARGETS_THRESHOLD_<adminName>`
+   - `TARGETS_NUM_KEYS_<adminName>`
+   - `TARGETS_ONLINE_KEY_<adminName>`
+   - `SNAPSHOT_EXPIRATION_<adminName>`
+   - `SNAPSHOT_THRESHOLD_<adminName>`
+   - `SNAPSHOT_NUM_KEYS_<adminName>`
+   - `TIMESTAMP_EXPIRATION_<adminName>`
+   - `TIMESTAMP_THRESHOLD_<adminName>`
+   - `TIMESTAMP_NUM_KEYS_<adminName>`
+   - `BINS_EXPIRATION_<adminName>` (if used)
+   - `BINS_THRESHOLD_<adminName>`
+   - `BINS_NUM_KEYS_<adminName>`
+   - `NUMBER_OF_DELEGATED_BINS_<adminName>`
+
+### Pre-Lock Mechanism
+
+The pre-lock mechanism ensures:
+- **Protection against parallel bootstrap** for one administrator
+- **State tracking** of bootstrap execution
+- **Automatic deletion** of temporary locks after completion
+
+## Asynchronous Bootstrap Processing
+
+### Background Process
+
+Bootstrap is executed **asynchronously** in a separate goroutine.
+
+This means:
+- The client receives a result **shortly** after sending the request
+- The bootstrap process runs **in the background**
+- Status can be checked via `GET /tuf/v1/bootstrap` or `GET /tuf/v1/bootstrap/locks`
+
+### Main Bootstrap Function
+
+The process includes:
+1. **Saving settings** in Redis
+2. **Finalizing bootstrap** (creating online roles, saving metadata)
+
+### Saving Settings
+
+The `saveSettings` function saves all role settings in Redis with the `_<adminName>` suffix for isolation between administrators. Settings include:
+- Expiration periods for each role
+- Threshold values
+- Number of keys
+- Special settings (e.g., `TARGETS_ONLINE_KEY`, `NUMBER_OF_DELEGATED_BINS`)
+
+### Bootstrap Finalization
+
+Finalization performs:
+1. **Creating online roles** (targets, snapshot, timestamp) via `BootstrapOnlineRoles`
+2. **Deleting pre-lock** key
+3. **Clearing ROOT_SIGNING** state
+4. **Setting final BOOTSTRAP state** (without "pre-" prefix)
+
+## Bootstrap Process Features
+
+### Isolation Between Administrators
+
+- Each administrator has **their own set of Redis keys** (with `_<adminName>` suffix)
+- The bootstrap process **does not interfere** with other administrators
+- Each administrator can have **their own independent TUF repository**
+
+### Protection Against Parallel Requests
+
+- Checking for active bootstrap before starting a new one
+- Using pre-locks to track execution state
+- Returning 409 Conflict error when attempting to start parallel bootstrap
+
+### Asynchrony and Reliability
+
+- Bootstrap runs in the background, does not block HTTP request
+- Client receives `task_id` to track progress
+- Status can be checked via GET endpoints
+- Automatic cleanup of temporary locks after completion
+
+### Redis Dependency
+
+- Redis is used to store locks and settings
+- If Redis is unavailable, some functions may work in limited mode
+- All settings are stored with binding to the administrator
+

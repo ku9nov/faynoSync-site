@@ -132,6 +132,16 @@ const sidebars: SidebarsConfig = {
     'intermediate_build', 
     'updaters',
     'troubleshooting',
+    {
+      type: 'category',
+      label: 'TUF Reference',
+      link: { type: 'doc', id: 'tuf-integration/TUF' },
+      collapsed: false,
+      items: [
+        'tuf-integration/generate/generation',
+        'tuf-integration/bootstrap/bootstrap',
+      ],
+    },
   ],
 };
 

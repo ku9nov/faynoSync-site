@@ -1,0 +1,278 @@
+---
+title: Bootstrap Key Generation
+description: Learn how to generate TUF bootstrap keys and initialize the repository
+---
+
+# Bootstrap Key Generation
+
+## Overview
+
+This document describes the implementation details of the bootstrap key generation functionality for TUF (The Update Framework) in the faynoSync system. The bootstrap process allows you to initialize a TUF repository with the necessary cryptographic keys and metadata.
+
+## API Endpoint
+
+### POST `/tuf/v1/bootstrap/generate`
+
+**Method:** `POST`  
+**Path:** `/tuf/v1/bootstrap/generate`  
+**Authentication:** Required (via `authMiddleware`)  
+**Permissions:** Administrators only (via `adminMiddleware`)
+
+This endpoint is registered in the `SetupRoutes` function in the `bootstrap.go` file and is only available to users with administrator privileges.
+
+## Architecture and Concept
+
+### Generation for a Specific Administrator
+
+It is important to understand that key generation is performed **not for the entire server**, but **for a specific administrator**. This means:
+
+- Each administrator has their own set of TUF keys
+- Private keys are stored in MongoDB with a binding to `adminName`
+- Keys are stored in the `tuf_private_keys` collection with the `admin_name` field
+- When regenerating, old administrator keys are deleted before saving new ones
+
+### Generation Process
+
+The `generateRootKeys` function performs the following steps:
+
+1. **Obtain administrator name** from the request context
+2. **Create TUF roles** and metadata
+3. **Generate cryptographic keys** for each role
+4. **Sign metadata** with generated keys
+5. **Save metadata to temporary directory**
+6. **Save private keys** in MongoDB
+7. **Generate bootstrap payload** from metadata
+8. **Return payload** in response
+
+## Detailed Process Description
+
+### 1. Creating TUF Roles and Metadata
+
+```go
+root := metadata.Root(tuf_utils.HelperExpireIn(365))
+roles.SetRoot(root)
+```
+
+The system creates four main TUF roles:
+- **targets** - expiration 7 days
+- **snapshot** - expiration 7 days  
+- **timestamp** - expiration 1 day
+- **root** - expiration 365 days
+
+Each role has its own metadata with the corresponding expiration period.
+
+### 2. Key Generation
+
+For each role, the following is generated:
+- **Private key** of type `ed25519` (cryptography standard for TUF)
+- **Public key** extracted from the private key
+- **Key ID** calculated automatically and stored for future use
+
+### 3. Additional Root Key
+
+The system generates an **additional root key** for enhanced security:
+- Root role has **threshold = 2**, meaning two signatures are required for changes to root metadata
+- Both root keys are stored separately (`root` and `root_extra`)
+
+### 4. Signing Metadata
+
+Each metadata is signed with the corresponding private key of its role.
+
+### 5. Saving Metadata to Files
+
+A temporary directory is created (e.g., `tmp1234567890`) in the current working directory, where the following are stored:
+- `1.root.json` - root metadata (version 1)
+- `1.targets.json` - targets metadata (version 1)
+- `1.snapshot.json` - snapshot metadata (version 1)
+- `timestamp.json` - timestamp metadata (without version)
+
+### 6. Additional Root Metadata Signing
+
+Root metadata is signed with the second root key to achieve threshold = 2, then validated.
+
+### 7. Saving Private Keys in MongoDB
+
+Private keys are stored in the `tuf_private_keys` collection with the following structure:
+- `admin_name` - administrator name
+- `role_name` - role name ("root", "targets", "snapshot", "timestamp", "root_extra")
+- `key_id` - public key ID
+- `private_key` - private key in Base64 format
+- `key_type` - key type ("ed25519")
+- `created_at` / `updated_at` - timestamps
+
+**Important:** Before saving new keys, all old keys for this administrator are deleted.
+
+### 8. Generating Bootstrap Payload
+
+The `generatePayload` function reads the generated metadata and creates a structured payload with:
+- Expiration settings for each role
+- Root metadata
+- Bins settings (if needed)
+- Timeout value
+
+## Response Structure
+
+### Successful Response (HTTP 200)
+
+```json
+{
+  "data": {
+    "settings": {
+      "roles": {
+        "root": {
+          "expiration": 365
+        },
+        "timestamp": {
+          "expiration": 1
+        },
+        "snapshot": {
+          "expiration": 7
+        },
+        "targets": {
+          "expiration": 365
+        },
+        "bins": {
+          "expiration": 1,
+          "number_of_delegated_bins": 4
+        }
+      }
+    },
+    "metadata": {
+      "root": {
+        "signatures": [
+          {
+            "keyid": "9f010db5ae2803cd78dc0b3cb63447b322bf708ed15922a9b6e017f2fde61432",
+            "sig": "5b410d8b54cb9e0fe9c3f74eb13376dc7df32eccf77939e1c9179fe8fa127fb994e36e860d9418fd2e5cace5ad7da9bb31b568b76fdcacbec0d34b0ac4e6be03"
+          },
+          {
+            "keyid": "ebbfdeb46956d0c58eaa5f5220b9d69168481d17ceac0c2f769168455f85acd0",
+            "sig": "ef4c156e39159fb710dcd5a6ffc9d953934a389fb3accdb13dc96491a79e7ce48c2fcc79790ea012397b221f36c264d1d07b95aa2facdb2b0af2acb182590b01"
+          }
+        ],
+        "signed": {
+          "_type": "root",
+          "version": 1,
+          "spec_version": "1.0.0",
+          "expires": "2026-11-27T12:01:12.80776Z",
+          "consistent_snapshot": true,
+          "keys": {
+            "16a650c3c7fc796c698395bff55e24e04c71222dda0c9ca1e956c7e28ad56507": {
+              "keytype": "ed25519",
+              "scheme": "ed25519",
+              "keyval": {
+                "public": "fa0ecc9429c2bceefdcefc433c3396e396f3bdbd594856fbcd1017da32402722"
+              }
+            }
+          },
+          "roles": {
+            "root": {
+              "keyids": ["9f010db5ae2803cd78dc0b3cb63447b322bf708ed15922a9b6e017f2fde61432", "ebbfdeb46956d0c58eaa5f5220b9d69168481d17ceac0c2f769168455f85acd0"],
+              "threshold": 2
+            },
+            "targets": {
+              "keyids": ["..."],
+              "threshold": 1
+            },
+            "snapshot": {
+              "keyids": ["..."],
+              "threshold": 1
+            },
+            "timestamp": {
+              "keyids": ["..."],
+              "threshold": 1
+            }
+          }
+        }
+      }
+    },
+    "timeout": 300
+  },
+  "message": "Root keys generated and payload created successfully"
+}
+```
+
+### Errors
+
+**401 Unauthorized** - if the user is not authenticated or is not an administrator:
+```json
+{
+  "error": "Unauthorized"
+}
+```
+
+**500 Internal Server Error** - if failed to save keys:
+```json
+{
+  "error": "Failed to save private keys to database"
+}
+```
+
+**500 Internal Server Error** - if failed to generate payload:
+```json
+{
+  "error": "Failed to generate bootstrap payload"
+}
+```
+
+## Generated Files
+
+During function execution, the following files are created in a temporary directory:
+
+### Location
+
+A temporary directory is created in the current working directory of the server with the prefix `tmp` and a random numeric suffix (e.g., `tmp1212824492`).
+
+### Metadata Files
+
+1. **`1.root.json`** - Root metadata version 1
+   - Contains public keys of all roles
+   - Contains role settings (threshold, keyids)
+   - Signed by two root keys (threshold = 2)
+   - Expiration: 365 days
+
+2. **`1.targets.json`** - Targets metadata version 1
+   - Contains information about target files
+   - Signed by targets key
+   - Expiration: 7 days (by default)
+
+3. **`1.snapshot.json`** - Snapshot metadata version 1
+   - Contains information about versions of other metadata
+   - Signed by snapshot key
+   - Expiration: 7 days (by default)
+
+4. **`timestamp.json`** - Timestamp metadata
+   - Contains the latest information about snapshot
+   - Signed by timestamp key
+   - Expiration: 1 day (by default)
+   - Does not have a version in the filename
+
+**Note:** These files are stored only temporarily for payload generation. After returning the response, they remain in the file system (may be deleted later by the system or manually).
+
+## Security and Features
+
+### Key Isolation Between Administrators
+- Each administrator has their own set of keys
+- Keys are stored with a binding to `admin_name`
+- When regenerating, old keys are deleted
+
+### Threshold for Root Role
+- Root role has threshold = 2, requiring two signatures for changes
+- This enhances security for critical operations with root metadata
+
+### Key Type
+- Only `ed25519` is used - a modern and secure algorithm
+- Private keys are stored in Base64 format
+
+### Validation
+- After generation, root metadata is validated via `tuf_metadata.ValidateRoot()`
+- This ensures correctness of structure and signatures
+
+## Usage
+
+After successful generation, the bootstrap payload can be used for:
+1. Initializing the TUF repository via the `POST /tuf/v1/bootstrap` endpoint
+2. Saving role expiration settings
+3. Configuring the update system through the TUF protocol
+
+The payload contains all necessary information for complete TUF repository initialization for a specific administrator.
+
