@@ -1,0 +1,37 @@
+---
+title: TUF (The Update Framework) Management
+description: Complete guide to go-tuf integration in FaynoSync for secure, verifiable application updates
+---
+# TUF (The Update Framework) Management
+
+**go-tuf** is an implementation of [The Update Framework](https://theupdateframework.io/) (TUF), a security-focused standard for securing software update systems. It helps prevent compromise of the update process by ensuring that clients can verify the authenticity and integrity of updates before installing them. This section describes how to use TUF with **FaynoSync**: enabling it on your instance, managing keys and metadata, and how it fits into your update workflow.
+
+In FaynoSync, TUF metadata and related files on S3 are **organized separately per administrator and per application name**. Each app has its own TUF repository, so keys and metadata are isolated by account and app.
+
+## Key storage principles
+
+- **Private keys** must be kept secret and must never be published or exposed.
+- **Root keys** should be stored on an **offline system**. They are used to establish trust and sign other keys; keeping them offline reduces the risk of compromise.
+- **Keys for the targets, snapshot, and timestamp roles** must be stored in the directory specified by the `ONLINE_KEY_DIR` environment variable, for example:
+  - `ONLINE_KEY_DIR=~/tuf_keys/private_keys`
+
+## Enabling go-tuf on FaynoSync
+
+To enable TUF support on your FaynoSync instance, set:
+
+- `TUF_ENABLED=true`
+- `ONLINE_KEY_DIR=~/tuf_keys/private_keys` (or your chosen path for online signing keys)
+
+Public metadata files are stored on S3 and are **publicly accessible**. They are signed with the private keys above; clients use these signed metadata files to verify that an update is trusted and that the build they download is the one intended by the publisher.
+
+## Client-side configuration
+
+TUF verification happens on the **client application**. Your app must be configured to consume TUF metadata and verify updates before applying them. Refer to the [TUF documentation](https://theupdateframework.io/) and the go-tuf client usage to learn how to configure your application for secure update verification.
+
+The following API endpoints allow you to manage TUF bootstrap, metadata, configuration, and publishing within FaynoSync.
+
+{/*
+:::tip
+For more information on TUF integration and implementation in FaynoSync, see [TUF Integration](/docs/tuf-integration/TUF).
+:::
+*/}
