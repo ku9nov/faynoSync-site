@@ -1,0 +1,92 @@
+---
+title: Check Bootstrap
+---
+
+# Check Bootstrap
+
+Check whether bootstrap has already been performed for a specific application and whether it completed successfully.
+
+Use this endpoint before starting a new bootstrap to determine if the TUF repository for the given app is already initialized. If bootstrap has not been done yet, the system is available for bootstrap; if it has completed, you will receive the existing bootstrap identifier and lock information.
+
+## Endpoint
+
+```
+GET /tuf/v1/bootstrap?appName=<app_name>
+```
+
+## Headers
+
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <token>` |
+
+## Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `appName` | string | ✅ | Name of the application to check bootstrap status for |
+
+## Example Request
+
+```bash
+curl --location 'http://localhost:9000/tuf/v1/bootstrap?appName=<app_name>' \
+--header 'Authorization: Bearer <jwt_token>'
+```
+
+## Response
+
+### Bootstrap Not Yet Performed (200 OK)
+
+When bootstrap has not been done for this application, the system is available for bootstrap:
+
+```json
+{
+  "data": {
+    "bootstrap": false,
+    "id": "",
+    "redis_locks": {
+      "bootstrap_lock": "",
+      "pre_locks": []
+    },
+    "state": null
+  },
+  "message": "System available for bootstrap."
+}
+```
+
+### Bootstrap Already Completed (200 OK)
+
+When bootstrap has already completed successfully for this admin and application:
+
+```json
+{
+  "data": {
+    "bootstrap": true,
+    "id": "8085748f-a572-491b-b1b0-d047daa3ae05",
+    "redis_locks": {
+      "bootstrap_lock": "8085748f-a572-491b-b1b0-d047daa3ae05",
+      "pre_locks": []
+    },
+    "state": null
+  },
+  "message": "Bootstrap already completed for this admin."
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `data.bootstrap` | boolean | `true` if bootstrap has been completed for this app; `false` if not yet performed |
+| `data.id` | string | Bootstrap session identifier; empty when bootstrap has not been done, UUID when completed |
+| `data.redis_locks.bootstrap_lock` | string | Redis lock value for bootstrap; empty or matches `id` when bootstrap is in use or completed |
+| `data.redis_locks.pre_locks` | array | List of pre-lock identifiers (if any) |
+| `data.state` | object \| null | Optional state payload; may be `null` |
+| `message` | string | Human-readable status: "System available for bootstrap." or "Bootstrap already completed for this admin." |
+
+## Notes
+
+- Requires a valid JWT in the `Authorization` header (admin user).
+- Call this endpoint before starting bootstrap to avoid duplicate initialization.
+- When `bootstrap` is `false`, you can proceed with the [Start Bootstrap](/docs/api/tuf/start_bootstrap) flow.
+- When `bootstrap` is `true`, the TUF repository for this app is already set up; no need to run bootstrap again for this admin.
