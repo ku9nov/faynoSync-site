@@ -32,13 +32,15 @@ The request uses `multipart/form-data` format with the following fields:
 | `app` | string | ❌ | New application name |
 | `file` | file | ❌ | New logo for the application |
 | `description` | string | ❌ | New application description |
+| `tuf` | boolean | ❌ | Enable TUF framework for application |
+
 
 ## Example Request
 
 ```bash
 curl --location 'http://localhost:9000/app/update' \
 -H "Authorization: Bearer <jwt_token>" \
---form 'data="{\"id\":\"66ae13fe5b663c058367f893\", \"app\":\"new_name\"}"'
+--form 'data="{\"id\":\"66ae13fe5b663c058367f893\", \"app\":\"new_name\", \"tuf\": \"true\"}"'
 ```
 
 ## Response
