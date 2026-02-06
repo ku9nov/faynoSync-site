@@ -1,0 +1,80 @@
+---
+title: Check Task
+---
+
+# Check Task
+
+Retrieve the status and result of a TUF-related background task by its UUID.
+
+Tasks are created for almost all TUF metadata operations: bootstrap, signing, metadata rotation, publishing artifacts, and similar actions. Each operation returns a `task_id`; use this endpoint to poll for completion and get the outcome. Pass the task UUID to check whether the task is still running, has succeeded, or has failed.
+
+## Endpoint
+
+```
+GET /tuf/v1/task?task_id=<task_id>
+```
+
+## Headers
+
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <token>` |
+
+## Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `task_id` | string (UUID) | ✅ | The unique identifier of the task to check |
+
+## Example Request
+
+```bash
+curl --location 'http://localhost:9000/tuf/v1/task?task_id=ecca335d-9192-4fc2-bbb0-3d7a38a55c84' \
+--header 'Authorization: Bearer <jwt_token>'
+```
+
+## Response
+
+### Success Response (200 OK)
+
+When the task has completed successfully (e.g. bootstrap finished):
+
+```json
+{
+  "data": {
+    "task_id": "ecca335d-9192-4fc2-bbb0-3d7a38a55c84",
+    "state": "SUCCESS",
+    "result": {
+      "message": "Bootstrap completed successfully",
+      "status": true,
+      "task": "bootstrap",
+      "last_update": "2026-02-04T14:28:13.316292+02:00"
+    }
+  },
+  "message": "Task state."
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `data.task_id` | string | UUID of the task |
+| `data.state` | string | Task state (e.g. `SUCCESS`, `PENDING`, `FAILED`); exact values may vary by implementation |
+| `data.result` | object | Task outcome; structure depends on task type (bootstrap, sign, rotation, publish, etc.) |
+| `data.result.message` | string | Human-readable result message |
+| `data.result.status` | boolean | Indicates success when `true` |
+| `data.result.task` | string | Task type (e.g. `"bootstrap"`) |
+| `data.result.last_update` | string | ISO8601 timestamp of the last update |
+| `message` | string | Top-level message (e.g. `"Task state."`) |
+
+## Task types and result shape
+
+The `data.result` object varies by the operation that created the task. For bootstrap tasks it includes `message`, `status`, `task`, and `last_update`. For other TUF operations (signing, metadata rotation, publishing artifacts), the result may contain different fields. The `data.state` indicates whether the task is still in progress (`PENDING`), finished successfully (`SUCCESS`), or failed (`FAILED` or similar).
+
+## Notes
+
+- Requires a valid JWT in the `Authorization` header (admin user).
+- Use the `task_id` returned from [Start Bootstrap](/docs/api/tuf/start_bootstrap) or other TUF endpoints to poll until `state` is no longer pending.
+- A single UUID is enough to check the result; no app name or other parameters are required.
+- For long-running operations, poll this endpoint periodically until `state` reflects completion or failure.
