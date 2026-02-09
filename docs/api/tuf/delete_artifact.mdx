@@ -1,0 +1,93 @@
+---
+title: Delete Artifact (TUF)
+---
+
+# Delete Artifact (TUF)
+
+Remove TUF signatures for selected artifacts of a given application version. The artifacts themselves remain stored; only their TUF metadata entries are removed so that TUF-enabled clients will no longer trust or offer those artifacts for update.
+
+This endpoint is similar to [Delete artifact](/docs/api/apps/delete-specific-artifact): you pass the version's application ID, app name, version, and an array of artifact indices to remove from TUF. Deletion runs in the background; use the returned `task_id` with [Check Task](/docs/api/tuf/check_tasks) to verify completion.
+
+## Endpoint
+
+```
+POST /tuf/v1/artifacts/delete
+```
+
+## Headers
+
+| Header | Value |
+|--------|-------|
+| `Content-Type` | `text/plain` |
+| `Authorization` | `Bearer <token>` |
+
+## Request Body
+
+The body must be a JSON object with the application version identifier and the artifact indices to remove from TUF.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | ✅ | Unique identifier of the specific version of the application |
+| `app_name` | string | ✅ | Name of the application |
+| `version` | string | ✅ | Version of the application (e.g. `0.0.0.5`) |
+| `artifacts_to_delete` | array | ✅ | Array of artifact indices to remove from TUF (e.g. `["0", "1"]`); indices match the artifact list for that version |
+
+## Example Request
+
+```bash
+curl --location 'http://localhost:9000/tuf/v1/artifacts/delete' \
+--header 'Content-Type: text/plain' \
+--header 'Authorization: Bearer <jwt_token>' \
+--data '{"id": "697100362fadc9dccd0e3a96", "app_name": "<app-name>", "version": "0.0.0.5", "artifacts_to_delete": ["0"]}'
+```
+
+## Response
+
+### Success Response (202 Accepted)
+
+When deletion is accepted, it runs in the background:
+
+```json
+{
+  "data": {
+    "app_id": "697100362fadc9dccd0e3a96",
+    "artifacts": [
+      "<app-name>-<admin-name>/<channel>/<platform>/<arch>/<app-name>-<version>"
+    ],
+    "last_update": "2026-02-04T17:40:24.73467+02:00",
+    "task_id": "3fbccbb0-c600-48bc-b6bc-fea9902511be",
+    "version": "0.0.0.5"
+  },
+  "message": "Artifact(s) deletion started"
+}
+```
+
+### Error Response (400 Bad Request)
+
+When none of the requested artifacts are valid for TUF deletion (e.g. not TUF-signed):
+
+```json
+{
+  "error": "No valid artifacts to delete (all must be TUF signed)"
+}
+```
+
+### Response Fields (202 Accepted)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `data.app_id` | string | Application version ID from the request |
+| `data.artifacts` | array | List of artifact paths removed from TUF (e.g. `<app-name>-<admin>/<channel>/<platform>/<arch>/<app>-<version>.<ext>`) |
+| `data.last_update` | string | ISO8601 timestamp when deletion was started |
+| `data.task_id` | string | UUID of the background task; use [Check Task](/docs/api/tuf/check_tasks) to verify completion |
+| `data.version` | string | Version from the request |
+| `message` | string | `"Artifact(s) deletion started"` |
+
+## Notes
+
+- Requires a valid JWT in the `Authorization` header (admin user).
+- This endpoint **removes TUF signatures** for the given artifacts; it does **not** delete the artifact files from storage. To delete the files themselves, use [Delete artifact](/docs/api/apps/delete-specific-artifact).
+- Only artifacts that are **TUF-signed** can be removed from TUF; if none of the requested indices refer to TUF-signed artifacts, the API returns `400` with "No valid artifacts to delete (all must be TUF signed)".
+- Artifact indices in `artifacts_to_delete` are the same as in the app version's artifact list (e.g. `"0"`, `"1"` for first and second artifact).
+- You can remove multiple artifacts in one request by including multiple indices in `artifacts_to_delete`.
+- When `task_id` is present, poll [Check Task](/docs/api/tuf/check_tasks) until the task completes to ensure TUF metadata has been updated.
