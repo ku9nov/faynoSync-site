@@ -1,0 +1,94 @@
+---
+title: Get Current Root Metadata
+---
+
+# Get Current Root Metadata
+
+Retrieve the **current trusted root metadata** for a TUF repository. This is the root that is published and in use (e.g. stored in S3); it includes all signatures and the full root payload (keys, roles, version, expires).
+
+Use this endpoint as a helper to inspect the active root, compare keyids and roles before [Metadata rotation](/docs/api/tuf/metadata_rotation), or verify the root after bootstrap or rotation.
+
+## Endpoint
+
+```
+GET /tuf/v1/metadata/root?appName=<app_name>
+```
+
+## Headers
+
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <token>` |
+
+## Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `appName` | string | ✅ | Name of the application whose current root metadata to retrieve |
+
+## Example Request
+
+```bash
+curl --location 'http://localhost:9000/tuf/v1/metadata/root?appName=<app_name>' \
+--header 'Authorization: Bearer <jwt_token>'
+```
+
+## Response
+
+### Success Response (200 OK)
+
+When the repository has been bootstrapped and a trusted root exists:
+
+```json
+{
+  "data": {
+    "trusted_root": {
+      "signatures": [
+        {
+          "keyid": "18aa7db1a150ab12b7fcd143d782afec2ba2600d654d352557b9d048a0d7b6b0",
+          "sig": "110df00870d2b87f40c4422183d5edc753ac66eb7d6ba692121888f4b43d975adaf4a5831170c90ab4990796a1c37b4b5afd3a042bccae85de20270fcadd9c09"
+        },
+        {
+          "keyid": "42d7f85d3981872a7b687a3c11a8d6adc856b9048242784cfeeae88ec4bf69a5",
+          "sig": "fa625b8cb977a1c5d2df567a4f470dcd08036ab4a198037fe7fa8135055b5fbdafcf603b3f6c9fc4cae7299bed8ff5beb887b2d31fc53ae60dcb67b622e7cd0d"
+        }
+      ],
+      "signed": {
+        "_type": "root",
+        "consistent_snapshot": true,
+        "expires": "2028-01-29T12:47:14Z",
+        "keys": {
+          "<key_id>": {
+            "keytype": "ed25519",
+            "keyval": { "public": "<public_key_hex>" },
+            "scheme": "ed25519"
+          }
+        },
+        "roles": {
+          "root": { "keyids": ["<key_id>", ...], "threshold": 2 },
+          "snapshot": { "keyids": ["<key_id>"], "threshold": 1 },
+          "targets": { "keyids": ["<key_id>"], "threshold": 1 },
+          "timestamp": { "keyids": ["<key_id>"], "threshold": 1 }
+        },
+        "spec_version": "1.0.31",
+        "version": 2
+      }
+    }
+  }
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `data.trusted_root` | object | Current trusted root metadata |
+| `data.trusted_root.signatures` | array | List of signatures (keyid + sig) that satisfy the root role threshold |
+| `data.trusted_root.signed` | object | Root payload: `_type`, `version`, `spec_version`, `expires`, `consistent_snapshot`, `keys`, `roles` |
+
+## Notes
+
+- Requires a valid JWT in the `Authorization` header (admin user).
+- The repository must already be [bootstrapped](/docs/api/tuf/start_bootstrap) for this app; otherwise there is no trusted root to return.
+- Use this endpoint to inspect the active root (keyids, roles, expiration) before planning [Metadata rotation](/docs/api/tuf/metadata_rotation) or to confirm the root after rotation.
+- The returned root is the one clients use to verify the TUF repository; it is the same as the root published to S3.
