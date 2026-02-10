@@ -1,0 +1,102 @@
+---
+title: Get Config
+---
+
+# Get Config
+
+Retrieve the current TUF repository configuration for an application. The settings are stored in Redis and include role expiration values, key counts, and thresholds for root, timestamp, snapshot, and targets roles, as well as the bootstrap task identifier.
+
+Use this endpoint to inspect how the TUF repository for a given app is configured (e.g. after [bootstrap](/docs/api/tuf/start_bootstrap) or before [metadata rotation](/docs/api/tuf/metadata_rotation)).
+
+## Endpoint
+
+```
+GET /tuf/v1/config?appName=<app_name>
+```
+
+## Headers
+
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <token>` |
+
+## Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `appName` | string | ✅ | Name of the application whose TUF config to retrieve |
+
+## Example Request
+
+```bash
+curl --location 'http://localhost:9000/tuf/v1/config?appName=<app-name>' \
+--header 'Authorization: Bearer <jwt_token>'
+```
+
+## Response
+
+### Success Response (200 OK)
+
+When the repository has been bootstrapped and config exists in Redis:
+
+```json
+{
+  "data": {
+    "bootstrap": "ecca335d-9192-4fc2-bbb0-3d7a38a55c84",
+    "role_expiration": 90,
+    "root_expiration": 364,
+    "root_num_keys": 2,
+    "root_threshold": 2,
+    "snapshot_expiration": 6,
+    "snapshot_num_keys": 1,
+    "snapshot_threshold": 1,
+    "targets_expiration": 6,
+    "targets_num_keys": 1,
+    "targets_online_key": 1,
+    "targets_threshold": 1,
+    "timestamp_expiration": 1,
+    "timestamp_num_keys": 1,
+    "timestamp_threshold": 1
+  },
+  "message": "Current Settings"
+}
+```
+
+### Error Response (404 Not Found)
+
+When bootstrap has not been completed for this app or no repository config exists in Redis:
+
+```json
+{
+  "error": "It requires bootstrap. State: ",
+  "message": "No Repository Settings/Config found."
+}
+```
+
+### Response Fields (200 OK)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `data.bootstrap` | string | Bootstrap task ID (UUID) associated with this repository |
+| `data.role_expiration` | number | Default role expiration in days |
+| `data.root_expiration` | number | Root metadata expiration in days |
+| `data.root_num_keys` | number | Number of root keys |
+| `data.root_threshold` | number | Number of root signatures required |
+| `data.snapshot_expiration` | number | Snapshot metadata expiration in days |
+| `data.snapshot_num_keys` | number | Number of snapshot keys |
+| `data.snapshot_threshold` | number | Snapshot signature threshold |
+| `data.targets_expiration` | number | Targets metadata expiration in days |
+| `data.targets_num_keys` | number | Number of targets keys |
+| `data.targets_online_key` | number | Number of online targets keys |
+| `data.targets_threshold` | number | Targets signature threshold |
+| `data.timestamp_expiration` | number | Timestamp metadata expiration in days |
+| `data.timestamp_num_keys` | number | Number of timestamp keys |
+| `data.timestamp_threshold` | number | Timestamp signature threshold |
+| `message` | string | `"Current Settings"` on success |
+
+## Notes
+
+- Requires a valid JWT in the `Authorization` header (admin user).
+- Config is stored in Redis; this endpoint returns the current in-memory repository settings for the given app.
+- A `404` response means the app has not been bootstrapped yet or the repository config is missing—run [Start Bootstrap](/docs/api/tuf/start_bootstrap) first.
+- Use the returned values to understand key counts and expiration settings before performing [metadata rotation](/docs/api/tuf/metadata_rotation) or other TUF operations.
