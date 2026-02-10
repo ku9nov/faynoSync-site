@@ -1,0 +1,87 @@
+---
+title: Delete Unsigned Metadata
+---
+
+# Delete Unsigned Metadata
+
+Cancel the signing process by **deleting unsigned metadata** (the draft) from Redis. Use this endpoint when you need to **abort** a root signing flow that was started via [Metadata rotation](/docs/api/tuf/metadata_rotation) with empty or incomplete signatures. The server removes the draft (e.g. under `ROOT_SIGNING_<admin>_<app>`) so that no metadata is left pending signing.
+
+After a successful call, there is no longer any unsigned root to [retrieve](/docs/api/tuf/get_unsigned_root_metadata) or [add signatures](/docs/api/tuf/post_unsigned_root_metadata) to; you can start a new rotation later if needed.
+
+## Endpoint
+
+```
+POST /tuf/v1/metadata/sign/delete?appName=<app_name>
+```
+
+## Headers
+
+| Header | Value |
+|--------|-------|
+| `Content-Type` | `application/json` |
+| `Authorization` | `Bearer <token>` |
+
+## Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `appName` | string | ✅ | Name of the application whose unsigned metadata to delete |
+
+## Request Body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `role` | string | ✅ | Role whose signing draft to remove; use `"root"` for root metadata |
+
+## Example Request
+
+```bash
+curl --location 'http://localhost:9000/tuf/v1/metadata/sign/delete?appName=<app_name>' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer <jwt_token>' \
+--data '{
+  "role": "root"
+}'
+```
+
+## Response
+
+### Success Response (202 Accepted)
+
+When the unsigned metadata (draft) is found and deletion is accepted, it runs in the background:
+
+```json
+{
+  "data": {
+    "task_id": "bc1b28ea-08e9-475c-a9c6-00d177ae35f0",
+    "last_update": "2026-02-05T14:46:24.064325+02:00"
+  },
+  "message": "Metadata sign delete accepted."
+}
+```
+
+### Error Response (400 Bad Request)
+
+When there is no signing process in progress for the given role (no draft in Redis):
+
+```json
+{
+  "error": "The root role is not in a signing process.",
+  "message": "No signing process for root."
+}
+```
+
+### Response Fields (202 Accepted)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `data.task_id` | string | UUID of the background task; use [Check Task](/docs/api/tuf/check_tasks) to verify completion |
+| `data.last_update` | string | ISO8601 timestamp when the delete was accepted |
+| `message` | string | `"Metadata sign delete accepted."` |
+
+## Notes
+
+- Requires a valid JWT in the `Authorization` header (admin user).
+- Use this endpoint only when you want to **cancel** the root signing process (e.g. after [Metadata rotation](/docs/api/tuf/metadata_rotation) with incomplete signatures). The draft is removed from Redis; the current trusted root is **not** changed.
+- If the root role is **not** in a signing process (no draft stored), the server returns **400** with "The root role is not in a signing process." / "No signing process for root."
+- When `task_id` is present, poll [Check Task](/docs/api/tuf/check_tasks) until the task completes to ensure the draft has been removed.
