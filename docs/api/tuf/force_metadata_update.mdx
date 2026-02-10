@@ -1,0 +1,108 @@
+---
+title: Force Metadata Update
+---
+
+# Force Metadata Update
+
+Trigger a **background update** (regeneration and signing) of TUF metadata for the **online roles**: snapshot, timestamp, and optionally targets. Use this endpoint when bootstrap is already complete and you need to "roll" metadata versions and re-sign (e.g. after changes to targets, or simply to refresh snapshot and timestamp).
+
+**When to use:**
+
+- Bootstrap is **completed** (status is not empty and not in a pre-* or signing-* state).
+- You want to force-update metadata for **snapshot** and **timestamp** (and optionally **targets** if it uses an online key).
+
+The operation runs in the background; use the returned `task_id` with [Check Task](/docs/api/tuf/check_tasks) to verify completion.
+
+## Endpoint
+
+```
+POST /tuf/v1/metadata/online?appName=<app_name>
+```
+
+## Headers
+
+| Header | Value |
+|--------|-------|
+| `Content-Type` | `application/json` |
+| `Authorization` | `Bearer <token>` |
+
+## Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `appName` | string | ✅ | Name of the application whose TUF metadata to update |
+
+## Request Body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `roles` | array of strings | ❌ | Roles to update: `"snapshot"`, `"timestamp"`, and optionally `"targets"`. Do **not** include `"root"`—root is updated via [Metadata rotation](/docs/api/tuf/metadata_rotation). If omitted or empty, defaults apply (see below). |
+
+### Default behavior when `roles` is omitted or empty
+
+- The server uses **`["snapshot", "timestamp"]`** by default.
+- If **targets** is configured to use an **online key** (e.g. `TARGETS_ONLINE_KEY_...` is `"true"` / `"1"` / `"True"`), **`"targets"`** is added to the list automatically.
+
+### Including `"targets"` when targets is offline
+
+If you pass **`"targets"`** in `roles` but the targets role is configured as **offline**, the server returns **404** with a message that targets is offline and a different update method is required (e.g. signing targets metadata manually or via another flow).
+
+## Example Request
+
+```bash
+curl --location 'http://localhost:9000/tuf/v1/metadata/online?appName=<app_name>' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer <jwt_token>' \
+--data '{
+  "roles": ["targets", "snapshot", "timestamp"]
+}'
+```
+
+## Response
+
+### Success Response (200 OK)
+
+When the update is accepted, it runs in the background:
+
+```json
+{
+  "data": {
+    "task_id": "0340496a-90bb-46b1-bc3c-e5c66cf98149",
+    "last_update": "2026-02-05T14:31:57.992386+02:00"
+  },
+  "message": "Force online metadata update accepted."
+}
+```
+
+### Error Response (400 Bad Request)
+
+When `"root"` is included in `roles`:
+
+```json
+{
+  "error": "Root role cannot be updated via this endpoint"
+}
+```
+
+Root metadata must be updated via [Metadata rotation](/docs/api/tuf/metadata_rotation) and the signing flow, not this endpoint.
+
+### Error Response (404 Not Found)
+
+When `"targets"` is in `roles` but the targets role is configured as **offline**:
+
+The server returns 404 with a message that targets is offline and that another method is required to update targets metadata.
+
+### Response Fields (200 OK)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `data.task_id` | string | UUID of the background task; use [Check Task](/docs/api/tuf/check_tasks) to verify completion |
+| `data.last_update` | string | ISO8601 timestamp when the update was accepted |
+| `message` | string | `"Force online metadata update accepted."` |
+
+## Notes
+
+- Requires a valid JWT in the `Authorization` header (admin user).
+- The repository must already be [bootstrapped](/docs/api/tuf/start_bootstrap) and not in a pre-* or signing-* state.
+- Use this endpoint to refresh **snapshot** and **timestamp** (and **targets** when it uses an online key) after changes or on a schedule. For root updates, use [Metadata rotation](/docs/api/tuf/metadata_rotation) and the signing flow instead.
+- When `task_id` is present, poll [Check Task](/docs/api/tuf/check_tasks) until the task completes to ensure metadata has been regenerated and published to S3.
