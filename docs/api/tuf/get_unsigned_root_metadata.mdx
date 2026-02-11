@@ -1,0 +1,116 @@
+---
+title: Get Unsigned Root Metadata
+---
+
+# Get Unsigned Root Metadata
+
+Retrieve the root metadata that is currently stored in Redis and **not yet fully signed** (the draft created after [Metadata rotation](/docs/api/tuf/metadata_rotation) with empty or incomplete signatures). The response includes both the **unsigned draft** (`root` with `signatures: []` or partial) and the **current trusted root** (`trusted_root` with full signatures) so you can see what needs to be signed and by which keyids.
+
+Use this endpoint as a helper when collecting signatures: after sending a new root via `POST /tuf/v1/metadata` with no or partial signatures, call **GET** on this path to fetch the draft and the trusted root. You can then have each key holder sign the draft and submit their signature via [Add Signature to Root Metadata](/docs/api/tuf/post_unsigned_root_metadata).
+
+## Endpoint
+
+```
+GET /tuf/v1/metadata/sign?appName=<app_name>
+```
+
+## Headers
+
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <token>` |
+
+## Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `appName` | string | ✅ | Name of the application whose unsigned root metadata to retrieve |
+
+## Example Request
+
+```bash
+curl --location 'http://localhost:9000/tuf/v1/metadata/sign?appName=<app_name>' \
+--header 'Authorization: Bearer <jwt_token>'
+```
+
+## Response
+
+### Success Response — Metadata Pending Signing (200 OK)
+
+When there is a root draft in Redis (e.g. under `ROOT_SIGNING_<admin>_<app>`), the server returns the unsigned root and the current trusted root:
+
+```json
+{
+  "data": {
+    "metadata": {
+      "root": {
+        "signatures": [],
+        "signed": {
+          "_type": "root",
+          "consistent_snapshot": true,
+          "expires": "2028-01-29T12:47:14Z",
+          "keys": {
+            "<key_id>": {
+              "keytype": "ed25519",
+              "keyval": { "public": "<public_key_hex>" },
+              "scheme": "ed25519"
+            }
+          },
+          "roles": {
+            "root": { "keyids": ["<key_id>", ...], "threshold": 2 },
+            "snapshot": { "keyids": ["<key_id>"], "threshold": 1 },
+            "targets": { "keyids": ["<key_id>"], "threshold": 1 },
+            "timestamp": { "keyids": ["<key_id>"], "threshold": 1 }
+          },
+          "spec_version": "1.0.31",
+          "version": 2
+        }
+      },
+      "trusted_root": {
+        "signatures": [
+          { "keyid": "<key_id>", "sig": "<signature_hex>" }
+        ],
+        "signed": {
+          "_type": "root",
+          "consistent_snapshot": true,
+          "expires": "2027-01-29T12:47:14Z",
+          "keys": { ... },
+          "roles": { ... },
+          "spec_version": "1.0.31",
+          "version": 1
+        }
+      }
+    }
+  },
+  "message": "Metadata role(s) pending signing"
+}
+```
+
+- **`data.metadata.root`** — The new root draft (unsigned or partially signed). Use `root.signed` to know what each key must sign; `root.signatures` may be empty or partial.
+- **`data.metadata.trusted_root`** — The current trusted root (fully signed). Useful to compare keyids and roles with the new root.
+
+### Success Response — Nothing Pending (200 OK)
+
+When there is no root draft in Redis (everything is already signed or no rotation was started):
+
+```json
+{
+  "data": null,
+  "message": "No metadata pending signing available"
+}
+```
+
+### Response Fields (when metadata pending)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `data.metadata.root` | object | New root metadata draft: `signatures` (array, may be empty or partial) and `signed` (root payload: keys, roles, version, expires, etc.) |
+| `data.metadata.trusted_root` | object | Current trusted root: `signatures` (full list) and `signed` (root payload) |
+| `message` | string | `"Metadata role(s) pending signing"` or `"No metadata pending signing available"` |
+
+## Notes
+
+- Requires a valid JWT in the `Authorization` header (admin user).
+- Use **GET** on this path to **retrieve** unsigned metadata; use **POST** on the same path to [add a signature](/docs/api/tuf/post_unsigned_root_metadata).
+- When `data.metadata` is present, a draft exists in Redis (e.g. after [Metadata rotation](/docs/api/tuf/metadata_rotation) with incomplete signatures). Use the returned `root.signed` and `trusted_root` to have key holders produce signatures, then submit each via POST `/tuf/v1/metadata/sign`.
+- When `data` is `null`, there is no metadata pending signing—either no draft was stored or the root has already been finalized and the Redis key removed.
