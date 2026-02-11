@@ -1,0 +1,120 @@
+---
+title: Add Signature to Root Metadata
+---
+
+# Add Signature to Root Metadata
+
+Add **one** signature to root metadata that is already stored in Redis (e.g. after [Metadata rotation](/docs/api/tuf/metadata_rotation) with empty or incomplete `signatures`). The server appends the signature to the list, checks the root role threshold; when the threshold is reached, root (and targets) are finalized, the Redis key is removed, and the updated metadata is published to S3.
+
+Use this endpoint when you have sent a root via `POST /tuf/v1/metadata` with no or partial signatures. The server then holds a draft under a key such as `ROOT_SIGNING_<admin>_<app>` in Redis. **Each request adds a single key's signature**; call the endpoint in sequence (e.g. once per root key holder) until the root threshold is met.
+
+:::info Example: threshold 2 with key rotation
+
+If the root role has `threshold: 2` and you are rotating from two old keys to two new keys, you must submit **four** signatures in total: two from the old keyids and two from the new keyids. Send one signature per request; the error response tells you which keyids are still missing (old vs new).
+
+:::
+
+## Endpoint
+
+```
+POST /tuf/v1/metadata/sign?appName=<app_name>
+```
+
+## Headers
+
+| Header | Value |
+|--------|-------|
+| `Content-Type` | `application/json` |
+| `Authorization` | `Bearer <token>` |
+
+## Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `appName` | string | ✅ | Name of the application whose root metadata is being signed |
+
+## Request Body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `role` | string | ✅ | Role being signed; use `"root"` for root metadata |
+| `signature` | object | ✅ | A single signature: `keyid` and `sig` (hex) from one root key |
+| `signature.keyid` | string | ✅ | Key ID of the signer (hex) |
+| `signature.sig` | string | ✅ | Signature bytes in hex |
+
+## Example Request
+
+```bash
+curl --location 'http://localhost:9000/tuf/v1/metadata/sign?appName=<app_name>' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer <jwt_token>' \
+--data '{
+  "role": "root",
+  "signature": {
+    "keyid": "18aa7db1a150ab12b7fcd143d782afec2ba2600d654d352557b9d048a0d7b6b0",
+    "sig": "110df00870d2b87f40c4422183d5edc753ac66eb7d6ba692121888f4b43d975adaf4a5831170c90ab4990796a1c37b4b5afd3a042bccae85de20270fcadd9c09"
+  }
+}'
+```
+
+## Response
+
+### Success Response (200 OK)
+
+When the threshold is reached after adding this signature, the server finalizes the root, removes the draft from Redis, and publishes to S3:
+
+```json
+{
+  "data": {
+    "task_id": "4ff21bf0-982b-4248-9282-31dcf04b358d",
+    "last_update": "2026-02-05T14:00:12.238659+02:00"
+  },
+  "message": "Metadata update finished"
+}
+```
+
+### Error Response (400 Bad Request)
+
+When the signature is invalid or the threshold is not yet reached, the server returns progress and lists which keyids still need to sign:
+
+**Example (1st request — 1 of 4 collected):**
+
+```json
+{
+  "error": "Invalid signature or threshold not reached: unsigned metadata error: Verifying root failed, not enough signatures, got 1, want 2 Progress: 1/4 signatures collected (0 old + 1 new). 3 more required (2 old + 1 new). New keys signed: [18aa7db1a150ab12b7fcd143d782afec2ba2600d654d352557b9d048a0d7b6b0]. Missing old keys: [968352800a111846dad3f17a9371eb09a273ddef7c774252801be50cfda5520d 9faebed624cd1be5521cc9b5c4285afb441a1d042053c78229da2ef8336a33f0]. Missing new keys: [42d7f85d3981872a7b687a3c11a8d6adc856b9048242784cfeeae88ec4bf69a5].",
+  "message": "Signature Failed"
+}
+```
+
+**Example (3rd request — 3 of 4 collected):**
+
+```json
+{
+  "error": "Invalid signature or threshold not reached: unsigned metadata error: Verifying root failed, not enough signatures, got 1, want 2 Progress: 3/4 signatures collected (1 old + 2 new). 1 more required (1 old + 0 new). Old keys signed: [968352800a111846dad3f17a9371eb09a273ddef7c774252801be50cfda5520d]. New keys signed: [18aa7db1a150ab12b7fcd143d782afec2ba2600d654d352557b9d048a0d7b6b0 42d7f85d3981872a7b687a3c11a8d6adc856b9048242784cfeeae88ec4bf69a5]. Missing old keys: [9faebed624cd1be5521cc9b5c4285afb441a1d042053c78229da2ef8336a33f0].",
+  "message": "Signature Failed"
+}
+```
+
+The `error` field includes:
+
+- **Progress:** `X/Y signatures collected (A old + B new)` — how many signatures have been submitted and how many old vs new keyids have signed.
+- **Missing old keys:** keyids from the previous root that have not yet signed.
+- **Missing new keys:** keyids from the new root that have not yet signed.
+
+Use this to know which key must sign next until the threshold is satisfied.
+
+### Response Fields (200 OK)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `data.task_id` | string | UUID of the background task; use [Check Task](/docs/api/tuf/check_tasks) to verify publication completed |
+| `data.last_update` | string | ISO8601 timestamp when the metadata was finalized |
+| `message` | string | `"Metadata update finished"` |
+
+## Notes
+
+- Requires a valid JWT in the `Authorization` header (admin user).
+- Use this endpoint **only after** [Metadata rotation](/docs/api/tuf/metadata_rotation) with incomplete signatures; the server must have a draft in Redis under `ROOT_SIGNING_<admin>_<app>`.
+- **One signature per request.** Repeat the call with different keyids until the root threshold is met. The 400 response lists missing old and new keyids to guide the next signer.
+- When the threshold is reached, the server finalizes root (and targets), deletes the Redis draft, and publishes to S3; you receive `200 OK` and can use `task_id` with [Check Task](/docs/api/tuf/check_tasks) to confirm.
+- Signatures must be produced offline (or in your signing pipeline) with the private keys corresponding to the keyids in the root metadata.
