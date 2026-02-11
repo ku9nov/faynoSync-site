@@ -1,0 +1,152 @@
+---
+title: Start Bootstrap
+---
+
+# Start Bootstrap
+
+Start the TUF bootstrap process for an application. Bootstrap initializes the TUF repository (root and role metadata, expiration settings, and delegations) for the given app. The operation runs in the background; use the returned `task_id` to check progress if needed.
+
+Call [Check Bootstrap](/docs/api/tuf/check_bootstrap) first to ensure bootstrap has not already been completed for this admin and app.
+
+## Endpoint
+
+```
+POST /tuf/v1/bootstrap
+```
+
+## Headers
+
+| Header | Value |
+|--------|-------|
+| `Content-Type` | `application/json` |
+| `Authorization` | `Bearer <token>` |
+
+## Request Body
+
+The body must be a JSON object with TUF bootstrap payload: role settings, root metadata (signed), and the application name.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `appName` | string | ✅ | Name of the application to bootstrap |
+| `settings` | object | ✅ | Role and delegation settings (expiration for root, timestamp, snapshot, targets; delegations keys and roles with paths) |
+| `metadata` | object | ✅ | TUF metadata; must include signed `root` metadata with `signatures` and `signed` (keys, roles, version, spec_version, expires, etc.) |
+
+### Generating the payload
+
+The bootstrap payload is TUF-specific and must be generated before calling this endpoint. You can:
+
+- **Use the FaynoSync admin panel** — it can generate a script that produces the required files and payload for your instance.
+- **Generate it manually** — follow [The Update Framework (TUF) documentation](https://theupdateframework.io/) and use TUF tooling to create root metadata, sign it, and build the `settings` and `metadata` structure expected by this API.
+
+The `settings.roles` object defines expiration (in days) for each role (`root`, `timestamp`, `snapshot`, `targets`) and `delegations` (keys and roles with keyids, threshold, and paths). The `metadata.root` object must contain `signatures` (array of keyid + sig) and `signed` (root content: keys, roles, version, spec_version, expires, consistent_snapshot).
+
+## Example Request
+
+```bash
+curl --location 'http://localhost:9000/tuf/v1/bootstrap' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer <jwt_token>' \
+--data '{
+  "settings": {
+    "roles": {
+      "root": { "expiration": 364 },
+      "timestamp": { "expiration": 1 },
+      "snapshot": { "expiration": 6 },
+      "targets": { "expiration": 6 },
+      "delegations": {
+        "keys": {
+          "<key_id>": {
+            "keytype": "ed25519",
+            "scheme": "ed25519",
+            "keyval": { "public": "<public_key_hex>" }
+          }
+        },
+        "roles": [
+          {
+            "name": "default",
+            "terminating": false,
+            "keyids": ["<key_id>"],
+            "threshold": 1,
+            "paths": ["<owner>/tuf/", "tuf-<owner>/", "electron-builder/tuf-<owner>/", "squirrel_windows/tuf-<owner>/"]
+          }
+        ]
+      }
+    }
+  },
+  "metadata": {
+    "root": {
+      "signatures": [
+        { "keyid": "<key_id>", "sig": "<signature_hex>" }
+      ],
+      "signed": {
+        "_type": "root",
+        "version": 1,
+        "spec_version": "1.0.31",
+        "expires": "<ISO8601>",
+        "consistent_snapshot": true,
+        "keys": { ... },
+        "roles": {
+          "root": { "keyids": [...], "threshold": 2 },
+          "timestamp": { "keyids": [...], "threshold": 1 },
+          "snapshot": { "keyids": [...], "threshold": 1 },
+          "targets": { "keyids": [...], "threshold": 1 }
+        }
+      }
+    }
+  },
+  "appName": "<app_name>"
+}'
+```
+
+Use the script or instructions from the FaynoSync admin panel to generate the full payload with real keys and signatures for your environment.
+
+## Response
+
+### Bootstrap Accepted (200 OK)
+
+When bootstrap has not been completed yet, the request is accepted and bootstrap runs in the background:
+
+```json
+{
+  "data": {
+    "last_update": "2026-02-04T14:28:12+02:00",
+    "task_id": "ecca335d-9192-4fc2-bbb0-3d7a38a55c84"
+  },
+  "message": "Bootstrap accepted and started in background"
+}
+```
+
+### Bootstrap Already Completed
+
+When bootstrap has already been completed for this admin and app, the API returns an error and the existing task info:
+
+```json
+{
+  "data": {
+    "admin": "ku9n",
+    "app": "tuf",
+    "status": "completed",
+    "task_id": "ecca335d-9192-4fc2-bbb0-3d7a38a55c84"
+  },
+  "error": "Bootstrap already completed for this admin and app"
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `data.last_update` | string | ISO8601 timestamp of the last update (when bootstrap was accepted) |
+| `data.task_id` | string | UUID of the bootstrap task; use it to check task status if needed |
+| `data.admin` | string | Admin username (present when bootstrap was already completed) |
+| `data.app` | string | Application name (present when bootstrap was already completed) |
+| `data.status` | string | Task status, e.g. `"completed"` (present when bootstrap was already completed) |
+| `message` | string | `"Bootstrap accepted and started in background"` when the bootstrap was started |
+| `error` | string | `"Bootstrap already completed for this admin and app"` when bootstrap had already been done |
+
+## Notes
+
+- Requires a valid JWT in the `Authorization` header (admin user).
+- The request payload must be generated externally (TUF tooling or the script from the FaynoSync admin panel); the API does not generate keys or sign root metadata for you.
+- Bootstrap runs asynchronously; use `task_id` with the task-status API if you need to wait for completion.
+- Paths in `delegations.roles[].paths` should match how your app and updaters (e.g. electron-builder, squirrel_windows) store TUF metadata (e.g. `<owner>/tuf/`, `tuf-<owner>/`).

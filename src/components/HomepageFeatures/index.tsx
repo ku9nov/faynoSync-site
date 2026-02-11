@@ -219,7 +219,7 @@ const features = [
   {
     icon: <Shield className="h-8 w-8" />,
     title: 'Security',
-    description: 'Keep your S3 buckets and applications private — downloads are only accessible through authenticated access.',
+    description: 'Keep your S3 buckets and applications private — downloads are only accessible through authenticated access and verified with The Update Framework (TUF).',
     color: featureColors[1],
   },
   {
@@ -293,7 +293,7 @@ const benefits = [
   {
     icon: <Shield className="h-6 w-6" />,
     title: 'Enterprise Security',
-    description: 'Advanced authentication and authorization systems to protect your applications and user data.'
+    description: 'Advanced authentication, authorization, and TUF-signed builds to protect your applications from unauthorized access and supply-chain attacks.'
   },
   {
     icon: <RefreshCw className="h-6 w-6" />,

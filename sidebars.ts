@@ -124,6 +124,26 @@ const sidebars: SidebarsConfig = {
             'api/info/whoami',
           ],
         },
+        {
+          type: 'category',
+          label: 'TUF',
+          link: { type: 'doc', id: 'api/tuf/tuf-introduction' },
+          items: [
+            'api/tuf/check_bootstrap',
+            'api/tuf/start_bootstrap',
+            'api/tuf/check_tasks',
+            'api/tuf/publish',
+            'api/tuf/delete_artifact',
+            'api/tuf/get_config',
+            'api/tuf/put_config',
+            'api/tuf/metadata_rotation',
+            'api/tuf/get_unsigned_root_metadata',
+            'api/tuf/post_unsigned_root_metadata',
+            'api/tuf/delete_unsigned_metadata',
+            'api/tuf/force_metadata_update',
+            'api/tuf/get_current_root_metadata',
+          ],
+        },
       ],
     },
     'performance',
@@ -132,16 +152,16 @@ const sidebars: SidebarsConfig = {
     'intermediate_build', 
     'updaters',
     'troubleshooting',
-    {
-      type: 'category',
-      label: 'TUF Reference',
-      link: { type: 'doc', id: 'tuf-integration/TUF' },
-      collapsed: false,
-      items: [
-        'tuf-integration/generate/generation',
-        'tuf-integration/bootstrap/bootstrap',
-      ],
-    },
+    // {
+    //   type: 'category',
+    //   label: 'TUF Reference',
+    //   link: { type: 'doc', id: 'tuf-integration/TUF' },
+    //   collapsed: false,
+    //   items: [
+    //     'tuf-integration/generate/generation',
+    //     'tuf-integration/bootstrap/bootstrap',
+    //   ],
+    // },
   ],
 };
 
