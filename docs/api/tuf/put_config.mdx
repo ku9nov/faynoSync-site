@@ -1,0 +1,89 @@
+---
+title: Put Config
+---
+
+# Put Config
+
+Update the TUF repository configuration for an application. Only a subset of settings can be changed via this endpoint: the **expiration** values (in days) for the **targets**, **snapshot**, and **timestamp** roles. Other config values (e.g. root expiration, key counts, thresholds) are set at bootstrap and are not updated here.
+
+The update runs in the background. Use the returned `task_id` with [Check Task](/docs/api/tuf/check_tasks) to verify completion. To read the current config, use [Get Config](/docs/api/tuf/get_config).
+
+## Endpoint
+
+```
+PUT /tuf/v1/config?appName=<app_name>
+```
+
+## Headers
+
+| Header | Value |
+|--------|-------|
+| `Content-Type` | `application/json` |
+| `Authorization` | `Bearer <token>` |
+
+## Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `appName` | string | ✅ | Name of the application whose TUF config to update |
+
+## Request Body
+
+Only the following fields are updatable. All values are expiration periods in **days**.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `settings.expiration.targets` | number | ❌ | Targets metadata expiration in days |
+| `settings.expiration.snapshot` | number | ❌ | Snapshot metadata expiration in days |
+| `settings.expiration.timestamp` | number | ❌ | Timestamp metadata expiration in days |
+
+Include only the expiration values you want to change. Omitted fields keep their current values.
+
+## Example Request
+
+```bash
+curl --location --request PUT 'http://localhost:9000/tuf/v1/config?appName=<app_name>' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer <jwt_token>' \
+--data '{
+  "settings": {
+    "expiration": {
+      "targets": 100,
+      "snapshot": 50,
+      "timestamp": 20
+    }
+  }
+}'
+```
+
+## Response
+
+### Success Response (202 Accepted)
+
+When the config update is accepted, it is applied in the background:
+
+```json
+{
+  "data": {
+    "task_id": "25626a1a-ddf8-4647-b70b-292d426f960d",
+    "last_update": "2026-02-04T18:48:48.128053+02:00"
+  },
+  "message": "Settings successfully submitted."
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `data.task_id` | string | UUID of the background task; use [Check Task](/docs/api/tuf/check_tasks) to verify completion |
+| `data.last_update` | string | ISO8601 timestamp when the update was submitted |
+| `message` | string | `"Settings successfully submitted."` |
+
+## Notes
+
+- Requires a valid JWT in the `Authorization` header (admin user).
+- Only **expiration** for **targets**, **snapshot**, and **timestamp** can be updated. Root expiration, key counts, and thresholds are fixed at bootstrap.
+- The repository must already be bootstrapped for this app; otherwise the config cannot be updated.
+- When `task_id` is present, poll [Check Task](/docs/api/tuf/check_tasks) until the task completes to ensure the new settings are applied.
+- Use [Get Config](/docs/api/tuf/get_config) to read the current config before or after updating.
