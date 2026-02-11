@@ -1,0 +1,123 @@
+---
+title: Metadata Rotation
+---
+
+# Metadata Rotation
+
+Start or complete a root metadata rotation (root key rotation) for a TUF repository. You send the new root metadata; the server either finalizes and publishes it to S3 (when the signature threshold is met) or stores a draft in Redis for later signing.
+
+Use this endpoint when you need to rotate root keys, extend root expiration, or update the root metadata. The operation may complete immediately or require additional signatures via the [sign endpoint](/docs/api/tuf/post_unsigned_root_metadata).
+
+## Two flows
+
+### 1. Root with all signatures (threshold met)
+
+Send `metadata.root` with a full set of `signatures` that satisfy the root role's threshold.
+
+**Result:** The server validates the root, finalizes the update, saves it to S3, and returns `200 OK` with a `task_id`. The new root is published.
+
+### 2. Root with no or incomplete signatures
+
+Send `metadata.root` with `signatures: []` or with fewer signatures than the threshold.
+
+**Result:** The server validates the root content but cannot finalize (signatures insufficient). It stores this root in Redis under a key such as `ROOT_SIGNING_<admin>_<app>` and returns `200 OK`. You then add signatures one by one via [POST unsigned root metadata](/docs/api/tuf/post_unsigned_root_metadata) until the threshold is met; the server will then finalize and publish.
+
+## Endpoint
+
+```
+POST /tuf/v1/metadata?appName=<app_name>
+```
+
+## Headers
+
+| Header | Value |
+|--------|-------|
+| `Content-Type` | `application/json` |
+| `Authorization` | `Bearer <token>` |
+
+## Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `appName` | string | ✅ | Name of the application whose TUF repository to rotate |
+
+## Request Body
+
+The body must be a JSON object with the new root metadata under `metadata.root`.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `metadata.root` | object | ✅ | New root metadata: `signatures` (array, may be empty or partial) and `signed` (root payload) |
+| `metadata.root.signatures` | array | ✅ | List of signatures (keyid + sig); may be `[]` or incomplete for draft flow |
+| `metadata.root.signed` | object | ✅ | Root payload: `_type`, `version`, `spec_version`, `expires`, `consistent_snapshot`, `keys`, `roles` |
+
+The `signed` object must include `keys` (keyid → key definition with keytype, scheme, keyval.public), `roles` (root, timestamp, snapshot, targets with keyids and threshold), and standard TUF root fields.
+
+## Example Request
+
+```bash
+curl --location 'http://localhost:9000/tuf/v1/metadata?appName=<app-name>' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer <jwt_token>' \
+--data '{
+  "metadata": {
+    "root": {
+      "signatures": [],
+      "signed": {
+        "_type": "root",
+        "consistent_snapshot": true,
+        "expires": "2026-12-21T12:52:51.723305Z",
+        "keys": {
+          "<key_id>": {
+            "keytype": "ed25519",
+            "scheme": "ed25519",
+            "keyval": { "public": "<public_key_hex>" }
+          }
+        },
+        "roles": {
+          "root": { "keyids": ["<key_id>", ...], "threshold": 2 },
+          "timestamp": { "keyids": ["<key_id>"], "threshold": 1 },
+          "snapshot": { "keyids": ["<key_id>"], "threshold": 1 },
+          "targets": { "keyids": ["<key_id>"], "threshold": 1 }
+        },
+        "spec_version": "1.0.31",
+        "version": 2
+      }
+    }
+  }
+}'
+```
+
+Use TUF tooling or the FaynoSync admin panel to generate the correct root payload and, when ready, signatures.
+
+## Response
+
+### Success Response (200 OK)
+
+The server accepts the root and either finalizes it (if threshold met) or stores a draft in Redis:
+
+```json
+{
+  "data": {
+    "task_id": "97423b94-b1b8-4649-a9b1-7de18b30e9a9",
+    "last_update": "2026-02-05T13:39:59.899287+02:00"
+  },
+  "message": "Metadata Update Processed"
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `data.task_id` | string | UUID of the background task; use [Check Task](/docs/api/tuf/check_tasks) to verify completion (e.g. when finalization runs) |
+| `data.last_update` | string | ISO8601 timestamp when the update was processed |
+| `message` | string | `"Metadata Update Processed"` |
+
+## Notes
+
+- Requires a valid JWT in the `Authorization` header (admin user).
+- The repository must already be [bootstrapped](/docs/api/tuf/start_bootstrap) for this app.
+- If you send a root with **no or incomplete signatures**, the server stores the draft in Redis; add signatures via [POST unsigned root metadata](/docs/api/tuf/post_unsigned_root_metadata) until the root threshold is met, then the server finalizes and publishes to S3.
+- If you send a root with **enough signatures**, the server validates, finalizes, and publishes in the background; use `task_id` with [Check Task](/docs/api/tuf/check_tasks) to confirm completion.
+- Root metadata (keys, roles, version, expires) is TUF-specific; generate it with TUF tooling or the FaynoSync admin panel.
