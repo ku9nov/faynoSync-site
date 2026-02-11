@@ -1,0 +1,104 @@
+---
+title: Publish Artifacts
+---
+
+# Publish Artifacts
+
+Sign all artifacts for a given application version with TUF metadata and publish the updated metadata to S3. After this endpoint runs, client applications that use TUF verification can trust and download those artifacts.
+
+You only need to pass the **app ID** and **version**; the API signs every artifact that belongs to that version (all channels, platforms, and architectures). The operation runs in the background and returns a `task_id`—use [Check Task](/docs/api/tuf/check_tasks) to poll for completion.
+
+:::important Important: TUF publish vs FaynoSync publish
+
+This endpoint is **not** related to the "publish" parameter or behavior of the regular FaynoSync app/version API. If you publish a version or upload artifacts using the standard FaynoSync API only, **client applications with TUF integration will not be able to download those new versions** until the artifacts are signed via this route.
+
+You **can** sign artifacts with this endpoint **before** the version is published (made available) via the normal FaynoSync API. Sign first, then publish the version when ready.
+
+:::
+
+## Endpoint
+
+```
+POST /tuf/v1/artifacts/publish
+```
+
+## Headers
+
+| Header | Value |
+|--------|-------|
+| `Content-Type` | `application/json` |
+| `Authorization` | `Bearer <token>` |
+
+## Request Body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `app_id` | string | ✅ | The unique identifier of the application |
+| `version` | string | ✅ | The version number whose artifacts should be signed (e.g. `0.0.0.5`) |
+
+## Example Request
+
+```bash
+curl --location 'http://localhost:9000/tuf/v1/artifacts/publish' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer <jwt_token>' \
+--data '{
+  "app_id": "69259667351f660c2fd62d39",
+  "version": "0.0.0.5"
+}'
+```
+
+## Response
+
+### Publishing Started (200 OK)
+
+When there are artifacts to sign, publishing is started in the background:
+
+```json
+{
+  "data": {
+    "app_id": "69259667351f660c2fd62d39",
+    "artifacts": [
+      "<app-name>-<admin-name>/<channel>/<platform>/<arch>/<app-name>-<version>"
+    ],
+    "last_update": "2026-02-04T16:59:30.428313+02:00",
+    "task_id": "28dbd3d4-a3f9-40a8-8e0b-94ad0437e36d",
+    "version": "0.0.0.5"
+  },
+  "message": "Artifact(s) publishing started"
+}
+```
+
+### All Artifacts Already Signed (200 OK)
+
+When all artifacts for this version are already signed with TUF metadata:
+
+```json
+{
+  "data": {
+    "app_id": "69259667351f660c2fd62d39",
+    "artifacts": [],
+    "version": "0.0.0.5"
+  },
+  "message": "All artifacts are already signed"
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `data.app_id` | string | Application ID from the request |
+| `data.artifacts` | array | List of artifact paths (e.g. `<app-name>-<admin>/<channel>/<platform>/<arch>/<app>-<version>`); empty when nothing needed signing |
+| `data.last_update` | string | ISO8601 timestamp when publishing was started (only when publishing started) |
+| `data.task_id` | string | UUID of the background task; use [Check Task](/docs/api/tuf/check_tasks) to verify completion (only when publishing started) |
+| `data.version` | string | Version from the request |
+| `message` | string | `"Artifact(s) publishing started"` or `"All artifacts are already signed"` |
+
+## Notes
+
+- Requires a valid JWT in the `Authorization` header (admin user).
+- This endpoint **signs existing artifacts** with TUF metadata and **uploads updated metadata to S3**; it does not upload the artifact files themselves. Artifacts must already exist (uploaded via the normal FaynoSync API).
+- TUF-enabled clients will only trust and download artifacts that have been signed via this route. Publishing a version through the standard FaynoSync API alone is not enough for TUF clients.
+- You may sign artifacts **before** making the version publicly available (publish) in FaynoSync.
+- When `task_id` is present, poll [Check Task](/docs/api/tuf/check_tasks) until the task completes to ensure metadata has been fully published.
