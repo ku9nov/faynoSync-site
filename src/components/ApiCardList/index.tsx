@@ -63,6 +63,13 @@ const apiCategories: ApiCategory[] = [
     color: '#6366F1',
     href: '/docs/api/info/info-introduction',
   },
+  {
+    title: 'TUF',
+    description: 'The Update Framework — metadata signing, bootstrap, rotation, and secure updates',
+    icon: '🔒',
+    color: '#059669',
+    href: '/docs/api/tuf/tuf-introduction',
+  },
 ];
 
 export default function ApiCardList(): JSX.Element {

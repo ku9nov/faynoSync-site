@@ -219,7 +219,7 @@ const features = [
   {
     icon: <Shield className="h-8 w-8" />,
     title: 'Security',
-    description: 'Keep your S3 buckets and applications private — downloads are only accessible through authenticated access and verified with The Update Framework (TUF).',
+    description: 'Keep your S3 buckets and applications private — downloads are only accessible through authenticated access or verified with The Update Framework (TUF).',
     color: featureColors[1],
   },
   {

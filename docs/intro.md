@@ -22,7 +22,7 @@ One of FaynoSync's key strengths is its flexibility and user control. Users can 
 
 - **Maximum Flexibility**: Define your channels, platforms, and architectures freely, giving you complete control over how your updates are managed.
 
-- **Security**: Keep your cloud storage buckets and applications private — downloads are only accessible through authenticated access with granular permissions.
+- **Security**: Keep your cloud storage buckets and applications private — downloads are only accessible through authenticated access with granular permissions. FaynoSync implements a TUF-inspired secure update system for metadata signing, verification, and rollback protection.
 
 - **Team Management**: Create and manage team users with fine-grained permissions, controlling access to applications and resources across your organization.
 

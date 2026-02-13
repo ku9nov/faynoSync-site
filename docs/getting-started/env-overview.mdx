@@ -19,6 +19,7 @@ To configure `FaynoSync`, you need to set the following environment variables. T
 | **Database** | `MONGODB_URL`, `MONGODB_URL_TESTS` |
 | **Security** | `API_KEY`, `JWT_SECRET` |
 | **Features** | `PERFORMANCE_MODE`, `ENABLE_TELEMETRY` |
+| **TUF** | `TUF_ENABLED`, `ONLINE_KEY_DIR` |
 | **Redis** | `REDIS_*` |
 | **Slack** | `SLACK_*` |
 
@@ -141,6 +142,26 @@ This setting enables performance optimizations within the application when set t
 This setting enables statistics when set to true.
 
 **Example:** `ENABLE_TELEMETRY=true`
+
+</details>
+
+### TUF Configuration
+
+<details>
+<summary><strong>TUF_ENABLED</strong></summary>
+
+Set to `true` to enable TUF (The Update Framework) functionality. This enables secure software update management with metadata signing, artifact publishing, and root key rotation capabilities.
+
+**Example:** `TUF_ENABLED=true`
+
+</details>
+
+<details>
+<summary><strong>ONLINE_KEY_DIR</strong></summary>
+
+Directory path where online signing keys are stored. These keys are used for online metadata signing operations in TUF.
+
+**Example:** `ONLINE_KEY_DIR=/private_keys`
 
 </details>
 
@@ -344,6 +365,12 @@ SLACK_ENABLE=false
 SLACK_BOT_TOKEN=xoxb-*
 SLACK_CHANNEL=test-channel
 ENABLE_TELEMETRY=true
+
+# =============================================================================
+# TUF (The Update Framework)
+# =============================================================================
+TUF_ENABLED=true
+ONLINE_KEY_DIR=/private_keys
 ```
 
 For convenience, you can also use the `.env.local` file, which contains all the variables already filled in. Ensure that your environment variables are properly set before running the application to avoid misconfigurations.
