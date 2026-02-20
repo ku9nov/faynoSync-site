@@ -1,0 +1,79 @@
+---
+title: Create Token
+---
+
+# Create Token
+
+Create a scoped automation token for upload workflows.
+
+## Endpoint
+
+```
+POST /token/create
+```
+
+## Authentication
+
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <jwt_token>` |
+| `Content-Type` | `application/json` |
+
+## Request Body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | ✅ | Display name of the token (duplicates are allowed) |
+| `allowed_apps` | array of string | ✅ | App IDs this token can upload to |
+| `expires_at` | string (ISO 8601) | ✅ | Expiration timestamp |
+
+## Example Request
+
+```bash
+curl --location 'http://localhost:9000/token/create' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer <jwt_token>' \
+--data '{
+  "name": "GitHub Actions - MyApp",
+  "allowed_apps": ["69259667351f660c2fd62d39", "69259667351f660c2fd62d40"],
+  "expires_at": "2026-12-31T00:00:00Z"
+}'
+```
+
+## Response
+
+### Success Response (201 Created)
+
+```json
+{
+  "allowed_apps": [
+    "69259667351f660c2fd62d39",
+    "69259667351f660c2fd62d40"
+  ],
+  "created_at": "2026-02-20T16:39:16.233976+02:00",
+  "expires_at": "2026-12-31T00:00:00Z",
+  "id": "699872148c1ed923e48bc2c9",
+  "name": "GitHub Actions - MyApp",
+  "token": "fns_22ba5585a1d3d9e2c7c42d4339ab486e34d965adc7a1a68534a8d72025deabd0",
+  "token_prefix": "fns_22ba5585"
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Token identifier |
+| `name` | string | Token display name |
+| `allowed_apps` | array of string | Effective list of app IDs allowed for upload |
+| `expires_at` | string | Expiration timestamp |
+| `created_at` | string | Creation timestamp |
+| `token` | string | Full token secret, returned only once |
+| `token_prefix` | string | Short non-secret prefix for identification |
+
+## Notes
+
+- Save `token` immediately. It cannot be fetched again later.
+- `allowed_apps` may be normalized to unique app IDs in the response.
+- Token names can be reused across multiple tokens.
+- Tokens cannot be updated after creation; revoke and recreate if needed.

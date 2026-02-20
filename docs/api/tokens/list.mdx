@@ -1,0 +1,73 @@
+---
+title: List Tokens
+---
+
+# List Tokens
+
+Return all tokens visible to the authenticated administrator.
+
+## Endpoint
+
+```
+GET /token/list
+```
+
+## Authentication
+
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <jwt_token>` |
+
+## Example Request
+
+```bash
+curl --location 'http://localhost:9000/token/list' \
+--header 'Authorization: Bearer <jwt_token>'
+```
+
+## Response
+
+### Success Response (200 OK)
+
+```json
+{
+  "tokens": [
+    {
+      "id": "699872148c1ed923e48bc2c9",
+      "name": "GitHub Actions - MyApp",
+      "token_prefix": "fns_22ba5585",
+      "allowed_apps": [
+        "69259667351f660c2fd62d39",
+        "69259667351f660c2fd62d40"
+      ],
+      "expires_at": "2026-12-31T00:00:00Z",
+      "last_used_at": "2026-02-20T14:46:18.133Z",
+      "created_at": "2026-02-20T14:39:16.233Z"
+    }
+  ]
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `tokens` | array | List of token objects |
+
+#### Token Object Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Token identifier |
+| `name` | string | Token display name |
+| `token_prefix` | string | Non-secret token prefix for identification |
+| `allowed_apps` | array of string | App IDs this token can upload to |
+| `expires_at` | string | Expiration timestamp |
+| `last_used_at` | string or null | Last successful usage timestamp |
+| `created_at` | string | Creation timestamp |
+
+## Notes
+
+- Full token secret values are never returned by this endpoint.
+- Use `token_prefix` and `id` to identify the token you want to revoke.
+- This endpoint is useful for token audits and cleanup.

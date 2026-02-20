@@ -126,6 +126,16 @@ const sidebars: SidebarsConfig = {
         },
         {
           type: 'category',
+          label: 'CI/CD Token Management',
+          link: { type: 'doc', id: 'api/tokens/tokens-introduction' },
+          items: [
+            'api/tokens/create',
+            'api/tokens/list',
+            'api/tokens/delete',
+          ],
+        },
+        {
+          type: 'category',
           label: 'TUF',
           link: { type: 'doc', id: 'api/tuf/tuf-introduction' },
           items: [

@@ -70,6 +70,13 @@ const apiCategories: ApiCategory[] = [
     color: '#059669',
     href: '/docs/api/tuf/tuf-introduction',
   },
+  {
+    title: 'Tokens',
+    description: 'Create, list, and revoke scoped automation tokens for uploads',
+    icon: '🪙',
+    color: '#0EA5E9',
+    href: '/docs/api/tokens/tokens-introduction',
+  },
 ];
 
 export default function ApiCardList(): JSX.Element {

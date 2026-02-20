@@ -1,0 +1,59 @@
+---
+title: Delete Token
+---
+
+# Delete Token
+
+Revoke a token by ID. Revoked tokens can no longer be used.
+
+## Endpoint
+
+```
+DELETE /token/delete
+```
+
+## Authentication
+
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <jwt_token>` |
+| `Content-Type` | `application/json` |
+
+## Request Body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | ✅ | Token ID to revoke |
+
+## Example Request
+
+```bash
+curl --location --request DELETE 'http://localhost:9000/token/delete' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer <jwt_token>' \
+--data '{
+  "id": "69972c0c93be639a3a718e6b"
+}'
+```
+
+## Response
+
+### Success Response (200 OK)
+
+```json
+{
+  "message": "Token revoked"
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `message` | string | Confirmation that the token was revoked |
+
+## Notes
+
+- Token revocation is the only way to change token access or lifetime.
+- After deletion, create a new token if you need updated `allowed_apps` or expiration.
+- Deleted tokens cannot be restored.

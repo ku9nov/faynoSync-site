@@ -1,0 +1,30 @@
+---
+title: CI/CD Token Management
+description: Personal access tokens for upload automation with scoped application access
+---
+
+# CI/CD Token Management
+
+Use tokens when you want to automate uploads without sharing a full user JWT in CI/CD pipelines or scripts.
+
+Tokens are created by an administrator and are currently designed for one primary use case: uploading new app versions. This keeps automation simple and safer than broad account credentials.
+
+## What tokens can do
+
+- Upload new versions of applications (primary purpose)
+- Read lists of apps, channels, platforms, and architectures
+
+## What tokens cannot do
+
+- Use most non-token routes (you should expect authorization errors there)
+- Update token configuration after creation
+- Recover full token value after creation (it is shown only once)
+
+## Important behavior
+
+1. **One-time secret display**: The `token` field is returned only once during creation. Save it immediately in your secret manager.
+2. **Scoped uploads**: You can restrict a token to specific apps using `allowed_apps`.
+3. **Recreate instead of update**: Tokens are immutable. To change access, revoke and create a new token.
+4. **Flexible lifetime**: You can set token lifetime as needed, as long as it is not negative.
+5. **Non-unique names**: Token names may repeat and have no strict length/uniqueness constraints.
+
