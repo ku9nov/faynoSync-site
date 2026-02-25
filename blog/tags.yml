@@ -1,6 +1,6 @@
 faynoSync:
   label: FaynoSync
-  permalink: /faynoSync
+  permalink: /faynosync
   description: FaynoSync is a tool for syncing data between two systems.
 
 api:

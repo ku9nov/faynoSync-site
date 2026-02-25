@@ -18,6 +18,10 @@ Disallow: /api/
 Disallow: /search
 Disallow: /*?search=
 Disallow: /*?q=
+Disallow: /blog/tags/
+Disallow: /blog/authors/
+Disallow: /blog/atom.xml
+Disallow: /blog/rss.xml
 
 # Disallow temporary and development files
 Disallow: /temp/
@@ -38,6 +42,3 @@ Sitemap: https://faynosync.com/sitemap.xml
 # RSS and Atom feeds
 Allow: /blog/rss.xml
 Allow: /blog/atom.xml
-
-# Crawl delay for respectful crawling
-Crawl-delay: 1 
