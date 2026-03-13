@@ -232,6 +232,17 @@ Specifies the name of the Slack channel where messages will be sent.
 
 </details>
 
+<details>
+<summary><strong>SLACK_NOTIFICATION_TTL</strong></summary>
+
+Configures how long Redis-backed Slack notification state is kept for a given app version.  
+Slack notifications reuse a single mutable message per app version across artifact create, update, and delete flows.
+
+**Default:** `24h`  
+**Example:** `SLACK_NOTIFICATION_TTL=24h`
+
+</details>
+
 ---
 
 ## 🗄️ Storage Configuration
@@ -364,6 +375,7 @@ REDIS_DB=0
 SLACK_ENABLE=false
 SLACK_BOT_TOKEN=xoxb-*
 SLACK_CHANNEL=test-channel
+SLACK_NOTIFICATION_TTL=24h
 ENABLE_TELEMETRY=true
 
 # =============================================================================
