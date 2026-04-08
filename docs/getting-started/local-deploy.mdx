@@ -9,6 +9,10 @@ import LatestVersion from '@site/src/components/LatestVersion';
 
 This guide shows you how to quickly deploy FaynoSync locally for testing your application updates. Perfect for when you're developing an application locally and want to test auto-updates without the complexity of cloning repositories and building from source.
 
+:::warning Deprecated local storage example
+This guide currently uses MinIO-based local storage values for backward compatibility examples. For new local development setups, use Garage with `STORAGE_DRIVER=aws` and the S3 compatibility variables documented in [Environment Configuration](./env-overview).
+:::
+
 ## Quick Setup
 
 Create a folder called `faynosync-local-deployment` and add two files to get started.

@@ -57,7 +57,7 @@ If you prefer to work locally with **Golang** installed, you can start only the 
 docker compose -f docker-compose.yaml -f docker-compose.development.yaml up
 ```
 
-This setup will start essential services like **MongoDB** and **MinIO** without running the full API in a container.
+This setup will start essential services like **MongoDB** and local S3-compatible storage (recommended: **Garage** with `STORAGE_DRIVER=aws`) without running the full API in a container.
 
 :::tip Important
 Make sure **Golang** is installed on your local machine. For instructions on setting up **Golang**, refer to the [Golang Installation Guide](https://go.dev/doc/install).

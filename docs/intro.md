@@ -32,7 +32,7 @@ One of FaynoSync's key strengths is its flexibility and user control. Users can 
 
 - **Required Intermediate Builds**: Enforce specific update paths for breaking changes and critical updates, ensuring safe and controlled application upgrades.
 
-- **Multi-Cloud Storage**: Seamless integration with AWS S3, MinIO, Digital Ocean Spaces, and GCP Cloud Storage for maximum flexibility and reliability.
+- **Multi-Cloud Storage**: Seamless integration with AWS S3, Garage (S3-compatible), Digital Ocean Spaces, and GCP Cloud Storage for maximum flexibility and reliability. MinIO remains available for backward compatibility but is deprecated for new setups.
 
 - **Universal Platform Support**: Designed to work with desktop applications, browser extensions, mobile applications, and any other software that requires updates.
 

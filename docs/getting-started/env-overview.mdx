@@ -15,7 +15,7 @@ To configure `FaynoSync`, you need to set the following environment variables. T
 | Category | Variables |
 |----------|-----------|
 | **Core** | `API_URL`, `STORAGE_DRIVER`, `PORT` |
-| **Storage** | `S3_*`, `GCS_*`, `MINIO_*` |
+| **Storage** | `S3_*`, `GCS_*`, `MINIO_*` (deprecated) |
 | **Database** | `MONGODB_URL`, `MONGODB_URL_TESTS` |
 | **Security** | `API_KEY`, `JWT_SECRET` |
 | **Features** | `PERFORMANCE_MODE`, `ENABLE_TELEMETRY` |
@@ -54,12 +54,12 @@ Specifies the storage driver to use.
 
 **Available options:**
 
-- **minio**: For local development or private S3-compatible object storage.
-- **aws**: For using `AWS S3` as your object storage solution.
+- **minio**: Deprecated. Kept for backward compatibility with existing setups.
+- **aws**: For using `AWS S3` or S3-compatible providers such as local Garage.
 - **digitalocean**: For using DigitalOcean Spaces as your object storage solution.
 - **gcp**: For using Google Cloud Storage as your object storage solution.
 
-**Example:** `STORAGE_DRIVER=minio`
+**Example:** `STORAGE_DRIVER=aws`
 
 </details>
 
@@ -247,13 +247,16 @@ Slack notifications reuse a single mutable message per app version across artifa
 
 ## 🗄️ Storage Configuration
 
-### MinIO (Local or Cloud S3-compatible Storage)
+### MinIO (Deprecated)
 
-For local development or private S3-compatible object storage:
+MinIO is deprecated for new setups and is kept for backward compatibility only.
+For local development, use Garage with the `aws` storage driver and `S3_*` compatibility options from the AWS S3 section below.
+
+For legacy MinIO deployments only:
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `STORAGE_DRIVER` | Set to `minio` for MinIO storage. | `STORAGE_DRIVER=minio` |
+| `STORAGE_DRIVER` | Set to `minio` for MinIO storage (deprecated). | `STORAGE_DRIVER=minio` |
 | `MINIO_SECURE` | Specifies whether to use secure connections (HTTPS) for MinIO. Set to `false` for local development. | `MINIO_SECURE=false` |
 | `S3_ACCESS_KEY` | Your MinIO access key ID. | `S3_ACCESS_KEY=your_minio_access_key` |
 | `S3_SECRET_KEY` | Your MinIO secret access key. | `S3_SECRET_KEY=your_minio_secret_key` |
@@ -276,6 +279,9 @@ For using AWS S3 as your object storage solution:
 | `S3_BUCKET_NAME` | The name of your AWS S3 bucket for public storage. | `S3_BUCKET_NAME=your-public-bucket` |
 | `S3_ENDPOINT_PRIVATE` | The AWS S3 endpoint URL. | `S3_ENDPOINT_PRIVATE=https://your-bucket-name.s3.amazonaws.com` |
 | `S3_ENDPOINT` | The public AWS S3 endpoint URL. | `S3_ENDPOINT=https://your-public-bucket.s3.amazonaws.com` |
+| `S3_API_ENDPOINT` | Optional custom S3 API endpoint for S3-compatible providers such as local Garage. Leave empty for managed AWS S3. | `S3_API_ENDPOINT=http://localhost:3900` |
+| `S3_FORCE_PATH_STYLE` | Optional. Set to `true` for providers that require path-style requests, such as local Garage. | `S3_FORCE_PATH_STYLE=true` |
+| `S3_DISABLE_OBJECT_ACL` | Optional. Set to `true` for providers that do not support `public-read` object ACLs, such as local Garage. | `S3_DISABLE_OBJECT_ACL=true` |
 
 ### DigitalOcean Spaces (S3-compatible Storage from DigitalOcean)
 
@@ -312,10 +318,10 @@ You can set these environment variables in a `.env` file in the root directory o
 
 ```bash
 # =============================================================================
-# MINIO (local or cloud S3-compatible storage)
+# MINIO (deprecated, kept for backward compatibility)
 # =============================================================================
-STORAGE_DRIVER=minio
-MINIO_SECURE=false
+# STORAGE_DRIVER=minio
+# MINIO_SECURE=false
 S3_BUCKET_NAME_PRIVATE=cb-faynosync-s3-private
 S3_ENDPOINT_PRIVATE=localhost:9010
 S3_ACCESS_KEY=
@@ -326,7 +332,7 @@ S3_ENDPOINT=localhost:9010
 # =============================================================================
 # AWS S3 (Amazon Simple Storage Service)
 # =============================================================================
-#STORAGE_DRIVER=aws
+STORAGE_DRIVER=aws
 #S3_ACCESS_KEY=
 #S3_SECRET_KEY=
 #S3_REGION=
@@ -334,6 +340,9 @@ S3_ENDPOINT=localhost:9010
 # S3_BUCKET_NAME=
 #S3_ENDPOINT_PRIVATE=https://<bucket_name>.s3.amazonaws.com # for example in us-east-1
 #S3_ENDPOINT=https://<bucket_name>.s3.amazonaws.com # for example in us-east-1
+#S3_API_ENDPOINT=http://localhost:3900 # optional for S3-compatible providers (Garage, etc.)
+#S3_FORCE_PATH_STYLE=true # optional for providers that require path-style requests
+#S3_DISABLE_OBJECT_ACL=true # optional for providers without public-read ACL support
 
 # =============================================================================
 # DIGITALOCEAN SPACES (S3-compatible storage from DigitalOcean)

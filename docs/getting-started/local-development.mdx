@@ -1,7 +1,7 @@
 ---
 sidebar_position: 2
 title: Local Development Setup
-description: Complete guide to setting up FaynoSync development environment with MongoDB, Golang, and MinIO
+description: Complete guide to setting up FaynoSync development environment with MongoDB, Golang, and Garage
 ---
 
 # Local development
@@ -27,7 +27,7 @@ To get started with developing FaynoSync locally, you will need to set up the fo
 
 
 
-**MinIO** - An object storage service compatible with the Amazon S3 API. MinIO is used in FaynoSync to simulate S3 storage locally, allowing you to upload and manage application files directly on your machine during development. It provides the same API as AWS S3, making it easy to switch between local and production environments.
+**Garage** - An S3-compatible object storage service recommended for local development. In FaynoSync, use Garage with the `aws` storage driver to upload and manage application files locally while keeping configuration close to production-style S3 setups.
 
 
 
@@ -43,12 +43,17 @@ The FaynoSync API is built with Golang, so you need to have it installed to run 
 
 **Installation Guide**: [Golang Installation](https://go.dev/doc/install)
 
-### Install MinIO
-MinIO acts as your local storage solution, replicating the AWS S3 environment where your application files will be uploaded and managed. Set up MinIO to ensure FaynoSync can interact with your local storage as it would with AWS S3.
+### Install Garage (Recommended)
+Garage acts as your local storage solution, providing an S3-compatible API where your application files can be uploaded and managed during development.
 
-**Installation Guide**: [MinIO Installation](https://min.io/docs/minio/linux/operations/install-deploy-manage/deploy-minio-single-node-single-drive.html)
+Configure FaynoSync to use:
 
-After installing MinIO, open [http://localhost:9001/access-keys](http://localhost:9001/access-keys), create Access Keys, and set `S3_ACCESS_KEY` and `S3_SECRET_KEY` in either .env or .env.local. To access the MinIO dashboard, use the `MINIO_ROOT_USER` specified in your MinIO configuration as the username and `MINIO_ROOT_PASSWORD` as the password.
+- `STORAGE_DRIVER=aws`
+- `S3_API_ENDPOINT` with your Garage S3 API endpoint
+- `S3_FORCE_PATH_STYLE=true`
+- `S3_DISABLE_OBJECT_ACL=true`
+
+You can find full environment variable details and examples in the [Environment Configuration page](./env-overview).
 
 
 ### Running FaynoSync Locally
