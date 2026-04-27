@@ -1,13 +1,13 @@
 .bannerRoot {
   position: relative;
   width: 100%;
-  max-width: 1600px;
-  margin: 0 auto;
+  max-width: 1180px;
+  margin: 0 auto 1.5rem;
   background: transparent;
   display: flex;
   justify-content: center;
   align-items: center;
-  transition: opacity 0.7s cubic-bezier(.4,0,.2,1);
+  transition: opacity 0.7s cubic-bezier(.4,0,.2,1), transform 0.7s cubic-bezier(.4,0,.2,1);
   opacity: 1;
   --fayno-x: 120;
   --sync-x: 570;
@@ -18,55 +18,84 @@
   height: auto;
   display: block;
   background: transparent;
-  max-width: 1600px;
+  max-width: 1180px;
+  overflow: visible;
+}
+
+.orbits {
+  opacity: 0;
+  transition: opacity 0.9s cubic-bezier(.16,1,.3,1) 0.12s;
 }
 
 .spiral {
   opacity: 0;
-  transform: scale(0.7) rotate(-30deg);
-  filter: blur(8px);
-  transition: all 0.7s cubic-bezier(.4,0,.2,1);
+  transform: scale(0.62) rotate(-24deg);
+  transform-origin: center;
+  filter: blur(10px);
+  transition: opacity 0.85s cubic-bezier(.16,1,.3,1),
+    transform 1s cubic-bezier(.16,1,.3,1),
+    filter 0.85s cubic-bezier(.16,1,.3,1);
 }
+.spiralVisible .orbits,
 .spiralVisible .spiral {
   opacity: 1;
+}
+
+.spiralVisible .spiral {
   transform: scale(1) rotate(0deg);
   filter: blur(0px);
 }
 
 .text {
   opacity: 0;
-  transition: opacity 0.7s cubic-bezier(.4,0,.2,1) 0.2s;
+  transform: translateY(12px);
+  filter: blur(6px);
+  transition: opacity 0.75s cubic-bezier(.16,1,.3,1) 0.15s,
+    transform 0.85s cubic-bezier(.16,1,.3,1) 0.15s,
+    filter 0.75s cubic-bezier(.16,1,.3,1) 0.15s;
 }
 .textVisible .text {
   opacity: 1;
+  transform: translateY(0);
+  filter: blur(0);
+}
+
+.word {
+  paint-order: stroke fill;
+  stroke: rgba(255, 255, 255, 0.42);
+  stroke-width: 1.2px;
+  text-shadow: 0 12px 32px rgba(61, 22, 110, 0.16);
 }
 
 .arrowUp, .arrowDown {
   opacity: 0;
-  transition: opacity 0.7s cubic-bezier(.4,0,.2,1),
-    transform 0.9s cubic-bezier(.4,0,.2,1);
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: opacity 0.85s cubic-bezier(.16,1,.3,1),
+    transform 1.05s cubic-bezier(.16,1,.3,1);
 }
 .arrowUp {
-  transform: translateY(80px) scale(0.95) rotate(-10deg);
+  transform: translate3d(-34px, 52px, 0) scale(0.94) rotate(-8deg);
   z-index: 0;
 }
 .arrowDown {
-  transform: translateY(-80px) scale(0.95) rotate(10deg);
+  transform: translate3d(34px, -52px, 0) scale(0.94) rotate(8deg);
   z-index: 0;
 }
 .arrowsVisible .arrowUp {
   opacity: 1;
-  transform: translateY(0) scale(1) rotate(0deg);
+  transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
 }
 .arrowsVisible .arrowDown {
   opacity: 1;
-  transform: translateY(0) scale(1) rotate(0deg);
+  transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
 }
 
 .static .spiral,
 .static .text,
 .static .arrowUp,
-.static .arrowDown {
+.static .arrowDown,
+.static .orbits {
   transition: none !important;
 }
 
@@ -93,26 +122,18 @@
 @media (max-width: 768px) {
   .bannerRoot {
     max-width: 100vw;
-    padding: 0 10px;
+    padding: 0 8px;
     justify-content: center;
-    --fayno-x: 50;
-    --sync-x: 420;
+    --fayno-x: 90;
+    --sync-x: 560;
   }
   .bannerSvg {
     max-width: 100vw;
-    transform: scale(0.9);
     margin: 0 auto;
   }
   .text text {
-    font-size: 12vw !important;
-    letter-spacing: 2px !important;
-  }
-  /* Adjust text positioning for mobile */
-  .text text:first-child {
-    x: 50px !important;
-  }
-  .text text:last-child {
-    x: 520px !important;
+    font-size: 74px !important;
+    letter-spacing: 4px !important;
   }
 }
 
@@ -120,49 +141,45 @@
   .bannerRoot {
     padding: 0 5px;
     justify-content: center;
-    --fayno-x: 20;
-    --sync-x: 300;
+    --fayno-x: 84;
+    --sync-x: 560;
   }
   .bannerSvg {
-    transform: scale(0.8);
     margin: 0 auto;
   }
   .text text {
-    font-size: 14vw !important;
-    letter-spacing: 1px !important;
-  }
-  /* Further adjust text positioning for small mobile */
-  .text text:first-child {
-    x: 30px !important;
-  }
-  .text text:last-child {
-    x: 500px !important;
+    font-size: 70px !important;
+    letter-spacing: 2px !important;
   }
 }
 
 @media (max-width: 360px) {
   .bannerRoot {
     justify-content: center;
-    --fayno-x: 10;
-    --sync-x: 220;
+    --fayno-x: 76;
+    --sync-x: 558;
   }
   .bannerSvg {
-    transform: scale(0.7);
     margin: 0 auto;
   }
   .text text {
-    font-size: 16vw !important;
-  }
-  /* Adjust text positioning for very small mobile */
-  .text text:first-child {
-    x: 20px !important;
-  }
-  .text text:last-child {
-    x: 480px !important;
+    font-size: 66px !important;
   }
 }
 
-/* Dark mode support */
-:global(html[data-theme='dark']) .bannerRoot {
-  /* Slightly adjust gradients for dark bg if needed */
-} 
+:global(html[data-theme='dark']) .word {
+  stroke: rgba(17, 24, 39, 0.26);
+  text-shadow: 0 16px 36px rgba(0, 0, 0, 0.22);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bannerRoot,
+  .orbits,
+  .spiral,
+  .text,
+  .arrowUp,
+  .arrowDown {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+  }
+}
