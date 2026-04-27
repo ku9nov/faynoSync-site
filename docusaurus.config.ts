@@ -71,8 +71,11 @@ const config: Config = {
           priority: 0.5,
           ignorePatterns: [
             '/search/**',
+            '/markdown-page',
+            '/blog/archive',
             '/blog/tags/**',
             '/blog/authors/**',
+            '/docs/api/apps/get-all',
             '/blog/atom.xml',
             '/blog/rss.xml',
           ],
