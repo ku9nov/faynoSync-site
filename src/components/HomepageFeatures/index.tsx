@@ -5,34 +5,66 @@ import Layout from '@theme/Layout'
 import { ArrowRight, Cloud, Hash, Zap, Globe, Rocket, Wrench, Laptop, Globe2, Smartphone, Shield, Zap as Lightning, Users, BarChart2, GitMerge, RefreshCw, CheckCircle, Star, Download, Upload, Settings, Database, Lock, Clock, TrendingUp } from 'lucide-react'
 import AnimatedBanner from '../AnimatedBanner';
 
+const hexToRgb = (hex: string) => {
+  const normalizedHex = hex.replace('#', '');
+  const value = Number.parseInt(normalizedHex, 16);
+
+  return `${(value >> 16) & 255}, ${(value >> 8) & 255}, ${value & 255}`;
+};
+
 // Hook for scroll-triggered animations
 const useScrollAnimation = () => {
   const [visibleSections, setVisibleSections] = useState<Set<string>>(new Set<string>());
   const [visibleCards, setVisibleCards] = useState<Set<string>>(new Set<string>());
   
   useEffect(() => {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const cardRevealTimers: number[] = [];
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setVisibleSections((prev) => new Set([...Array.from(prev), entry.target.id]));
+          if (entry.isIntersecting && entry.target.id) {
+            setVisibleSections((prev) => {
+              if (prev.has(entry.target.id)) {
+                return prev;
+              }
+
+              return new Set(prev).add(entry.target.id);
+            });
             
-            // Special handling for features section to trigger card animations
             if (entry.target.id === 'features') {
-              setTimeout(() => {
-                setVisibleCards((prev) => new Set([...Array.from(prev), 'features-cards']));
-              }, 300); // Delay before starting card animations
+              const revealFeatures = () => {
+                setVisibleCards((prev) => {
+                  if (prev.has('features-cards')) {
+                    return prev;
+                  }
+
+                  return new Set(prev).add('features-cards');
+                });
+              };
+
+              if (prefersReducedMotion) {
+                revealFeatures();
+              } else {
+                cardRevealTimers.push(window.setTimeout(revealFeatures, 180));
+              }
             }
+
+            observer.unobserve(entry.target);
           }
         });
       },
-      { threshold: 0.1, rootMargin: '0px 0px -100px 0px' }
+      { threshold: 0.18, rootMargin: '0px 0px -80px 0px' }
     );
 
     const sections = document.querySelectorAll('[data-scroll-section]');
     sections.forEach((section) => observer.observe(section));
 
-    return () => observer.disconnect();
+    return () => {
+      cardRevealTimers.forEach((timer) => window.clearTimeout(timer));
+      observer.disconnect();
+    };
   }, []);
 
   return { visibleSections, visibleCards };
@@ -49,9 +81,26 @@ const FloatingParticles = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) {
+      return;
+    }
+
+    let animationFrameId = 0;
+    let lastFrameTime = performance.now();
+    let viewportWidth = window.innerWidth;
+    let viewportHeight = window.innerHeight;
+
     const resizeCanvas = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      viewportWidth = window.innerWidth;
+      viewportHeight = window.innerHeight;
+
+      canvas.width = viewportWidth * dpr;
+      canvas.height = viewportHeight * dpr;
+      canvas.style.width = `${viewportWidth}px`;
+      canvas.style.height = `${viewportHeight}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
 
     resizeCanvas();
@@ -65,46 +114,74 @@ const FloatingParticles = () => {
       speedY: number;
       opacity: number;
       color: string;
+      pulse: number;
     }> = [];
 
     const colors = ['#8B5CF6', '#06B6D4', '#10B981', '#F59E0B', '#EF4444'];
 
-    // Create particles
-    for (let i = 0; i < 80; i++) {
+    for (let i = 0; i < 64; i++) {
       particles.push({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        size: Math.random() * 3 + 1,
-        speedX: (Math.random() - 0.5) * 0.5,
-        speedY: (Math.random() - 0.5) * 0.5,
-        opacity: Math.random() * 0.3 + 0.1,
-        color: colors[Math.floor(Math.random() * colors.length)]
+        x: Math.random() * viewportWidth,
+        y: Math.random() * viewportHeight,
+        size: Math.random() * 2.4 + 1.1,
+        speedX: (Math.random() - 0.5) * 14,
+        speedY: (Math.random() - 0.5) * 14,
+        opacity: Math.random() * 0.22 + 0.08,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        pulse: Math.random() * Math.PI * 2
       });
     }
 
-    const animate = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const animate = (currentTime: number) => {
+      const deltaTime = Math.min((currentTime - lastFrameTime) / 1000, 0.05);
+      lastFrameTime = currentTime;
+
+      ctx.clearRect(0, 0, viewportWidth, viewportHeight);
 
       particles.forEach((particle) => {
-        particle.x += particle.speedX;
-        particle.y += particle.speedY;
+        particle.x += particle.speedX * deltaTime;
+        particle.y += particle.speedY * deltaTime;
 
-        if (particle.x < 0 || particle.x > canvas.width) particle.speedX *= -1;
-        if (particle.y < 0 || particle.y > canvas.height) particle.speedY *= -1;
+        if (particle.x < 0 || particle.x > viewportWidth) particle.speedX *= -1;
+        if (particle.y < 0 || particle.y > viewportHeight) particle.speedY *= -1;
+
+        particle.x = Math.max(0, Math.min(viewportWidth, particle.x));
+        particle.y = Math.max(0, Math.min(viewportHeight, particle.y));
+
+        const glowSize = particle.size + Math.sin(currentTime * 0.0015 + particle.pulse) * 0.5;
 
         ctx.beginPath();
-        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+        ctx.arc(particle.x, particle.y, glowSize, 0, Math.PI * 2);
         ctx.fillStyle = particle.color;
         ctx.globalAlpha = particle.opacity;
         ctx.fill();
       });
 
-      requestAnimationFrame(animate);
+      particles.forEach((particle, particleIndex) => {
+        for (let nextIndex = particleIndex + 1; nextIndex < particles.length; nextIndex += 1) {
+          const nextParticle = particles[nextIndex];
+          const distance = Math.hypot(particle.x - nextParticle.x, particle.y - nextParticle.y);
+
+          if (distance < 120) {
+            ctx.beginPath();
+            ctx.moveTo(particle.x, particle.y);
+            ctx.lineTo(nextParticle.x, nextParticle.y);
+            ctx.strokeStyle = particle.color;
+            ctx.globalAlpha = (1 - distance / 120) * 0.08;
+            ctx.lineWidth = 1;
+            ctx.stroke();
+          }
+        }
+      });
+
+      ctx.globalAlpha = 1;
+      animationFrameId = requestAnimationFrame(animate);
     };
 
-    animate();
+    animationFrameId = requestAnimationFrame(animate);
 
     return () => {
+      window.cancelAnimationFrame(animationFrameId);
       window.removeEventListener('resize', resizeCanvas);
     };
   }, []);
@@ -122,11 +199,6 @@ const FloatingParticles = () => {
 const GeometricShapes = () => {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none" style={{ zIndex: 2 }}>
-      {/* <div className="floating-shape shape-1"></div>
-      <div className="floating-shape shape-2"></div>
-      <div className="floating-shape shape-3"></div>
-      <div className="floating-shape shape-4"></div>
-      <div className="floating-shape shape-5"></div> */}
     </div>
   );
 };
@@ -451,8 +523,9 @@ export default function HomePage() {
                 className={`enhanced-feature-card sharedCard ${visibleCards.has('features-cards') ? 'staggered-card-visible' : 'staggered-card-hidden'}`}
                 style={{ 
                   '--card-color': feature.color, 
-                  '--animation-delay': `${idx * 150}ms`,
-                  animationDelay: visibleCards.has('features-cards') ? `${idx * 150}ms` : '0ms'
+                  '--card-rgb': hexToRgb(feature.color),
+                  '--animation-delay': `${idx * 40}ms`,
+                  animationDelay: visibleCards.has('features-cards') ? `${idx * 40}ms` : '0ms'
                 } as React.CSSProperties}
               >
                 <div className="sharedCardIcon enhanced-icon-container">
