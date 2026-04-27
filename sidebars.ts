@@ -152,6 +152,7 @@ const sidebars: SidebarsConfig = {
             'api/tuf/delete_unsigned_metadata',
             'api/tuf/force_metadata_update',
             'api/tuf/get_current_root_metadata',
+            'api/tuf/recovery',
           ],
         },
       ],

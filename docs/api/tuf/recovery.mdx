@@ -1,0 +1,85 @@
+---
+title: Bootstrap Recovery
+---
+
+# Bootstrap Recovery
+
+Start a background recovery process that rebuilds Redis bootstrap state for an application from already published TUF metadata.
+
+This endpoint is intended for disaster-recovery scenarios, for example when Redis data is lost and cannot be restored from backup. Since bootstrap-related state can be reconstructed from metadata stored in S3, the system can repopulate Redis and restore consistency for the selected app.
+
+## Endpoint
+
+```
+POST /tuf/v1/bootstrap/recovery
+```
+
+## Headers
+
+| Header | Value |
+|--------|-------|
+| `Content-Type` | `application/json` |
+| `Authorization` | `Bearer <token>` |
+
+## Request Body
+
+The body must be a JSON object describing which app should be recovered.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `appName` | string | ✅ | Application name to recover (for example `tuf`) |
+| `timeout` | integer | ✅ | Recovery operation timeout value |
+
+## Example Request
+
+```bash
+curl --location 'http://localhost:9000/tuf/v1/bootstrap/recovery' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer <jwt_token>' \
+--data '{
+  "appName": "tuf",
+  "timeout": 2
+}'
+```
+
+## Response
+
+### Recovery Accepted (202 Accepted)
+
+When recovery is required, the request is accepted and a background task starts:
+
+```json
+{
+  "data": {
+    "last_update": "2026-04-27T11:50:42+03:00",
+    "task_id": "0e0095ed-fe33-480b-8a65-f782211c3cd4"
+  },
+  "message": "Bootstrap recovery accepted and started in background"
+}
+```
+
+### Recovery Not Required (409 Conflict)
+
+When Redis state is already complete and consistent, no recovery task is started:
+
+```json
+{
+  "error": "Recovery not required: Redis state is already complete and consistent"
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `data.last_update` | string | ISO8601 timestamp when recovery was accepted |
+| `data.task_id` | string | UUID of the background recovery task |
+| `message` | string | Confirmation that background recovery has started |
+| `error` | string | Explains why recovery was not started |
+
+## Notes
+
+- Requires a valid JWT in the `Authorization` header (admin user).
+- Recovery runs asynchronously; use `task_id` with [Check Task](/docs/api/tuf/check_tasks) to track progress.
+- This operation rebuilds Redis state from existing published metadata; it does not publish new metadata by itself.
+- If recovery is not needed, the endpoint returns `409 Conflict` and leaves current state unchanged.
