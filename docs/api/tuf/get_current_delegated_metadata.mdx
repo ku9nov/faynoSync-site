@@ -1,0 +1,94 @@
+---
+title: Get Current Delegated Metadata
+description: Retrieve the current trusted FaynoSync TUF delegated targets metadata for a delegated role.
+---
+
+# Get Current Delegated Metadata
+
+Retrieve the **current trusted delegated targets metadata** for a specific delegated role in a TUF repository. The response contains signatures and the full delegated `targets` payload for that role.
+
+Use this endpoint to inspect delegated target entries, verify role-specific versions and expiration, and troubleshoot delegated publishing flows.
+
+## Endpoint
+
+```
+GET /tuf/v1/metadata/delegated?appName=<app_name>&roleName=<role_name>
+```
+
+## Headers
+
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <token>` |
+
+## Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `appName` | string | ✅ | Name of the application whose delegated metadata to retrieve |
+| `roleName` | string | ✅ | Delegated role name (for example `default`) |
+
+## Example Request
+
+```bash
+curl --location 'http://localhost:9000/tuf/v1/metadata/delegated?appName=tuf&roleName=default' \
+--header 'Authorization: Bearer <jwt_token>'
+```
+
+## Response
+
+### Success Response (200 OK)
+
+When trusted delegated metadata exists for the selected role:
+
+```json
+{
+  "data": {
+    "trusted_delegated": {
+      "signatures": [
+        {
+          "keyid": "aa556e04d0c3f7de8ef26915c8384b566c58ff4e25ae5a3cebd0f3a9991b5e28",
+          "sig": "304402205bf2bfd95e4a2098b53aeb6351b014a1211191f99700759f7e6d8fdec9336adc02201edb5232c1c2c00a7e3d81b018c86e0e8d7e1c609ed36c6b8efa502eab9c7d14"
+        }
+      ],
+      "signed": {
+        "_type": "targets",
+        "expires": "2026-07-28T12:18:53.795098Z",
+        "spec_version": "1.0.31",
+        "targets": {
+          "tuf-admin/nightly/darwin/arm64/tuf-0.0.0.1": {
+            "hashes": {
+              "sha256": "a87fc2748969b4eafb685fa1ca48ac78c862fbb318e7fdb37eb25014865d1880",
+              "sha512": "85713058addb0bcd700440561f3ad046c41aa9b6cea3e25bb8d8ddc02a5a07024a882ee703d2f1602a55a73d8921a6a67139e6d51d7c7f1bfb93b4c422ff1c5b"
+            },
+            "length": 10090514
+          },
+          "tuf-admin/nightly/darwin/arm64/tuf-0.0.0.2": {
+            "hashes": {
+              "sha256": "a87fc2748969b4eafb685fa1ca48ac78c862fbb318e7fdb37eb25014865d1880",
+              "sha512": "85713058addb0bcd700440561f3ad046c41aa9b6cea3e25bb8d8ddc02a5a07024a882ee703d2f1602a55a73d8921a6a67139e6d51d7c7f1bfb93b4c422ff1c5b"
+            },
+            "length": 10090514
+          }
+        },
+        "version": 6
+      }
+    }
+  }
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `data.trusted_delegated` | object | Current trusted delegated targets metadata for the selected role |
+| `data.trusted_delegated.signatures` | array | List of signatures (keyid + sig) that satisfy the delegated role threshold |
+| `data.trusted_delegated.signed` | object | Delegated targets payload: `_type`, `version`, `spec_version`, `expires`, `targets` |
+
+## Notes
+
+- Requires a valid JWT in the `Authorization` header (admin user).
+- `roleName` must reference an existing delegated role configured in targets delegations.
+- Use this endpoint to verify delegated role metadata state after delegated publish/update operations.
+- The returned metadata is the active trusted delegated metadata used by clients through normal TUF verification flow.

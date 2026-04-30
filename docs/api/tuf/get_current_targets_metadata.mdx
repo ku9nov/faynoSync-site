@@ -1,0 +1,106 @@
+---
+title: Get Current Targets Metadata
+description: Retrieve the current trusted FaynoSync TUF targets metadata for inspection and delegated role planning.
+---
+
+# Get Current Targets Metadata
+
+Retrieve the **current trusted targets metadata** for a TUF repository. This is the active `targets` metadata published for the app, including signatures and the full signed payload.
+
+Use this endpoint to inspect delegated role mappings, verify expiration and version values, and validate target delegation rules before rotation or publishing changes.
+
+## Endpoint
+
+```
+GET /tuf/v1/metadata/targets?appName=<app_name>
+```
+
+## Headers
+
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <token>` |
+
+## Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `appName` | string | ✅ | Name of the application whose current targets metadata to retrieve |
+
+## Example Request
+
+```bash
+curl --location 'http://localhost:9000/tuf/v1/metadata/targets?appName=<app_name>' \
+--header 'Authorization: Bearer <jwt_token>'
+```
+
+## Response
+
+### Success Response (200 OK)
+
+When the repository has active trusted targets metadata:
+
+```json
+{
+  "data": {
+    "trusted_targets": {
+      "signatures": [
+        {
+          "keyid": "a9d1cf6b5aa853fcae2278f9d42dc2c823d24d43ba1a0d82ef7651a37b98f7e3",
+          "sig": "3045022100ed5200084f17f1299ae441b73b942c59f88cc82db5e79041865d36257042fedd022008b9a1bd36402e65580b7613eb5ff20efdb927f71681f62dceb4e2cc648a5aab"
+        }
+      ],
+      "signed": {
+        "_type": "targets",
+        "delegations": {
+          "keys": {
+            "aa556e04d0c3f7de8ef26915c8384b566c58ff4e25ae5a3cebd0f3a9991b5e28": {
+              "keytype": "ecdsa",
+              "keyval": {
+                "public": "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEuApbtgReemcou+nmtN8qtd6shoZn\nTiTc2GTlaRFuXQ3+4/G9yhGF3im6xuEz48CjcGTo7KSv3kj1VlWgP4ioZw==\n-----END PUBLIC KEY-----\n"
+              },
+              "scheme": "ecdsa-sha2-nistp256"
+            }
+          },
+          "roles": [
+            {
+              "keyids": [
+                "aa556e04d0c3f7de8ef26915c8384b566c58ff4e25ae5a3cebd0f3a9991b5e28"
+              ],
+              "name": "default",
+              "paths": [
+                "admin/tuf/*",
+                "tuf-admin/*",
+                "electron-builder/tuf-admin/*",
+                "squirrel_windows/tuf-admin/*",
+                "tuf-admin/nightly/darwin/arm64/tuf-0.0.0.1"
+              ],
+              "terminating": false,
+              "threshold": 1
+            }
+          ]
+        },
+        "expires": "2026-05-05T11:22:31.168771Z",
+        "spec_version": "1.0.31",
+        "targets": {},
+        "version": 9
+      }
+    }
+  }
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `data.trusted_targets` | object | Current trusted targets metadata |
+| `data.trusted_targets.signatures` | array | List of signatures (keyid + sig) that satisfy the targets role threshold |
+| `data.trusted_targets.signed` | object | Targets payload: `_type`, `version`, `spec_version`, `expires`, `targets`, optional `delegations` |
+
+## Notes
+
+- Requires a valid JWT in the `Authorization` header (admin user).
+- The repository must already be bootstrapped and have targets metadata for this app.
+- Delegations in `signed.delegations.roles` define which delegated role is trusted for specific target path patterns.
+- Use this endpoint to inspect active targets metadata before delegated changes or metadata rotation workflows.
