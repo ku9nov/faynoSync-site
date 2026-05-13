@@ -63,20 +63,23 @@ Once you have all these services set up, you can run FaynoSync locally, allowing
 To get started, you need to create an environment file (`.env`) and set all the required configurations. For more details on the necessary environment variables, please refer to the [Environment Configuration page](./env-overview).
 
 #### Starting FaynoSync
-To run FaynoSync, use the following command:
+
+Database migrations are a separate CLI action. On first setup (or after schema changes), apply migrations:
+
+```bash
+go run faynoSync.go migrate up
+```
+
+Start the server with:
+
 ```bash
 go run faynoSync.go
 ```
-If this is your first time running FaynoSync, include the `--migration` flag to apply initial migrations:
+
+To roll back migrations:
 
 ```bash
-go run faynoSync.go --migration
-```
-
-To roll back migrations, use:
-
-```bash
-go run faynoSync.go --migration --rollback
+go run faynoSync.go migrate down
 ```
 
 #### Testing Your Setup

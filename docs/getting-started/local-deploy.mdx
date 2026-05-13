@@ -74,7 +74,7 @@ services:
   backend:
     image: ku9nov/faynosync:latest
     container_name: "faynoSync_backend"
-    command: faynoSync --migration --loglevel=debug
+    command: faynoSync --loglevel=debug
     networks:
       faynosync_network:
         ipv4_address: 172.25.0.6
