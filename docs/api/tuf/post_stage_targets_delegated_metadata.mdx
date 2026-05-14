@@ -1,0 +1,183 @@
+---
+title: Stage Delegated Key Rotation Metadata
+description: Stage delegated targets key rotation metadata for offline signing in FaynoSync TUF flow.
+---
+
+# Stage Delegated Key Rotation Metadata
+
+Stage delegated metadata updates for **offline signing** during delegated key rotation. This endpoint stores pending metadata in Redis and creates signing task state, then you complete signatures through the existing sign flow.
+
+Use this route when you rotate keys for an existing delegated role and need to safely stage:
+
+1. updated delegator metadata (usually `targets`) that authorizes new delegated keys;
+2. delegated role metadata signed by the new delegated keys.
+
+
+## Endpoint
+
+```
+POST /tuf/v1/metadata/delegated/rotate?appName=<app_name>
+```
+
+## Headers
+
+| Header | Value |
+|--------|-------|
+| `Content-Type` | `application/json` |
+| `Authorization` | `Bearer <token>` |
+
+## Auth and Permissions
+
+- Requires a valid JWT in the `Authorization` header.
+- Caller must be an admin for the selected app.
+- `appName` is required and determines which TUF repository is updated.
+
+## Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `appName` | string | ✅ | Name of the application whose delegated metadata rotation is staged |
+
+## Request Body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `role` | string | ✅ | Delegated role name to rotate keys for; must **not** be a top-level role (`root`, `targets`, `snapshot`, `timestamp`) |
+| `delegator` | string | ❌ | Delegating role name; defaults to `targets` |
+| `metadata` | object | ✅ | Staged metadata payloads for rotation flow |
+| `metadata.targets` | object | ⚠️ Conditional | New delegator targets metadata that authorizes new delegated keys (recommended, often required in practice) |
+| `metadata.<role>` | object | ⚠️ Conditional | New delegated role metadata for `role`, signed by the rotated delegated keys (recommended) |
+
+At least one of `metadata.targets` or `metadata.<role>` must be present.
+
+## Example Request
+
+```bash
+curl --location 'http://localhost:9000/tuf/v1/metadata/delegated/rotate?appName=tuf-admin' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer <jwt_token>' \
+--data '{
+  "role": "default",
+  "delegator": "targets",
+  "metadata": {
+    "targets": {
+      "signatures": [
+        {
+          "keyid": "b11cb77f6ab74c7557f3cd2c90a9ef861601f9f1d5484ee8f3f9e1f2dd01aabc",
+          "sig": "<targets_signature_hex>"
+        }
+      ],
+      "signed": {
+        "_type": "targets",
+        "version": 8,
+        "spec_version": "1.0.31",
+        "expires": "2027-01-15T00:00:00Z",
+        "targets": {},
+        "delegations": {
+          "keys": {
+            "9bc0...newkey": {
+              "keytype": "ed25519",
+              "scheme": "ed25519",
+              "keyval": { "public": "<delegated_new_public_key_hex>" }
+            }
+          },
+          "roles": [
+            {
+              "name": "default",
+              "keyids": ["9bc0...newkey"],
+              "threshold": 1,
+              "paths": ["tuf-admin/nightly/*"]
+            }
+          ]
+        }
+      }
+    },
+    "default": {
+      "signatures": [
+        {
+          "keyid": "9bc0...newkey",
+          "sig": "<delegated_signature_hex>"
+        }
+      ],
+      "signed": {
+        "_type": "targets",
+        "version": 6,
+        "spec_version": "1.0.31",
+        "expires": "2027-01-15T00:00:00Z",
+        "targets": {}
+      }
+    }
+  }
+}'
+```
+
+## Validation Rules and Security Notes
+
+The server validates staged delegated rotation metadata before storing it:
+
+- **Bootstrap state must be completed.** Pre-bootstrap (`pre-*`) and signing bootstrap (`signing-*`) states are rejected.
+- **Signed metadata type must be `targets`.** Any other `_type` is rejected.
+- **Expiration must be in the future.** Expired metadata cannot be staged.
+- **Duplicate signature keyids are rejected.** One keyid may appear only once per metadata object.
+- **Delegation keyid must match key material.** Key IDs are recomputed from key material and must match declared keyids.
+- **Version monotonicity is strict.** Incoming staged version must be greater than current trusted version.
+- **Delegation authorization is required.** `delegator` must authorize `role` in its `delegations` block; otherwise staging is rejected.
+
+These checks protect against rollback, freeze, unauthorized delegated signer injection, and malformed signature sets.
+
+## Response
+
+### Success Response (200 OK)
+
+When validation passes, pending metadata is stored in Redis under keys like `{ROLE}_SIGNING_{admin}_{app}` and a signing task state is created:
+
+```json
+{
+  "data": {
+    "task_id": "8d6d0dc1-7e8b-4ad9-a6d8-0f6e857d5f7b",
+    "last_update": "2026-05-14T16:31:22.512345Z"
+  },
+  "message": "Metadata rotation staged for signing"
+}
+```
+
+## Step-by-Step Flow with `/metadata/sign`
+
+Use this safe sequence for delegated key rotation:
+
+1. **Prepare updated delegator metadata (`targets` by default)** with new delegated keyids in `delegations`.
+2. **Stage delegator metadata** (and optionally delegated metadata) via `POST /tuf/v1/metadata/delegated/rotate`.
+3. **Collect required signatures offline** and submit one-by-one through `POST /tuf/v1/metadata/sign?appName=<app_name>`.
+4. **Repeat sign calls** until each staged metadata object reaches threshold.
+5. **Finalize through existing pipeline**, which updates snapshot and timestamp consistently.
+6. **Monitor task completion** via [Check Task](/docs/api/tuf/check_tasks) using returned `task_id`.
+
+Recommended order for safer rotation:
+
+1. Stage and sign updated `targets` that authorizes new delegated keys.
+2. Stage and sign delegated role metadata using those new keys.
+
+## Troubleshooting
+
+### Unauthorized keyid
+
+- Confirm signer `keyid` is listed in the role's authorized keyids.
+- Recompute keyid from key material and verify exact match.
+- Ensure signatures are produced from the correct private key for that keyid.
+
+### No delegation found
+
+- Check that `delegator` is correct (default is `targets`).
+- Verify `delegator.signed.delegations.roles` contains the delegated `role`.
+- If authorization changed, stage updated delegator metadata first.
+
+### Version not monotonic
+
+- Compare with currently trusted delegated/delegator metadata versions.
+- Increase `signed.version` so it is strictly greater than trusted.
+- Do not reuse stale metadata blobs from previous drafts.
+
+### Expired metadata
+
+- Ensure `signed.expires` is in the future at request processing time.
+- Use sufficient validity window to avoid expiry during offline signing delay.

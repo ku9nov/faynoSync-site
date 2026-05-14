@@ -149,6 +149,7 @@ const sidebars: SidebarsConfig = {
             'api/tuf/metadata_rotation',
             'api/tuf/get_unsigned_root_metadata',
             'api/tuf/post_unsigned_root_metadata',
+            'api/tuf/post_stage_targets_delegated_metadata',
             'api/tuf/delete_unsigned_metadata',
             'api/tuf/force_metadata_update',
             'api/tuf/get_current_root_metadata',
