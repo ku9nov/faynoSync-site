@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import Link from '@docusaurus/Link'
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext'
 import Layout from '@theme/Layout'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { ArrowRight, Cloud, Hash, Zap, Globe, Rocket, Wrench, Laptop, Globe2, Smartphone, Shield, Zap as Lightning, Users, BarChart2, GitMerge, RefreshCw, Star, Download, Upload, Settings, Database, Lock, Clock, TrendingUp } from 'lucide-react'
 import AnimatedBanner from '../AnimatedBanner';
 
@@ -220,6 +221,263 @@ const buildSparklinePath = (values: number[], width = 220, height = 72) => {
       return `${index === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`
     })
     .join(' ')
+}
+
+const releaseStages = ['build', 'upload', 'test', 'publish', 'clients'] as const
+type ReleaseStage = (typeof releaseStages)[number]
+const releaseStageLabels: Record<ReleaseStage, string> = {
+  build: 'Build',
+  upload: 'Upload',
+  test: 'Test',
+  publish: 'Publish',
+  clients: 'Clients',
+}
+
+const releaseStageMeta: Record<ReleaseStage, { title: string; detail: string }> = {
+  build: {
+    title: 'Build artifacts',
+    detail: 'CI/CD compiles and signs release bundles.',
+  },
+  upload: {
+    title: 'Upload package',
+    detail: 'Signed archive streams to FaynoSync.',
+  },
+  test: {
+    title: 'Validate release',
+    detail: 'Quality gates verify readiness and integrity.',
+  },
+  publish: {
+    title: 'Publish rollout',
+    detail: 'Approved release becomes trusted for delivery.',
+  },
+  clients: {
+    title: 'Distribute clients',
+    detail: 'One release propagates across all endpoints.',
+  },
+}
+
+const HeroUpdateFlow = () => {
+  const [activeStageIndex, setActiveStageIndex] = useState(0)
+  const reduceMotion = useReducedMotion()
+  const activeStage = releaseStages[activeStageIndex]
+
+  useEffect(() => {
+    const stageDurations = [5200, 4800, 5000, 4600, 5600]
+    const timeoutId = window.setTimeout(
+      () => setActiveStageIndex((prev) => (prev + 1) % releaseStages.length),
+      reduceMotion ? 6200 : stageDurations[activeStageIndex]
+    )
+
+    return () => window.clearTimeout(timeoutId)
+  }, [activeStageIndex, reduceMotion])
+
+  const sceneTransition = reduceMotion
+    ? { duration: 0.35, ease: 'easeOut' as const }
+    : { type: 'spring' as const, stiffness: 120, damping: 22, mass: 0.95 }
+
+  return (
+    <div className="premium-hero-update-flow fade-in-up" style={{ animationDelay: '0.2s' }}>
+      <div className="premium-hero-grid">
+        <div className="premium-hero-copy">
+          <div className="premium-copy-badge">Live release orchestration</div>
+          <h2>From CI build to every client endpoint.</h2>
+          <p>
+            faynoSync visualizes and controls the software distribution lifecycle in one reliable pipeline.
+            Ship signed builds, validate quality gates, and roll out safely across platforms.
+          </p>
+          <div className="premium-copy-points" aria-label="faynoSync core capabilities">
+            <span><Wrench size={14} /> CI/CD aware delivery</span>
+            <span><Shield size={14} /> Verified update flow</span>
+            <span><Globe size={14} /> Multi-platform fan-out</span>
+          </div>
+          <div className="premium-copy-cta">
+            <Link
+              to="/docs/getting-started"
+              className="enhanced-button button-primary premium-hero-button"
+            >
+              Start Building
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link
+              to="/demo"
+              className="enhanced-button button-primary premium-hero-button premium-hero-button-ghost"
+            >
+              Watch Demo
+            </Link>
+          </div>
+        </div>
+
+        <div className="premium-hero-visual">
+          <div className="hero-release-board">
+            <div className="release-stage-row" aria-label="Release pipeline animation">
+              {releaseStages.map((stage) => {
+                const isActive = activeStage === stage
+
+                return (
+                  <button
+                    key={stage}
+                    type="button"
+                    className={`release-stage ${isActive ? 'active' : ''}`}
+                    onClick={() => setActiveStageIndex(releaseStages.indexOf(stage))}
+                    aria-pressed={isActive}
+                  >
+                    <span className="stage-title">{releaseStageLabels[stage]}</span>
+                    <span className="stage-meta">{releaseStageMeta[stage].title}</span>
+                    {isActive && (
+                      <motion.span
+                        className="stage-progress-line"
+                        layoutId="active-stage-progress"
+                        transition={sceneTransition}
+                      />
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className={`hero-topology stage-view-${activeStage}`}>
+            <div className="hero-topology-noise" aria-hidden="true" />
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeStage}
+                className={`topology-scene scene-${activeStage}`}
+                initial={{ opacity: 0, filter: 'blur(9px)', y: reduceMotion ? 0 : 10 }}
+                animate={{ opacity: 1, filter: 'blur(0px)', y: 0 }}
+                exit={{ opacity: 0, filter: 'blur(7px)', y: reduceMotion ? 0 : -8 }}
+                transition={sceneTransition}
+              >
+                {activeStage === 'build' && (
+                  <div className="premium-scene-build" aria-label="Build stage in CI/CD">
+                    <svg viewBox="0 0 700 450" className="premium-scene-svg" role="img" aria-label="Build pipeline topology">
+                      <path className="premium-wire" d="M102 109 H350" />
+                      <path className="premium-wire" d="M350 109 H600" />
+                    </svg>
+                    <div className="premium-node node-build-source">
+                      <Wrench size={15} />
+                      <span>CI/CD</span>
+                    </div>
+                    <div className="premium-node node-build-compile">
+                      <Hash size={15} />
+                      <span>Compile</span>
+                    </div>
+                    <div className="premium-node node-build-artifact">
+                      <Download size={15} />
+                      <span>Artifact</span>
+                    </div>
+                    <div className="premium-build-terminal" aria-hidden="true">
+                      <span />
+                      <span />
+                      <span />
+                    </div>
+                    <div className="premium-build-bars" aria-hidden="true">
+                      <i />
+                      <i />
+                      <i />
+                      <i />
+                    </div>
+                  </div>
+                )}
+
+                {activeStage === 'upload' && (
+                  <div className="premium-scene-upload" aria-label="Upload stage to FaynoSync server">
+                    <svg viewBox="0 0 700 450" className="premium-scene-svg" role="img" aria-label="Upload topology">
+                      <path className="premium-wire" d="M165 135 H538" />
+                    </svg>
+                    <div className="premium-node node-upload-source">
+                      <Download size={15} />
+                      <span>Signed bundle</span>
+                    </div>
+                    <div className="premium-node node-upload-target">
+                      <Cloud size={15} />
+                      <span>FaynoSync Server</span>
+                    </div>
+                    <div className="premium-upload-stream" aria-hidden="true">
+                      <span />
+                      <span />
+                      <span />
+                    </div>
+                  </div>
+                )}
+
+                {activeStage === 'test' && (
+                  <div className="premium-scene-test" aria-label="Testing stage with validation nodes">
+                    <svg viewBox="0 0 700 450" className="premium-scene-svg" role="img" aria-label="Testing topology">
+                      <path className="premium-wire" d="M350 118 V204" />
+                      <path className="premium-wire" d="M350 204 H172" />
+                      <path className="premium-wire" d="M350 204 H528" />
+                    </svg>
+                    <div className="premium-node node-test-hub">
+                      <Shield size={15} />
+                      <span>QA Control</span>
+                    </div>
+                    <div className="premium-check-list" aria-hidden="true">
+                      <div><TrendingUp size={13} /> API checks</div>
+                      <div><Zap size={13} /> Smoke tests</div>
+                      <div><Lock size={13} /> Signature verify</div>
+                    </div>
+                  </div>
+                )}
+
+                {activeStage === 'publish' && (
+                  <div className="premium-scene-publish" aria-label="Publish approved release">
+                    <svg viewBox="0 0 700 450" className="premium-scene-svg" role="img" aria-label="Publish topology">
+                      <path className="premium-wire" d="M168 141 H536" />
+                    </svg>
+                    <div className="premium-node node-publish-release">
+                      <Rocket size={16} />
+                      <span>Release candidate</span>
+                    </div>
+                    <div className="premium-node node-publish-server">
+                      <Database size={16} />
+                      <span>Trusted registry</span>
+                    </div>
+                    <div className="premium-publish-status" aria-hidden="true">Approved and published</div>
+                  </div>
+                )}
+
+                {activeStage === 'clients' && (
+                  <div className="premium-scene-clients" aria-label="Distribution from server to clients">
+                    <svg viewBox="0 0 700 450" className="premium-scene-svg" role="img" aria-label="Client distribution topology">
+                      <path className="premium-wire" d="M350 224 L201 73" />
+                      <path className="premium-wire" d="M350 224 L499 73" />
+                      <path className="premium-wire" d="M350 224 L201 379" />
+                      <path className="premium-wire" d="M350 224 L499 379" />
+                      <path className="premium-wire" d="M350 224 L93 224" />
+                      <path className="premium-wire" d="M350 224 L607 224" />
+                    </svg>
+                    <div className="premium-node node-clients-core">
+                      <Cloud size={16} />
+                      <span>FaynoSync Server</span>
+                    </div>
+                    <div className="premium-node node-client linux"><Laptop size={14} /><span>Linux</span></div>
+                    <div className="premium-node node-client windows"><Laptop size={14} /><span>Windows</span></div>
+                    <div className="premium-node node-client mac"><Laptop size={14} /><span>macOS</span></div>
+                    <div className="premium-node node-client arm"><Smartphone size={14} /><span>ARM</span></div>
+                    <div className="premium-node node-client electron"><Globe2 size={14} /><span>Electron</span></div>
+                    <div className="premium-node node-client edge"><Cloud size={14} /><span>Edge</span></div>
+                    <div className="premium-fanout-packets" aria-hidden="true">
+                      <span className="packet-1" />
+                      <span className="packet-2" />
+                      <span className="packet-3" />
+                      <span className="packet-4" />
+                      <span className="packet-5" />
+                      <span className="packet-6" />
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            </AnimatePresence>
+
+            <div className="hero-stage-caption">
+              Active stage: <strong>{releaseStageLabels[activeStage]}</strong>
+            </div>
+            <p className="premium-stage-detail">{releaseStageMeta[activeStage].detail}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // Dashboard mockup component
@@ -549,38 +807,20 @@ export default function HomePage() {
         <GeometricShapes />
         
         {/* Animated FaynoSync Banner */}
-        <div className="relative" style={{ zIndex: 10 }}>
+        {/* <div className="relative" style={{ zIndex: 10 }}>
           <AnimatedBanner fadeOut={false} />
-        </div>
+        </div> */}
         <div style={{ marginBottom: '2.5rem' }} />
         
         {/* Enhanced Hero Section */}
-        <section className="relative flex flex-col items-center justify-center min-h-[20vh] text-white px-4 py-8" style={{ zIndex: 10 }}>
+        <section className="relative flex flex-col items-center justify-center min-h-[88vh] text-white px-4 py-8" style={{ zIndex: 10 }}>
           <h1 className="text-4xl md:text-6xl font-bold text-center mb-6 hero-title">
             <span className="gradient-text">FaynoSync</span>
           </h1>
           <p className="text-xl md:text-2xl text-center mb-8 max-w-3xl fade-in-up">
             {siteConfig.tagline}
           </p>
-          <p className="text-lg text-center mb-12 max-w-4xl text-gray-200 fade-in-up" style={{ animationDelay: '0.2s' }}>
-            Transform how you deliver updates to your applications. FaynoSync provides a comprehensive, secure, and scalable solution for managing application updates across multiple platforms and cloud providers. Whether you're building desktop applications, browser extensions, or mobile apps, our platform ensures your users always have access to the latest features and security patches.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 fade-in-up" style={{ animationDelay: '0.4s' }}>
-            <Link
-              to="/docs/getting-started"
-              className="enhanced-button button-primary text-lg font-semibold px-8 py-4 rounded-xl shadow-lg group cta-button"
-            >
-              <span>Get Started</span>
-              <ArrowRight className="ml-2 h-5 w-5 inline transition-transform group-hover:translate-x-1" />
-            </Link>
-            <Link
-              to="/demo"
-              className="enhanced-button button-primary text-lg font-semibold px-8 py-4 rounded-xl shadow-lg group cta-button"
-            >
-              <span>View Demo</span>
-              <ArrowRight className="ml-2 h-5 w-5 inline transition-transform group-hover:translate-x-1" />
-            </Link>
-          </div>
+          <HeroUpdateFlow />
         </section>
 
         {/* Introduction Section */}
