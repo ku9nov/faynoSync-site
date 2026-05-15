@@ -739,39 +739,6 @@ const platforms = [
   },
 ]
 
-const benefits = [
-  {
-    icon: <Cloud className="h-6 w-6" />,
-    title: 'Multiple S3 Providers',
-    description: 'Support for AWS S3, MinIO, Digital Ocean Spaces, and GCP Cloud Storage - choose the provider that fits your needs.'
-  },
-  {
-    icon: <Shield className="h-6 w-6" />,
-    title: 'Enterprise Security',
-    description: 'Advanced authentication, authorization, and TUF-signed builds to protect your applications from unauthorized access and supply-chain attacks.'
-  },
-  {
-    icon: <RefreshCw className="h-6 w-6" />,
-    title: 'Multiple Updater Support',
-    description: 'Compatible with Squirrel Windows/macOS, Electron Builder, Tauri and custom update mechanisms for maximum flexibility.'
-  },
-  {
-    icon: <Clock className="h-6 w-6" />,
-    title: 'Real-time Monitoring',
-    description: 'Track update deployments, user adoption rates, and system performance in real-time.'
-  },
-  {
-    icon: <Database className="h-6 w-6" />,
-    title: 'Flexible Storage',
-    description: 'Choose from multiple cloud storage providers or use your own infrastructure.'
-  },
-  {
-    icon: <Settings className="h-6 w-6" />,
-    title: 'Easy Integration',
-    description: 'Simple API endpoints and comprehensive documentation for quick implementation.'
-  }
-]
-
 const useCases = [
   {
     title: 'Desktop Applications',
@@ -810,7 +777,6 @@ export default function HomePage() {
         {/* <div className="relative" style={{ zIndex: 10 }}>
           <AnimatedBanner fadeOut={false} />
         </div> */}
-        <div style={{ marginBottom: '2.5rem' }} />
         
         {/* Enhanced Hero Section */}
         <section className="relative flex flex-col items-center justify-center min-h-[88vh] text-white px-4 py-8" style={{ zIndex: 10 }}>
@@ -830,8 +796,8 @@ export default function HomePage() {
           id="intro"
         >
           <div className="max-w-6xl mx-auto">
-            <h2 className="text-4xl font-bold text-center text-white mb-12">
-              Why Choose FaynoSync?
+            <h2 className="text-4xl font-bold text-center text-white mb-12 section-title-enhanced">
+              <span className="gradient-text">Why Choose FaynoSync?</span>
             </h2>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
               <div>
@@ -839,34 +805,43 @@ export default function HomePage() {
                   The Complete Auto-Updater Solution
                 </h3>
                 <p className="text-lg text-gray-200 mb-6">
-                  FaynoSync eliminates the complexity of managing application updates across different platforms and cloud providers. Our unified platform provides everything you need to deliver seamless updates to your users, from secure file storage to comprehensive analytics.
+                  FaynoSync simplifies secure desktop app updates across platforms and cloud providers with one unified workflow.
                 </p>
                 <p className="text-lg text-gray-200 mb-6">
-                  Built with modern technologies and best practices, FaynoSync offers enterprise-grade reliability while remaining simple to integrate and use. Our RESTful API makes it easy to integrate with your existing development workflow, while our comprehensive documentation ensures you can get up and running quickly.
+                  Built for reliability and fast integration, it combines multi-cloud distribution, API-first automation, telemetry-driven insights, and performance-focused delivery.
                 </p>
-                <div className="flex items-center gap-4 text-white">
-                  <div className="flex items-center gap-2">
-                    <Star className="h-5 w-5 text-yellow-400" />
-                    <span>Enterprise Ready</span>
+                <div className="space-y-4 mb-6">
+                  <div className="flex items-center gap-3 tech-feature-item">
+                    <Star className="h-5 w-5 text-yellow-400 tech-icon" />
+                    <span className="text-white">Enterprise Ready</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Lock className="h-5 w-5 text-green-400" />
-                    <span>Secure by Design</span>
+                  <div className="flex items-center gap-3 tech-feature-item">
+                    <Lock className="h-5 w-5 text-green-400 tech-icon" />
+                    <span className="text-white">Secure by Design</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Zap className="h-5 w-5 text-blue-400" />
-                    <span>High Performance</span>
+                  <div className="flex items-center gap-3 tech-feature-item">
+                    <Zap className="h-5 w-5 text-blue-400 tech-icon" />
+                    <span className="text-white">High Performance</span>
+                  </div>
+                  <div className="flex items-center gap-3 tech-feature-item">
+                    <Download className="h-5 w-5 text-green-400 tech-icon" />
+                    <span className="text-white">Multi-cloud storage and deployment flexibility</span>
+                  </div>
+                  <div className="flex items-center gap-3 tech-feature-item">
+                    <Upload className="h-5 w-5 text-blue-400 tech-icon" />
+                    <span className="text-white">RESTful API and docs for quick integration</span>
+                  </div>
+                  <div className="flex items-center gap-3 tech-feature-item">
+                    <Database className="h-5 w-5 text-purple-400 tech-icon" />
+                    <span className="text-white">Optimized caching and low-latency update delivery</span>
                   </div>
                 </div>
+
               </div>
-              <div className="grid grid-cols-2 gap-6">
-                {benefits.slice(0, 4).map((benefit, idx) => (
-                  <div key={benefit.title} className="bg-white/10 rounded-lg p-6 backdrop-blur-sm">
-                    <div className="text-blue-400 mb-3">{benefit.icon}</div>
-                    <h4 className="text-white font-semibold mb-2">{benefit.title}</h4>
-                    <p className="text-gray-300 text-sm">{benefit.description}</p>
-                  </div>
-                ))}
+              <div className="space-y-6">
+                <div className="dashboard-mockup-container">
+                  <DashboardMockup isBooting={visibleSections.has('intro')} />
+                </div>
               </div>
             </div>
           </div>
@@ -955,80 +930,6 @@ export default function HomePage() {
             ))}
           </div>
         </section> */}
-
-        {/* Enhanced Technical Overview Section */}
-        <section 
-          className={`py-16 px-4 bg-white/5 section-enhanced scroll-reveal reveal-pattern-technical ${visibleSections.has('technical') ? 'revealed' : ''}`}
-          data-scroll-section
-          id="technical"
-        >
-          <div className="max-w-6xl mx-auto">
-            <h2 className="text-4xl font-bold text-center text-white mb-12 section-title-enhanced">
-              <span className="gradient-text">Technical Overview</span>
-            </h2>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-              <div>
-                <h3 className="text-2xl font-semibold text-white mb-6">
-                  Architecture & Technology
-                </h3>
-                <p className="text-lg text-gray-200 mb-6">
-                  FaynoSync is built on a modern, scalable architecture that leverages cloud-native technologies and best practices. Our platform is designed to handle high-throughput update requests while maintaining low latency and high availability.
-                </p>
-                <p className="text-lg text-gray-200 mb-6">
-                  The system supports multiple update mechanisms including Squirrel for Windows and macOS, Electron Builder, and custom update protocols. This flexibility ensures compatibility with virtually any desktop application framework.
-                </p>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 tech-feature-item">
-                    <Download className="h-5 w-5 text-green-400 tech-icon" />
-                    <span className="text-white">Multi-cloud storage support</span>
-                  </div>
-                  <div className="flex items-center gap-3 tech-feature-item">
-                    <Upload className="h-5 w-5 text-blue-400 tech-icon" />
-                    <span className="text-white">RESTful API with comprehensive documentation</span>
-                  </div>
-                  <div className="flex items-center gap-3 tech-feature-item">
-                    <Database className="h-5 w-5 text-purple-400 tech-icon" />
-                    <span className="text-white">Advanced caching and performance optimization</span>
-                  </div>
-                </div>
-              </div>
-              <div className="dashboard-mockup-container">
-                <DashboardMockup isBooting={visibleSections.has('technical')} />
-              </div>
-              {/* <div>
-                <h3 className="text-2xl font-semibold text-white mb-6">
-                  Getting Started
-                </h3>
-                <p className="text-lg text-gray-200 mb-6">
-                  Getting started with FaynoSync is straightforward. Our comprehensive documentation guides you through the setup process, from initial configuration to deploying your first update.
-                </p>
-                <div className="space-y-4">
-                  <Link
-                    to="/docs/getting-started"
-                    className="block bg-white/10 rounded-lg p-4 hover:bg-white/20 transition-colors"
-                  >
-                    <h4 className="text-white font-semibold mb-2">Quick Start Guide</h4>
-                    <p className="text-gray-300 text-sm">Set up FaynoSync in minutes with our step-by-step guide</p>
-                  </Link>
-                  <Link
-                    to="/docs/api"
-                    className="block bg-white/10 rounded-lg p-4 hover:bg-white/20 transition-colors"
-                  >
-                    <h4 className="text-white font-semibold mb-2">API Documentation</h4>
-                    <p className="text-gray-300 text-sm">Explore our comprehensive API reference</p>
-                  </Link>
-                  <Link
-                    to="/blog"
-                    className="block bg-white/10 rounded-lg p-4 hover:bg-white/20 transition-colors"
-                  >
-                    <h4 className="text-white font-semibold mb-2">Blog & Tutorials</h4>
-                    <p className="text-gray-300 text-sm">Learn from real-world examples and best practices</p>
-                  </Link>
-                </div>
-              </div> */}
-            </div>
-          </div>
-        </section>
 
         {/* Enhanced CTA Section */}
         <section 
