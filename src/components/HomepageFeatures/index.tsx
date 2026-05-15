@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import Link from '@docusaurus/Link'
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext'
 import Layout from '@theme/Layout'
-import { ArrowRight, Cloud, Hash, Zap, Globe, Rocket, Wrench, Laptop, Globe2, Smartphone, Shield, Zap as Lightning, Users, BarChart2, GitMerge, RefreshCw, CheckCircle, Star, Download, Upload, Settings, Database, Lock, Clock, TrendingUp } from 'lucide-react'
+import { ArrowRight, Cloud, Hash, Zap, Globe, Rocket, Wrench, Laptop, Globe2, Smartphone, Shield, Zap as Lightning, Users, BarChart2, GitMerge, RefreshCw, Star, Download, Upload, Settings, Database, Lock, Clock, TrendingUp } from 'lucide-react'
 import AnimatedBanner from '../AnimatedBanner';
 
 const hexToRgb = (hex: string) => {
@@ -203,8 +203,71 @@ const GeometricShapes = () => {
   );
 };
 
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
+
+const buildSparklinePath = (values: number[], width = 220, height = 72) => {
+  if (!values.length) return ''
+
+  const max = Math.max(...values)
+  const min = Math.min(...values)
+  const range = max - min || 1
+  const step = width / Math.max(values.length - 1, 1)
+
+  return values
+    .map((value, index) => {
+      const x = index * step
+      const y = height - ((value - min) / range) * height
+      return `${index === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`
+    })
+    .join(' ')
+}
+
 // Dashboard mockup component
 const DashboardMockup = ({ isBooting }: { isBooting: boolean }) => {
+  const [requestsSeries, setRequestsSeries] = useState([1820, 1960, 2075, 2140, 2215, 2280, 2350, 2410])
+  const [outdatedSeries, setOutdatedSeries] = useState([102, 97, 92, 88, 84, 80, 77, 72])
+  const [versionUsage, setVersionUsage] = useState([72, 18, 10])
+  const [channelDistribution, setChannelDistribution] = useState([68, 24, 8])
+  const [outdatedClients, setOutdatedClients] = useState(72)
+  const [latestVersionUsers, setLatestVersionUsers] = useState(2837)
+  const [totalRequests, setTotalRequests] = useState(20943)
+  const [uniqueClients, setUniqueClients] = useState(1364)
+
+  useEffect(() => {
+    const updateInterval = window.setInterval(() => {
+      setTotalRequests((prev) => prev + 18 + Math.floor(Math.random() * 11))
+      setUniqueClients((prev) => prev + (Math.random() > 0.6 ? 1 : 0))
+      setLatestVersionUsers((prev) => prev + (Math.random() > 0.55 ? 1 : 0))
+      setOutdatedClients((prev) => clamp(prev + (Math.random() > 0.7 ? 1 : -1), 58, 86))
+
+      setRequestsSeries((prev) => [...prev.slice(1), prev[prev.length - 1] + 18 + Math.floor(Math.random() * 9)])
+      setOutdatedSeries((prev) => [...prev.slice(1), clamp(prev[prev.length - 1] + (Math.random() > 0.6 ? -1 : 0), 58, 84)])
+      setVersionUsage((prev) => {
+        const next = [
+          clamp(prev[0] + (Math.random() > 0.5 ? 1 : 0), 68, 78),
+          clamp(prev[1] + (Math.random() > 0.7 ? 1 : -1), 14, 23),
+          0,
+        ]
+        next[2] = 100 - next[0] - next[1]
+        return next
+      })
+      setChannelDistribution((prev) => {
+        const stable = clamp(prev[0] + (Math.random() > 0.55 ? 1 : -1), 64, 72)
+        const beta = clamp(prev[1] + (Math.random() > 0.55 ? -1 : 1), 20, 27)
+        return [stable, beta, 100 - stable - beta]
+      })
+    }, 2600)
+
+    return () => window.clearInterval(updateInterval)
+  }, [])
+
+  const requestTrend = requestsSeries[requestsSeries.length - 1] - requestsSeries[0]
+  const outdatedTrend = outdatedSeries[outdatedSeries.length - 1] - outdatedSeries[0]
+
+  const requestsPath = buildSparklinePath(requestsSeries)
+  const outdatedPath = buildSparklinePath(outdatedSeries)
+  const channelGradient = `conic-gradient(#34D399 0 ${channelDistribution[0]}%, #60A5FA ${channelDistribution[0]}% ${channelDistribution[0] + channelDistribution[1]}%, #F59E0B ${channelDistribution[0] + channelDistribution[1]}% 100%)`
+
   return (
     <div className={`dashboard-mockup ${isBooting ? 'booting' : ''}`}>
       <div className="mockup-window">
@@ -214,7 +277,11 @@ const DashboardMockup = ({ isBooting }: { isBooting: boolean }) => {
             <div className="dot yellow"></div>
             <div className="dot green"></div>
           </div>
-          <div className="mockup-title">FaynoSync Dashboard</div>
+          <div className="mockup-title">FaynoSync Telemetry</div>
+          <div className="mockup-live-pill">
+            <span className="live-indicator" />
+            <span>Live</span>
+          </div>
         </div>
         <div className="mockup-content">
           <div className="mockup-sidebar">
@@ -236,33 +303,91 @@ const DashboardMockup = ({ isBooting }: { isBooting: boolean }) => {
             </div>
           </div>
           <div className="mockup-main">
-            <div className="stats-grid">
-              <div className="stat-card">
-                <div className="stat-number animated-counter">2,847</div>
+            <div className="stats-grid telemetry-grid">
+              <div className="stat-card telemetry-card">
+                <div className="stat-label">Total Requests</div>
+                <div className="stat-number animated-counter">{totalRequests.toLocaleString()}</div>
+              </div>
+              <div className="stat-card telemetry-card">
                 <div className="stat-label">Unique Clients</div>
-                <div className="stat-trend up">↗ +12%</div>
+                <div className="stat-number animated-counter">{uniqueClients.toLocaleString()}</div>
               </div>
-              <div className="stat-card">
-                <div className="stat-number animated-counter">98.5%</div>
+              <div className="stat-card telemetry-card">
                 <div className="stat-label">Latest Version Users</div>
-                <div className="stat-trend up">↗ +2.1%</div>
+                <div className="stat-number animated-counter">{latestVersionUsers.toLocaleString()}</div>
               </div>
-              <div className="stat-card">
-                <div className="stat-number animated-counter">42</div>
+              <div className="stat-card telemetry-card">
                 <div className="stat-label">Outdated Clients</div>
-                <div className="stat-trend neutral">→ 0%</div>
+                <div className="stat-number animated-counter">{outdatedClients}</div>
               </div>
             </div>
-            <div className="chart-container">
-              <div className="chart-title">Version Usage</div>
-              <div className="animated-chart">
-                <div className="chart-bar" style={{ height: '60%', animationDelay: '0.1s' }}></div>
-                <div className="chart-bar" style={{ height: '80%', animationDelay: '0.2s' }}></div>
-                <div className="chart-bar" style={{ height: '45%', animationDelay: '0.3s' }}></div>
-                <div className="chart-bar" style={{ height: '90%', animationDelay: '0.4s' }}></div>
-                <div className="chart-bar" style={{ height: '70%', animationDelay: '0.5s' }}></div>
+
+            <div className="telemetry-charts-grid">
+              <div className="chart-container">
+                <div className="chart-title">Total Requests Trend</div>
+                <svg viewBox="0 0 220 72" className="sparkline-chart" role="img" aria-label="Total Requests Trend">
+                  <path d={requestsPath} className="sparkline-path requests-path" />
+                </svg>
+                <div className="sparkline-footer">
+                  <span className="sparkline-value">{requestsSeries[requestsSeries.length - 1].toLocaleString()}</span>
+                  <span className={`sparkline-trend ${requestTrend >= 0 ? 'positive' : 'negative'}`}>
+                    {requestTrend >= 0 ? '+' : ''}
+                    {requestTrend}
+                  </span>
+                </div>
+              </div>
+
+              <div className="chart-container">
+                <div className="chart-title">Outdated Clients Trend</div>
+                <svg viewBox="0 0 220 72" className="sparkline-chart" role="img" aria-label="Outdated Clients Trend">
+                  <path d={outdatedPath} className="sparkline-path outdated-path" />
+                </svg>
+                <div className="sparkline-footer">
+                  <span className="sparkline-value">{outdatedSeries[outdatedSeries.length - 1]} devices</span>
+                  <span className={`sparkline-trend ${outdatedTrend <= 0 ? 'positive' : 'negative'}`}>
+                    {outdatedTrend > 0 ? '+' : ''}
+                    {outdatedTrend}
+                  </span>
+                </div>
+              </div>
+
+              <div className="chart-container">
+                <div className="chart-title">Version Usage</div>
+                <div className="usage-bars">
+                  <div className="usage-bar-item">
+                    <div className="usage-bar-track">
+                      <div className="usage-bar-fill latest" style={{ height: `${versionUsage[0]}%` }} />
+                    </div>
+                    <div className="usage-bar-label">0.57.x</div>
+                  </div>
+                  <div className="usage-bar-item">
+                    <div className="usage-bar-track">
+                      <div className="usage-bar-fill previous" style={{ height: `${versionUsage[1]}%` }} />
+                    </div>
+                    <div className="usage-bar-label">0.56.x</div>
+                  </div>
+                  <div className="usage-bar-item">
+                    <div className="usage-bar-track">
+                      <div className="usage-bar-fill legacy" style={{ height: `${versionUsage[2]}%` }} />
+                    </div>
+                    <div className="usage-bar-label">legacy</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="chart-container">
+                <div className="chart-title">Channel Distribution</div>
+                <div className="pie-chart-wrap">
+                  <div className="pie-chart" style={{ background: channelGradient }} />
+                  <div className="pie-legend">
+                    <span className="legend-item"><i className="legend-dot stable" />Stable {channelDistribution[0]}%</span>
+                    <span className="legend-item"><i className="legend-dot beta" />Beta {channelDistribution[1]}%</span>
+                    <span className="legend-item"><i className="legend-dot canary" />Canary {channelDistribution[2]}%</span>
+                  </div>
+                </div>
               </div>
             </div>
+
           </div>
         </div>
       </div>
