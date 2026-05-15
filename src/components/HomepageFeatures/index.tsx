@@ -780,8 +780,8 @@ export default function HomePage() {
         
         {/* Enhanced Hero Section */}
         <section className="relative flex flex-col items-center justify-center min-h-[88vh] text-white px-4 py-8" style={{ zIndex: 10 }}>
-          <h1 className="text-4xl md:text-6xl font-bold text-center mb-6 hero-title">
-            <span className="gradient-text">FaynoSync</span>
+          <h1 className="text-center mb-6 hero-title">
+            <span className="hero-title-brand">FaynoSync</span>
           </h1>
           <p className="text-xl md:text-2xl text-center mb-8 max-w-3xl fade-in-up">
             {siteConfig.tagline}
@@ -931,37 +931,6 @@ export default function HomePage() {
           </div>
         </section> */}
 
-        {/* Enhanced CTA Section */}
-        <section 
-          className={`py-16 px-4 scroll-reveal ${visibleSections.has('cta') ? 'revealed' : ''}`}
-          data-scroll-section
-          id="cta"
-        >
-          <div className="max-w-4xl mx-auto text-center">
-            <h2 className="text-4xl font-bold text-white mb-6">
-              Ready to Transform Your Update Process?
-            </h2>
-            <p className="text-xl text-gray-200 mb-8">
-              Start building reliable auto-update systems for your applications with FaynoSync's powerful platform.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                to="/docs/getting-started"
-                className="enhanced-button button-primary text-lg font-semibold px-8 py-4 rounded-xl shadow-lg group cta-button"
-              >
-                <span>Start Building</span>
-                <ArrowRight className="ml-2 h-5 w-5 inline transition-transform group-hover:translate-x-1" />
-              </Link>
-              <Link
-                to="/demo"
-                className="enhanced-button button-primary text-lg font-semibold px-8 py-4 rounded-xl shadow-lg group cta-button"
-              >
-                <span>Explore Demo</span>
-                <ArrowRight className="ml-2 h-5 w-5 inline transition-transform group-hover:translate-x-1" />
-              </Link>
-            </div>
-          </div>
-        </section>
       </div>
     </Layout>
   )
