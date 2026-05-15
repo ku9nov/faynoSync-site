@@ -47,7 +47,7 @@ const useScrollAnimation = () => {
               if (prefersReducedMotion) {
                 revealFeatures();
               } else {
-                cardRevealTimers.push(window.setTimeout(revealFeatures, 180));
+                cardRevealTimers.push(window.setTimeout(revealFeatures, 360));
               }
             }
 
@@ -204,9 +204,9 @@ const GeometricShapes = () => {
 };
 
 // Dashboard mockup component
-const DashboardMockup = () => {
+const DashboardMockup = ({ isBooting }: { isBooting: boolean }) => {
   return (
-    <div className="dashboard-mockup">
+    <div className={`dashboard-mockup ${isBooting ? 'booting' : ''}`}>
       <div className="mockup-window">
         <div className="mockup-header">
           <div className="mockup-dots">
@@ -509,7 +509,7 @@ export default function HomePage() {
 
         {/* Enhanced Key Features Section */}
         <section 
-          className={`py-16 px-4 relative scroll-reveal ${visibleSections.has('features') ? 'revealed' : ''}`}
+          className={`py-16 px-4 relative scroll-reveal reveal-pattern-features ${visibleSections.has('features') ? 'revealed' : ''}`}
           data-scroll-section
           id="features"
         >
@@ -524,8 +524,8 @@ export default function HomePage() {
                 style={{ 
                   '--card-color': feature.color, 
                   '--card-rgb': hexToRgb(feature.color),
-                  '--animation-delay': `${idx * 40}ms`,
-                  animationDelay: visibleCards.has('features-cards') ? `${idx * 40}ms` : '0ms'
+                  '--animation-delay': `${idx * 80}ms`,
+                  animationDelay: visibleCards.has('features-cards') ? `${idx * 80}ms` : '0ms'
                 } as React.CSSProperties}
               >
                 <div className="sharedCardIcon enhanced-icon-container">
@@ -544,7 +544,7 @@ export default function HomePage() {
 
         {/* Enhanced Use Cases Section */}
         <section 
-          className={`py-16 px-4 bg-white/5 section-enhanced scroll-reveal ${visibleSections.has('usecases') ? 'revealed' : ''}`}
+          className={`py-16 px-4 bg-white/5 section-enhanced scroll-reveal reveal-pattern-usecases ${visibleSections.has('usecases') ? 'revealed' : ''}`}
           data-scroll-section
           id="usecases"
         >
@@ -554,7 +554,10 @@ export default function HomePage() {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {useCases.map((useCase, idx) => (
-                <div key={useCase.title} className="enhanced-use-case-card bg-white/10 rounded-xl p-8 backdrop-blur-sm group">
+                <div
+                  key={useCase.title}
+                  className={`enhanced-use-case-card use-case-slide-${idx % 2 === 0 ? 'left' : 'right'} bg-white/10 rounded-xl p-8 backdrop-blur-sm group`}
+                >
                   <div className="text-blue-400 mb-4 enhanced-use-case-icon transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">{useCase.icon}</div>
                   <h3 className="text-2xl font-semibold text-white mb-4 transition-colors duration-300 group-hover:text-blue-300">{useCase.title}</h3>
                   <p className="text-gray-200 text-lg transition-colors duration-300 group-hover:text-white">{useCase.description}</p>
@@ -590,7 +593,7 @@ export default function HomePage() {
 
         {/* Enhanced Technical Overview Section */}
         <section 
-          className={`py-16 px-4 bg-white/5 section-enhanced scroll-reveal ${visibleSections.has('technical') ? 'revealed' : ''}`}
+          className={`py-16 px-4 bg-white/5 section-enhanced scroll-reveal reveal-pattern-technical ${visibleSections.has('technical') ? 'revealed' : ''}`}
           data-scroll-section
           id="technical"
         >
@@ -625,7 +628,7 @@ export default function HomePage() {
                 </div>
               </div>
               <div className="dashboard-mockup-container">
-                <DashboardMockup />
+                <DashboardMockup isBooting={visibleSections.has('technical')} />
               </div>
               {/* <div>
                 <h3 className="text-2xl font-semibold text-white mb-6">
