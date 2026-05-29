@@ -262,6 +262,7 @@ For legacy MinIO deployments only:
 | `S3_SECRET_KEY` | Your MinIO secret access key. | `S3_SECRET_KEY=your_minio_secret_key` |
 | `S3_BUCKET_NAME_PRIVATE` | The name of your MinIO bucket for private storage. | `S3_BUCKET_NAME_PRIVATE=cb-faynosync-s3-private` |
 | `S3_BUCKET_NAME` | The name of your MinIO bucket for public storage. | `S3_BUCKET_NAME=cb-faynosync-s3-public` |
+| `S3_BUCKET_NAME_CDN` | Bucket used for API response caching. You can reuse `S3_BUCKET_NAME` or use a dedicated bucket for flexible cache settings. | `S3_BUCKET_NAME_CDN=cb-faynosync-s3-public` |
 | `S3_ENDPOINT_PRIVATE` | The MinIO endpoint URL. | `S3_ENDPOINT_PRIVATE=localhost:9010` |
 | `S3_ENDPOINT` | The public MinIO endpoint URL. | `S3_ENDPOINT=localhost:9010` |
 
@@ -277,6 +278,7 @@ For using AWS S3 as your object storage solution:
 | `S3_REGION` | The AWS region in which your S3 bucket is located. | `S3_REGION=us-east-1` |
 | `S3_BUCKET_NAME_PRIVATE` | The name of your AWS S3 bucket for private storage. | `S3_BUCKET_NAME_PRIVATE=your-private-bucket` |
 | `S3_BUCKET_NAME` | The name of your AWS S3 bucket for public storage. | `S3_BUCKET_NAME=your-public-bucket` |
+| `S3_BUCKET_NAME_CDN` | Bucket used for API response caching. You can reuse `S3_BUCKET_NAME` or use a dedicated bucket for flexible cache settings. | `S3_BUCKET_NAME_CDN=your-public-bucket` |
 | `S3_ENDPOINT_PRIVATE` | The AWS S3 endpoint URL. | `S3_ENDPOINT_PRIVATE=https://your-bucket-name.s3.amazonaws.com` |
 | `S3_ENDPOINT` | The public AWS S3 endpoint URL. | `S3_ENDPOINT=https://your-public-bucket.s3.amazonaws.com` |
 | `S3_API_ENDPOINT` | Optional custom S3 API endpoint for S3-compatible providers such as local Garage. Leave empty for managed AWS S3. | `S3_API_ENDPOINT=http://localhost:3900` |
@@ -295,6 +297,7 @@ For using DigitalOcean Spaces as your object storage solution:
 | `S3_REGION` | The DigitalOcean region where your Space is located. | `S3_REGION=nyc3` |
 | `S3_BUCKET_NAME_PRIVATE` | The name of your DigitalOcean Space for private storage. | `S3_BUCKET_NAME_PRIVATE=your-private-space` |
 | `S3_BUCKET_NAME` | The name of your DigitalOcean Space for public storage. | `S3_BUCKET_NAME=your-public-space` |
+| `S3_BUCKET_NAME_CDN` | Bucket used for API response caching. You can reuse `S3_BUCKET_NAME` or use a dedicated bucket for flexible cache settings. | `S3_BUCKET_NAME_CDN=your-public-space` |
 | `S3_ENDPOINT_PRIVATE` | The DigitalOcean Spaces endpoint URL. | `S3_ENDPOINT_PRIVATE=nyc3.digitaloceanspaces.com` |
 
 ### Google Cloud Storage (GCP)
@@ -309,6 +312,7 @@ For using Google Cloud Storage as your object storage solution:
 | `GCS_PRIVATE_KEY` | GCS private key for presigned URL generation. | `GCS_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\nMIIEv...\n-----END PRIVATE KEY-----\n` |
 | `S3_BUCKET_NAME_PRIVATE` | The name of your GCS bucket for private storage. | `S3_BUCKET_NAME_PRIVATE=your-private-gcs-bucket` |
 | `S3_BUCKET_NAME` | The name of your GCS bucket for public storage. | `S3_BUCKET_NAME=your-public-gcs-bucket` |
+| `S3_BUCKET_NAME_CDN` | Bucket used for API response caching. You can reuse `S3_BUCKET_NAME` or use a dedicated bucket for flexible cache settings. | `S3_BUCKET_NAME_CDN=your-public-gcs-bucket` |
 
 ---
 
@@ -327,6 +331,7 @@ S3_ENDPOINT_PRIVATE=localhost:9010
 S3_ACCESS_KEY=
 S3_SECRET_KEY=
 S3_BUCKET_NAME=cb-faynosync-s3-public
+S3_BUCKET_NAME_CDN=cb-faynosync-s3-public
 S3_ENDPOINT=localhost:9010
 
 # =============================================================================
@@ -338,6 +343,7 @@ STORAGE_DRIVER=aws
 #S3_REGION=
 # S3_BUCKET_NAME_PRIVATE=
 # S3_BUCKET_NAME=
+# S3_BUCKET_NAME_CDN= # can be the same as S3_BUCKET_NAME, or a dedicated cache bucket
 #S3_ENDPOINT_PRIVATE=https://<bucket_name>.s3.amazonaws.com # for example in us-east-1
 #S3_ENDPOINT=https://<bucket_name>.s3.amazonaws.com # for example in us-east-1
 #S3_API_ENDPOINT=http://localhost:3900 # optional for S3-compatible providers (Garage, etc.)
@@ -354,6 +360,7 @@ STORAGE_DRIVER=aws
 # S3_SECRET_KEY=EXAMPLE_SECRET_KEY
 # S3_BUCKET_NAME_PRIVATE=
 # S3_BUCKET_NAME=
+# S3_BUCKET_NAME_CDN= # can be the same as S3_BUCKET_NAME, or a dedicated cache bucket
 
 # =============================================================================
 # GOOGLE CLOUD STORAGE (GCP)
@@ -364,6 +371,7 @@ STORAGE_DRIVER=aws
 # GCS_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\nMIIEv...\n-----END PRIVATE KEY-----\n
 # S3_BUCKET_NAME_PRIVATE=
 # S3_BUCKET_NAME=
+# S3_BUCKET_NAME_CDN= # can be the same as S3_BUCKET_NAME, or a dedicated cache bucket
 
 # =============================================================================
 # Other Configuration

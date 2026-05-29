@@ -1,0 +1,35 @@
+---
+title: SDK Overview
+description: Official faynoSync client SDKs for typed update checks, edge-optimized delivery, and release workflows without changing the core API server.
+sidebar_position: 1
+---
+
+# SDK Overview
+
+Official faynoSync SDKs are client libraries for checking application updates against your faynoSync instance.
+
+They were created so you can improve performance and reduce load on the API server **without global changes to the core update API**. SDKs add a typed transport layer, predictable client behavior, and first-class support for **edge** delivery patterns on top of the same `/checkVersion` contract.
+
+## Why use an SDK?
+
+| Benefit | What it means in practice |
+|---------|---------------------------|
+| **Server stability** | Optimize hot paths (for example, edge JSON + API fallback) in the client instead of forking or extending the API server for every rollout strategy. |
+| **Edge support** | Use cached static responses from CDN/object storage when `cdn` is enabled on an app, with automatic fallback to the live API. |
+| **Typed contracts** | Structured options and responses instead of ad-hoc query maps and manual JSON parsing. |
+| **Release workflows** | Combine faynoSync with SDK-driven checks to treat your instance as a **release manager** while keeping faynoSync's dynamic, flexible update-server model (custom channels, platforms, architectures, and artifacts). |
+
+## Edge and the API server
+
+When application CDN caching is enabled, faynoSync can publish version-scoped JSON responses for edge delivery. **That flow is intended to work correctly with an official SDK**: the client tries edge first, falls back to `/checkVersion` when needed, and can use complementary endpoints such as `/telemetry/beacon` when the live check is skipped.
+
+Calling `/checkVersion` directly still works, but you do not get the same edge-first orchestration, source semantics, or SDK-optimized telemetry paths out of the box.
+
+## Available SDKs
+
+| SDK | Status | Documentation |
+|-----|--------|---------------|
+| Go | Available | [Go SDK](./go/sdk) |
+| JavaScript / TypeScript | Coming soon | [JavaScript SDK](./js/sdk) |
+
+Choose the SDK that matches your runtime. All SDKs share the same goals: typed update checks, optional edge acceleration, and room to evolve client behavior without breaking the core faynoSync API.

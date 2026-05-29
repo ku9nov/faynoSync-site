@@ -30,6 +30,7 @@ The request uses `multipart/form-data` format with the following fields:
 | `description` | string | ❌ | App description |
 | `private` | boolean | ❌ | Lock app (if selected, the app will be stored in a private bucket and cannot be changed) |
 | `tuf` | boolean | ❌ | Enable TUF framework for application |
+| `cdn` | boolean | ❌ | Enable or disable API response caching on S3 |
 
 ## Example Request
 
@@ -38,7 +39,7 @@ The request uses `multipart/form-data` format with the following fields:
 ```bash
 curl --location 'http://localhost:9000/app/create' \
 --header 'Authorization: Bearer <jwt_token>' \
---form 'data="{\"app\":\"appName\"}"'
+--form 'data="{\"app\":\"appName\", \"cdn\": \"true\"}"'
 ```
 
 ## Response
@@ -62,3 +63,4 @@ curl --location 'http://localhost:9000/app/create' \
 - The `private` field is irreversible - once set to `true`, the app cannot be made public later
 - The `file` field accepts common image formats (PNG, JPG, etc.)
 - The `description` field is optional but recommended for better app management
+- When `cdn` is set to `true`, API responses are cached on S3; set `cdn` to `false` to disable caching

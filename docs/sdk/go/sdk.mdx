@@ -1,0 +1,253 @@
+---
+title: Go SDK
+description: Production-oriented Go SDK for checking application updates with faynoSync.
+sidebar_position: 2
+---
+
+# Go SDK
+
+Production-oriented Go SDK for checking application updates with faynoSync.
+
+This package is a small typed transport and developer experience layer. It does not implement update installation, platform normalization, metadata verification, caching, or business rules.
+
+:::info Edge delivery requires an SDK
+Edge response caching and the edge-first fallback flow are designed to work correctly when clients use an official faynoSync SDK (this Go SDK or a future JS SDK). Raw `/checkVersion` calls do not provide the same edge orchestration, `Source` semantics, or SDK-optimized telemetry paths. See the [SDK overview](../intro) for context.
+:::
+
+## Installation
+
+```sh
+go get github.com/ku9nov/faynosync-sdk-go
+```
+
+## Quick Start
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	faynosync "github.com/ku9nov/faynosync-sdk-go"
+)
+
+func main() {
+	client := faynosync.NewClient(faynosync.Config{
+		BaseURL: "https://api.example.com",
+	})
+
+	resp, err := client.CheckForUpdates(context.Background(), faynosync.CheckOptions{
+		Owner:    "admin",
+		AppName:  "test",
+		Version:  "0.0.0.5",
+		Channel:  "nightly",
+		Platform: "darwin",
+		Arch:     "arm64",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if resp.UpdateAvailable {
+		if resp.UpdateURL != "" {
+			fmt.Printf("Update is available: %s\n", resp.UpdateURL)
+		}
+		for _, packageURL := range resp.PackageURLs {
+			fmt.Printf("%s update is available: %s\n", packageURL.Package, packageURL.URL)
+		}
+	}
+}
+```
+
+## Client Configuration
+
+```go
+client := faynosync.NewClient(faynosync.Config{
+	BaseURL: "https://api.example.com",
+	EdgeURL: "https://cdn.example.com",
+	HTTPClient: &http.Client{
+		Timeout: 10 * time.Second,
+	},
+})
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `BaseURL` | string | Yes | Base faynoSync API URL used for update checks. |
+| `EdgeURL` | string | No | Optional edge endpoint used first for static JSON responses. |
+| `HTTPClient` | `*http.Client` | No | Custom HTTP client for timeouts, transports, proxy, and pooling policies. |
+
+Notes:
+
+- `BaseURL` is required.
+- If `HTTPClient` is omitted, the SDK creates a default client with timeout.
+- The client is safe for concurrent use.
+
+## CheckForUpdates Contract
+
+`CheckForUpdates` sends a context-aware request and returns a typed `UpdateResponse`.
+
+### CheckOptions
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `Owner` | string | Yes | Application owner username. |
+| `AppName` | string | Yes | Application name. |
+| `Version` | string | Yes | Current client version. |
+| `Channel` | string | Yes | Release channel value used by your faynoSync setup. |
+| `Platform` | string | Yes | Platform value used by your faynoSync setup. |
+| `Arch` | string | Yes | Architecture value used by your faynoSync setup. |
+| `DeviceID` | string | No | Device identifier sent as `X-Device-ID` header when provided. |
+
+### Request Mapping
+
+Base API endpoint:
+
+```text
+GET /checkVersion?app_name=test&version=0.0.0.5&channel=nightly&platform=darwin&arch=arm64&owner=admin
+X-Device-ID: optional-device-id
+```
+
+Query parameters are built from the named fields on `CheckOptions` (`Owner`, `AppName`, `Version`, and so on). You pass a struct with compile-time types instead of a generic key-value map such as `map[string]string`, which keeps the API explicit and easier to validate.
+
+## Response Contract
+
+### Core Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `UpdateAvailable` | bool | Whether an update is available for the request scope. |
+| `UpdateURL` | string | Direct binary update URL (single artifact flow). |
+| `PackageURLs` | `[]PackageURL` | Package-specific update URLs extracted from dynamic response keys. |
+| `Changelog` | string | Optional release notes or markdown changelog. |
+| `Critical` | bool | Indicates a critical update. |
+| `IsIntermediateRequired` | bool | Indicates whether an intermediate update is required. |
+| `PossibleRollback` | bool | Indicates rollback metadata from server response. |
+| `Source` | enum | Response source: `SourceEdge` or `SourceAPI`. |
+
+### Dynamic Package URL Mapping
+
+faynoSync can return package-specific URL fields with dynamic suffixes. For example:
+
+- `update_url_deb`
+- `update_url_rpm`
+- `update_url_msi`
+
+Other package types use the same `update_url_<package>` pattern (for example, `update_url_appimage` or `update_url_pkg`).
+
+The SDK maps these dynamic fields into a typed collection:
+
+```go
+for _, packageURL := range resp.PackageURLs {
+	fmt.Println(packageURL.Package, packageURL.URL)
+}
+```
+
+### Source Semantics
+
+| Value | Meaning |
+|-------|---------|
+| `SourceEdge` | The response was served from the edge JSON endpoint. |
+| `SourceAPI` | The response was served by the BaseURL API after direct call or fallback. |
+
+## Edge Fallback Behavior
+
+Edge delivery only works as intended when update checks go through an official faynoSync SDK. The server can publish cached JSON for CDN/object storage, but the client must implement edge-first requests, API fallback, and optional telemetry flows that the SDK provides.
+
+When `EdgeURL` is configured, the SDK first requests:
+
+```text
+GET /responses/{owner}/{app_name}/{channel}/{platform}/{arch}/{version}.json
+```
+
+Example:
+
+```text
+GET /responses/admin/test/nightly/darwin/arm64/0.0.0.5.json
+```
+
+### Fallback Decision Matrix
+
+| Edge Result | Fallback to BaseURL API | Final `Source` |
+|-------------|--------------------------|----------------|
+| HTTP 200 + valid JSON | No | `SourceEdge` |
+| Network error | Yes | `SourceAPI` when API succeeds |
+| Timeout | Yes | `SourceAPI` when API succeeds |
+| Invalid JSON | Yes | `SourceAPI` when API succeeds |
+| HTTP 404 | Yes | `SourceAPI` when API succeeds |
+| Any non-200 status | Yes | `SourceAPI` when API succeeds |
+
+If both edge and API fail, `CheckForUpdates` returns an error.
+
+## Platform, Channel, and Architecture Values
+
+faynoSync supports custom values for platform, channel, and architecture. The SDK never normalizes or remaps them.
+
+Examples of values that are **not** automatically transformed:
+
+- `macos` to `darwin`
+- `osx` to `darwin`
+- `stable` to `default`
+
+Whatever you set in `CheckOptions.Channel`, `CheckOptions.Platform`, and `CheckOptions.Arch` is sent as-is.
+
+## Optional System Helpers
+
+The SDK provides optional helpers:
+
+```go
+platform := faynosync.SystemPlatform() // runtime.GOOS
+arch := faynosync.SystemArch()         // runtime.GOARCH
+```
+
+These helpers are never applied automatically. Use them only when runtime values match your faynoSync configuration.
+
+## Error Handling
+
+The SDK validates required fields and returns sentinel errors:
+
+```go
+resp, err := client.CheckForUpdates(ctx, opts)
+if err != nil {
+	switch {
+	case errors.Is(err, faynosync.ErrMissingBaseURL):
+		// Configure Config.BaseURL.
+	case errors.Is(err, faynosync.ErrMissingOwner):
+		// Set CheckOptions.Owner.
+	case errors.Is(err, faynosync.ErrMissingAppName):
+		// Set CheckOptions.AppName.
+	case errors.Is(err, faynosync.ErrMissingVersion):
+		// Set CheckOptions.Version.
+	case errors.Is(err, faynosync.ErrRequestFailed):
+		// Inspect wrapped endpoint failure.
+	default:
+		// Handle any other error.
+	}
+}
+```
+
+Request failures preserve underlying causes for `errors.Is` and `errors.As`:
+
+```go
+var endpointErr *faynosync.EndpointError
+if errors.As(err, &endpointErr) {
+	fmt.Println(endpointErr.URL)
+	fmt.Println(endpointErr.StatusCode)
+}
+```
+
+## Examples
+
+Runnable examples live in the [faynosync-sdk-go](https://github.com/ku9nov/faynosync-sdk-go) repository:
+
+| Example | Description | Source |
+|---------|-------------|--------|
+| Basic | Minimal update check against `BaseURL` | [examples/basic/main.go](https://github.com/ku9nov/faynosync-sdk-go/blob/main/examples/basic/main.go) |
+| Edge fallback | `EdgeURL` first, then API fallback | [examples/edge-fallback/main.go](https://github.com/ku9nov/faynosync-sdk-go/blob/main/examples/edge-fallback/main.go) |
+| Custom HTTP client | Custom timeouts, transport, and pooling | [examples/custom-http-client/main.go](https://github.com/ku9nov/faynosync-sdk-go/blob/main/examples/custom-http-client/main.go) |
+
+## Security Scope
+
+This SDK version performs update-check transport requests and typed response decoding only.

@@ -691,8 +691,14 @@ const features = [
   },
   {
     icon: <Zap className="h-8 w-8" />,
-    title: 'Performance Mode',
-    description: 'Enable caching to reduce server load and minimize response times. Optimize your application\'s performance with smart request handling.',
+    title: 'Performance Mode and Edge Support',
+    description: (
+      <>
+        Reduce origin load with Redis caching and SDK-driven{' '}
+        <span className="feature-edge-highlight">EDGE</span>
+        —edge-first update checks from S3-backed manifests, plus an optimized telemetry beacon path at scale.
+      </>
+    ),
     color: featureColors[5],
   },
   {

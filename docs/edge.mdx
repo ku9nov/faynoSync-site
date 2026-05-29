@@ -1,0 +1,192 @@
+---
+sidebar_position: 6
+title: Edge and S3 Response Cache
+description: Scale update checks with SDK-driven edge-first delivery, S3-backed response manifests, and telemetry paths designed for high-volume clients.
+---
+
+# Edge and S3 Response Cache
+
+faynoSync can serve repeated version checks from object storage at the edge instead of hitting the API for every client. The design keeps the existing `/checkVersion` contract intact while moving the hot read path to **SDK-driven, edge-first delivery** backed by **S3 (or S3-compatible) response manifests**.
+
+This page describes how that data plane works, how it relates to [Performance Mode](./performance) and [Telemetry](./telemetry), and why an [official SDK](./sdk/intro) is part of the story.
+
+## Why this exists
+
+Even a well-tuned API eventually faces limits: connection churn, validation work, and database pressure scale with every client check. Pushing that load into clustering, replication, and heavier ops is not always what you want for an update server.
+
+Edge mode changes the economics of the hot path. After warm-up, origin load is driven by **distinct cache keys** (version, channel, platform, architecture, and related dimensions), not by raw client count. One hundred thousand clients on five client versions should produce on the order of **five** origin calls per dimension set after caches are warm—not one hundred thousand API round trips.
+
+In practice, keys multiply across your matrix:
+
+```
+N ≈ client_versions × channel × platform × arch × updater × package
+```
+
+Example: five client versions across five dimension combinations is on the order of **twenty-five** origin calls to build coverage—not one hundred thousand direct checks.
+
+## Two supported modes
+
+faynoSync deliberately supports both paths. You do not have to migrate every client at once.
+
+| Mode | How clients check | Best for |
+|------|-------------------|----------|
+| **Dynamic API** | `GET /checkVersion` on the API origin | Existing integrations, scripts, and tools that call the API directly |
+| **Edge + S3 cache** | Official SDK with `EdgeURL` → cached manifests on object storage | High-volume desktop, server, and auto-update clients that can use SDK edge-first behavior |
+
+Dynamic API behavior is unchanged. Edge mode adds a parallel, cache-friendly read path without forking the core update API.
+
+## How edge mode fits together
+
+### What gets enabled
+
+Edge response caching is **per application**, via the `cdn` flag when you create or update an app (see [Create Application](./api/apps/create) and [Update application](./api/apps/update-app)).
+
+Supporting infrastructure:
+
+- A **public** object storage bucket for response manifests (metadata only—binaries stay on the existing artifact flow). Configure `S3_BUCKET_NAME_CDN` as described in [Environment Variables Overview](./getting-started/env-overview).
+- An **official faynoSync SDK** configured with `BaseURL` (API origin) and optionally `EdgeURL` (edge/CDN base). Edge-first orchestration, fallback, cache fill, and telemetry integration are built for SDK clients—not for ad-hoc `/checkVersion` callers alone. See the [Go SDK](./sdk/go/sdk) and [SDK overview](./sdk/intro).
+
+Edge caching is **independent** from `PERFORMANCE_MODE`. Performance Mode uses Redis at the API layer; edge mode stores full JSON responses in object storage. You can run one, the other, or both.
+
+### Request flow (conceptual)
+
+```mermaid
+SDK Client (`BaseURL` + optional `EdgeURL`)
+  ↓
+If `EdgeURL` is set, SDK checks edge/S3 first
+  ↓
+  ├─ HIT  → return cached response to client
+  └─ MISS → call Origin API (`/checkVersion`) via `BaseURL`
+              ↓
+            API returns normal response
+              ↓
+            SDK persists response to S3 cache path
+              ↓
+            Future checks → edge/S3 HIT
+```
+
+When `EdgeURL` is set, the SDK asks the edge path first.
+
+- **HIT** — A manifest object exists for the request dimensions. The SDK returns the cached JSON body to the application.
+- **MISS** — No manifest (or not valid). The SDK calls `/checkVersion` on `BaseURL`, returns that response, and **persists** it to the S3 cache path so later checks become HITs.
+
+The API remains the source of truth. Edge storage is a derived, disposable cache of responses the API already knows how to produce.
+
+### Manifest layout and content
+
+Each cached file is the **full faynoSync JSON response** for that client context—the same fields the Dynamic API would return (`update_available`, package-specific `update_url_*` keys, `changelog`, `critical`, `is_intermediate_required`, `possible_rollback`, and so on).
+
+Objects are stored at:
+
+```text
+/responses/{owner}/{app_name}/{channel}/{platform}/{arch}/{client_version}.json
+```
+
+There is intentionally **no `latest.json` on the CDN**. Version comparison stays on the server (or in precomputed per–client-version manifests). A single “latest” object at the edge would push comparison logic to clients and break faynoSync’s model of server-side update decisions.
+
+Cached objects use standard cache headers (for example, `Cache-Control: public, max-age=60, must-revalidate`) so CDNs and browsers can revalidate frequently while still serving hot paths cheaply.
+
+### Publish, unpublish, and cache invalidation
+
+When you publish or unpublish **any** version for an app, faynoSync **deletes response manifests** for that application’s scope on object storage. The next checks for affected dimensions are MISSes; the SDK falls back to `/checkVersion`, repopulates S3, and subsequent traffic HITs again.
+
+You do not need a separate warm-up job for every new channel or architecture combination—rare keys fill naturally through the fallback path the first time something asks for them.
+
+### Updater-specific behavior
+
+For default JSON update checks, the cached body is the ordinary faynoSync response. “No update” responses are cached under the same key rules as “update available” responses.
+
+Updater-specific contracts (for example Electron Builder, Tauri, or Squirrel on Windows) still receive the payloads the API already produces; only the **lookup path** changes from “always origin” to “edge first, origin on MISS.” The future [JavaScript SDK](./sdk/js/sdk) maps cached JSON to updater-facing HTTP semantics (such as `204 No Content` or redirect-style responses) where those integrations require it.
+
+## Performance Mode vs edge cache
+
+| Aspect | [Performance Mode](./performance) | Edge + S3 cache |
+|--------|-------------------------------------|-----------------|
+| Where it caches | Redis at the API | Object storage manifests at the edge |
+| Who benefits | Any client calling `/checkVersion` | SDK clients with `EdgeURL` and app `cdn` enabled |
+| Cache key | API request signature | Per-dimension manifest path |
+| Invalidation | Redis TTL / cache policies | Publish/unpublish clears app manifest scope |
+| Coupling | `PERFORMANCE_MODE=true` | App `cdn` + SDK + `S3_BUCKET_NAME_CDN` |
+
+Use Performance Mode to shave latency and DB load on the origin API. Use edge mode when check volume is dominated by many clients repeating the same dimension keys and you want the origin to see MISS traffic only, not every poll.
+
+## Telemetry in edge flows
+
+Today, much telemetry is collected inside `/checkVersion` when clients send `X-Device-ID`. In edge mode, many checks never reach that endpoint, so statistics would silently drop if nothing changed.
+
+### Before and after
+
+**Classic path (API-only clients):**
+
+```text
+Client → (optional X-Device-ID) telemetry inline → /checkVersion
+```
+
+**Edge path (SDK clients):**
+
+```text
+Client → edge manifest HIT (no /checkVersion)
+       → (optional X-Device-ID) → /telemetry/beacon on API
+```
+
+SDK-integrated clients that skip `/checkVersion` should use [`/telemetry/beacon`](./api/info/telemetry_beacon) so device and dimension stats stay accurate. If a client still calls `/checkVersion` on every check, it does not need a separate beacon call.
+
+See [Telemetry System](./telemetry) for dashboard behavior, retention, and `ENABLE_TELEMETRY`.
+
+### How the beacon stays fast
+
+`/checkVersion` still performs meaningful validation even when Performance Mode is on. The beacon endpoint is optimized for volume: it avoids per-request database lookups against full `apps_meta` documents.
+
+Instead, the API maintains a compact **in-memory allow-list index** built from **names only** when metadata changes:
+
+- owners  
+- applications  
+- channels  
+- platforms  
+- architectures  
+- versions (for index structure—not used to reject reported client versions)
+
+Changelog, artifacts, and other heavy fields stay out of memory. On each relevant change (app created, channel added, version published, and so on), the service rebuilds the index from a projection and **atomically swaps** the in-memory pointer handlers use.
+
+**Beacon validation** checks that `(owner, app, channel, platform, arch)` exists in the index. Reported **client version is recorded but not required** to match the allow-list—clients may still report a version removed in the admin UI. Invalid dimension combinations are rejected cheaply (success responses remain lightweight, typically `204 No Content`). Team-user scenarios are out of scope for this public beacon path.
+
+Counters still flow to Redis the same way as today’s telemetry pipeline, so dashboards remain meaningful under edge load.
+
+Multi-instance deployments can add periodic index reload later; single-node setups rely on rebuild-on-change.
+
+### Internal benchmarks (local development)
+
+These numbers were measured on a **local Mac** during development. Production servers will report different absolute values depending on hardware, network, Redis, and deployment size. The comparison still reflects the **design goal**: validate dimensions from an in-memory snapshot instead of hitting the database on every beacon.
+
+**What was measured:** elapsed time from handler start until the statistics persistence step is invoked (average over many requests).
+
+| Approach | Average time to persistence |
+|----------|----------------------------|
+| Previous path (DB-backed validation per request) | ~20.8 ms |
+| Beacon path (in-memory allow-list snapshot) | ~0.15 ms |
+
+**Load test:** `wrk` with 4 threads, 100 connections, 30 seconds, same local machine.
+
+| Approach | Requests/sec | Avg latency |
+|----------|--------------|-------------|
+| Previous path | ~359 | ~287 ms |
+| Beacon path | ~1,192 | ~88 ms |
+
+Under this setup, the beacon path handled roughly **3×** more requests per second with lower average latency. Treat these figures as order-of-magnitude guidance, not a SLA or capacity guarantee.
+
+## Operational goals
+
+1. **SDK-first** — No separate CDN application is required; clients implement edge-first behavior through the SDK.
+2. **Per-app control** — Turn cache mode on or off per application with `cdn`.
+3. **Stable cache keys** — Deterministic manifest paths per owner, app, channel, platform, arch, and client version.
+4. **Safe lifecycle** — Publish and unpublish clear cached manifests for the app scope.
+5. **Hot-path offload** — Edge serves repeated checks; API serves MISS, control plane, and fallback fill.
+
+## Related documentation
+
+- [SDK overview](./sdk/intro) — Why SDKs exist and how edge fits the product model  
+- [Go SDK](./sdk/go/sdk) — `EdgeURL`, fallback matrix, and `Source` semantics  
+- [Telemetry beacon API](./api/info/telemetry_beacon) — Endpoint contract for edge-aware clients  
+- [Performance Mode](./performance) — Redis caching on the origin API  
+- [Telemetry System](./telemetry) — Analytics, `ENABLE_TELEMETRY`, and dashboards  
+- [Environment Variables Overview](./getting-started/env-overview) — `S3_BUCKET_NAME_CDN` and storage setup  

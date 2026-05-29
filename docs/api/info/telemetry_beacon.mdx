@@ -1,0 +1,74 @@
+---
+title: Telemetry beacon
+description: Record client update telemetry without calling checkVersion, optimized for SDK and edge-based flows.
+---
+
+# Telemetry beacon
+
+Records client update telemetry for statistics collection.
+
+This endpoint stores telemetry in the same way as `/checkVersion`, but it is optimized for speed by keeping a snapshot of parameters in RAM.
+
+On metadata changes, the API rebuilds a compact allow-list index (owner, app, channel, platform, architecture names) and serves beacon validation from that in-memory snapshot instead of reading full `apps_meta` documents per request.
+
+## Performance (development benchmarks)
+
+Measured on a **local Mac** (not production). Absolute numbers will differ on servers, but the comparison shows why this endpoint exists for edge-heavy traffic.
+
+| Metric | Previous `/checkVersion`-style path | `/telemetry/beacon` |
+|--------|-------------------------------------|---------------------|
+| Avg time until persistence step | ~20.8 ms | ~0.15 ms |
+| `wrk` throughput (4 threads, 100 conn, 30s) | ~359 req/s | ~1,192 req/s |
+| `wrk` avg latency | ~287 ms | ~88 ms |
+
+For architecture context (edge mode, allow-list lifecycle, and caveats), see [Edge and S3 Response Cache](/docs/edge).
+
+## Endpoint
+
+```
+GET /telemetry/beacon?app_name=<app_name>&version=<version>&channel=<channel>&platform=<platform>&arch=<arch>&owner=<owner>
+```
+
+## Authentication
+
+No auth token is required.
+
+## Required Header
+
+| Header | Type | Required | Description |
+|--------|------|----------|-------------|
+| `X-Device-ID` | string | ✅ | Unique client device identifier used for telemetry deduplication and tracking |
+
+## Query Parameters
+
+All query parameters are required.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `app_name` | string | ✅ | Application name |
+| `version` | string | ✅ | Current client version |
+| `channel` | string | ✅ | Release channel (for example, `stable` or `beta`) |
+| `platform` | string | ✅ | Client platform (for example, `linux`, `windows`, `darwin`) |
+| `arch` | string | ✅ | Client architecture (for example, `amd64`, `arm64`) |
+| `owner` | string | ✅ | Application owner username |
+
+## Example Request
+
+```bash
+curl --location 'http://localhost:9000/telemetry/beacon?app_name=secondapp&version=0.0.1&channel=stable&platform=linux&arch=amd64&owner=admin' \
+--header 'X-Device-ID: ncjskbfhbhjs473tdah'
+```
+
+## Response
+
+### Success Response (204 No Content)
+
+This endpoint always returns `204 No Content` on success and does not include a response body.
+
+## Usage Notes
+
+- This endpoint is intended for telemetry collection when `/checkVersion` is not used.
+- If your client already calls `/checkVersion`, you do not need to call `/telemetry/beacon`.
+- This endpoint is designed for `faynosync-sdk` flows where updates are received from edge infrastructure and `/checkVersion` is skipped.
+- Missing `X-Device-ID` or missing query parameters should be treated as invalid requests.
+- Reported `version` is stored for statistics but is not required to match the in-memory allow-list (clients may report versions no longer present in the admin UI).

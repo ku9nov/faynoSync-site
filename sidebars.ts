@@ -36,6 +36,16 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      label: 'SDK',
+      link: { type: 'doc', id: 'sdk/intro' },
+      collapsed: false,
+      items: [
+        'sdk/go/sdk',
+        'sdk/js/sdk',
+      ],
+    },
+    {
+      type: 'category',
       label: 'API Reference',
       link: { type: 'doc', id: 'api/API' },  // Ensures API Reference behaves like a category
       collapsed: false,
@@ -122,6 +132,7 @@ const sidebars: SidebarsConfig = {
             'api/info/health',
             'api/info/fetch-latest-build',
             'api/info/whoami',
+            'api/info/telemetry_beacon',
           ],
         },
         {
@@ -161,6 +172,7 @@ const sidebars: SidebarsConfig = {
       ],
     },
     'performance',
+    'edge',
     'team_based_auth',
     'telemetry',
     'intermediate_build', 
