@@ -77,6 +77,13 @@ const apiCategories: ApiCategory[] = [
     color: '#0EA5E9',
     href: '/docs/api/tokens/tokens-introduction',
   },
+  {
+    title: 'Reports',
+    description: 'Ingest and view aggregated client crash, update, and install failure reports',
+    icon: '📊',
+    color: '#F97316',
+    href: '/docs/api/reports/reports-introduction',
+  },
 ];
 
 export default function ApiCardList(): JSX.Element {

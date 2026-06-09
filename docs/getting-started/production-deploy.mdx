@@ -113,6 +113,16 @@ SLACK_ENABLE=true  # or false
 SLACK_BOT_TOKEN=xoxb-your-slack-bot-token
 SLACK_CHANNEL=faynosync-releases
 
+# Reports (optional, requires Redis; blobs stored in S3_BUCKET_NAME_PRIVATE)
+REPORTS_ENABLED=false  # or true
+REPORTS_MAX_BODY_BYTES=262144
+REPORTS_MAX_DETAILS_COMPRESSED_BYTES=131072
+REPORTS_MAX_DETAILS_DECOMPRESSED_BYTES=1048576
+REPORTS_BLOB_RETENTION_DAYS=30
+REPORTS_MAX_BLOBS_PER_GROUP=10
+REPORTS_STORAGE_PREFIX=reports
+REPORTS_RATE_LIMIT_PER_KEY_PER_MINUTE=100
+
 # API Configuration
 API_URL=https://faynosync-api.example.com
 ```
@@ -134,7 +144,7 @@ openssl rand -base64 32
 Create a `docker-compose.yaml` file:
 
 :::tip
-**Note**: Change `image: ku9nov/faynosync:latest` to `image: ku9nov/faynosync:<LatestVersion fallbackVersion="v1.4.5" />` to use the latest stable release.
+**Note**: Change <code>image: ku9nov/faynosync:latest</code> to <code>image: ku9nov/faynosync:<LatestVersion fallbackVersion="v1.6.0" /></code> to use the latest stable release.
 :::
 
 ```yaml

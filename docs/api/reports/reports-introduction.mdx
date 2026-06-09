@@ -1,0 +1,69 @@
+---
+title: Reports Management
+description: Complete guide to FaynoSync report ingestion API for collecting and aggregating client update, install, and runtime failure reports.
+---
+# Reports Management
+
+The Reports Management endpoints let clients send operational failure reports (crashes, failed updates, failed installs) and let admins and team users view an aggregated, privacy-conscious picture of rollout health by app, version, channel, platform, and architecture.
+
+The design goal is to keep ingestion **cheap, stable, and bounded**: a minimal report costs a single MongoDB upsert, grouping never depends on stack traces or logs, and storage growth is capped.
+
+## What reports are (and are not)
+
+Reports give you:
+
+- A simple public endpoint for clients to send update/install/runtime failure events.
+- An aggregated view of rollout health grouped by stable technical dimensions.
+- Optional, size-bounded debug **details** stored separately for support investigations.
+- Groundwork for a future auto-pause / rollback decision engine.
+
+Reports are **not** a logging pipeline, an APM, or a crash-analytics platform, and they intentionally avoid collecting user identity.
+
+## Enabling reports
+
+Report ingestion is gated by a dedicated environment flag, similar to TUF routes. When `REPORTS_ENABLED=false`, neither the ingestion endpoint nor the read API is registered.
+
+```env
+REPORTS_ENABLED=true
+REPORTS_MAX_BODY_BYTES=262144
+REPORTS_MAX_DETAILS_COMPRESSED_BYTES=131072
+REPORTS_MAX_DETAILS_DECOMPRESSED_BYTES=1048576
+REPORTS_BLOB_RETENTION_DAYS=30
+REPORTS_MAX_BLOBS_PER_GROUP=10
+REPORTS_STORAGE_PREFIX=reports
+REPORTS_RATE_LIMIT_PER_KEY_PER_MINUTE=100
+```
+
+Notes:
+
+- Enabling reports also forces a Redis connection, since rate limits depend on Redis.
+- Detail blobs reuse the existing `STORAGE_DRIVER` / `S3_*` configuration but are written to the **private** bucket (`S3_BUCKET_NAME_PRIVATE`) and are only retrievable through short-lived presigned URLs.
+
+## Authentication model
+
+There are two distinct auth paths:
+
+- **Ingestion** (`POST /reports/ingest`) is a public client endpoint authenticated by a per-app **report key** (`rpk_` + 64 hex), sent as `Authorization: Bearer rpk_...`. It does **not** require JWT. Report keys are managed through the existing `report_keys` lifecycle (one key per app with `reports` enabled).
+- **Read API** (`GET /reports/groups`, `GET /reports/groups/:groupHash/blobs`) is authenticated with a JWT and gated by `CheckPermission(download, apps)`. Admins see every app under their account; team users only see apps in their `allowed_apps`.
+
+Report keys are effectively public client credentials shipped inside the client; abuse protection comes from the `REPORTS_ENABLED` gate, the per-app `reports` flag, and rate limits — not from key secrecy.
+
+## Grouping model
+
+Every report is reduced to a deterministic `groupHash` built **only** from stable dimensions:
+
+```text
+sha256(application.name + "|" + application.version + "|" + application.channel + "|" + system.platform + "|" + system.arch + "|" + event.type + "|" + event.reason)
+```
+
+Debug `details`, timestamps, client IP, and device identifiers are **excluded** from the hash, so unique stack traces never fragment a group. Because app names are unique only per `(app_name, owner)`, the grouping identity stored in Mongo is the composite `(app_id, groupHash)`, which keeps tenants fully isolated.
+
+## Privacy boundary
+
+Reports avoid user identity by design. Allowed dimensions are app name, version, channel, platform, arch, event type, reason, an anonymous `X-Device-ID` (used only for rate limits and dedup, never stored in report documents or the hash), and optional technical details in a blob. Stripping secrets and personal data from `details` is the responsibility of the client/SDK.
+
+## Reports endpoints
+
+- [Ingest Report](/docs/api/reports/ingest)
+- [List Report Groups](/docs/api/reports/list-groups)
+- [List Group Detail Blobs](/docs/api/reports/list-detail-blobs)

@@ -680,7 +680,7 @@ const features = [
   {
     icon: <Rocket className="h-8 w-8" />,
     title: 'Application Management',
-    description: 'Publish, modify, and update your applications with ease. Manage your application lifecycle efficiently.',
+    description: 'Publish, modify, and update your applications with ease. Manage the full lifecycle and track rollout health with aggregated client failure reports.',
     color: featureColors[3],
   },
   {

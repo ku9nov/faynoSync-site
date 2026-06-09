@@ -20,6 +20,7 @@ To configure `FaynoSync`, you need to set the following environment variables. T
 | **Security** | `API_KEY`, `JWT_SECRET` |
 | **Features** | `PERFORMANCE_MODE`, `ENABLE_TELEMETRY` |
 | **TUF** | `TUF_ENABLED`, `ONLINE_KEY_DIR` |
+| **Reports** | `REPORTS_ENABLED`, `REPORTS_*` |
 | **Redis** | `REDIS_*` |
 | **Slack** | `SLACK_*` |
 
@@ -162,6 +163,90 @@ Set to `true` to enable TUF (The Update Framework) functionality. This enables s
 Directory path where online signing keys are stored. These keys are used for online metadata signing operations in TUF.
 
 **Example:** `ONLINE_KEY_DIR=/private_keys`
+
+</details>
+
+### Reports Configuration
+
+Report ingestion is disabled by default. When enabled, it exposes a public `POST /reports/ingest` endpoint (authenticated by per-app report keys) and the JWT-protected read API. Enabling reports also requires Redis (used for rate limits), and detail blobs are stored in the private bucket (`S3_BUCKET_NAME_PRIVATE`) using the existing `STORAGE_DRIVER` / `S3_*` configuration. See [Reports Management](/docs/api/reports/reports-introduction) for the full API.
+
+<details>
+<summary><strong>REPORTS_ENABLED</strong></summary>
+
+Set to `true` to enable the report ingestion endpoint and the reports read API. When `false`, none of the report routes are registered. Enabling reports forces a Redis connection.
+
+**Default:** `false`
+**Example:** `REPORTS_ENABLED=true`
+
+</details>
+
+<details>
+<summary><strong>REPORTS_MAX_BODY_BYTES</strong></summary>
+
+Maximum accepted request body size for `POST /reports/ingest`, in bytes. Requests over this limit return `413 Payload Too Large`.
+
+**Default:** `262144` (256 KB)
+**Example:** `REPORTS_MAX_BODY_BYTES=262144`
+
+</details>
+
+<details>
+<summary><strong>REPORTS_MAX_DETAILS_COMPRESSED_BYTES</strong></summary>
+
+Maximum size of the compressed (`gzip+base64`-decoded) details payload, in bytes. Larger payloads return `413`.
+
+**Default:** `131072` (128 KB)
+**Example:** `REPORTS_MAX_DETAILS_COMPRESSED_BYTES=131072`
+
+</details>
+
+<details>
+<summary><strong>REPORTS_MAX_DETAILS_DECOMPRESSED_BYTES</strong></summary>
+
+Maximum size of the details payload after gzip decompression, in bytes. Enforced with a limited reader (zip-bomb guard); the client-declared size is never trusted. Exceeding it returns `413`.
+
+**Default:** `1048576` (1 MB)
+**Example:** `REPORTS_MAX_DETAILS_DECOMPRESSED_BYTES=1048576`
+
+</details>
+
+<details>
+<summary><strong>REPORTS_BLOB_RETENTION_DAYS</strong></summary>
+
+How long detail blobs are retained. Each `report_blobs` document gets an `expiresAt` of `createdAt + REPORTS_BLOB_RETENTION_DAYS` and is removed by a TTL index. Changing this only affects future blobs.
+
+**Default:** `30`
+**Example:** `REPORTS_BLOB_RETENTION_DAYS=30`
+
+</details>
+
+<details>
+<summary><strong>REPORTS_MAX_BLOBS_PER_GROUP</strong></summary>
+
+Maximum number of detail blobs kept per report group. When a new blob is stored beyond this limit, the oldest blobs (and their storage objects) are removed.
+
+**Default:** `10`
+**Example:** `REPORTS_MAX_BLOBS_PER_GROUP=10`
+
+</details>
+
+<details>
+<summary><strong>REPORTS_STORAGE_PREFIX</strong></summary>
+
+Key prefix used for report detail blobs in the private bucket (for example `reports/<app>/<date>/...`).
+
+**Default:** `reports`
+**Example:** `REPORTS_STORAGE_PREFIX=reports`
+
+</details>
+
+<details>
+<summary><strong>REPORTS_RATE_LIMIT_PER_KEY_PER_MINUTE</strong></summary>
+
+Per-report-key rate limit for ingestion, in requests per minute. Hitting any rate limit returns `429 Too Many Requests`. (Per-device and per-group limits are fixed and not configurable.)
+
+**Default:** `100`
+**Example:** `REPORTS_RATE_LIMIT_PER_KEY_PER_MINUTE=100`
 
 </details>
 
@@ -400,6 +485,18 @@ ENABLE_TELEMETRY=true
 # =============================================================================
 TUF_ENABLED=true
 ONLINE_KEY_DIR=/private_keys
+
+# =============================================================================
+# Reports (client failure report ingestion)
+# =============================================================================
+REPORTS_ENABLED=false
+REPORTS_MAX_BODY_BYTES=262144
+REPORTS_MAX_DETAILS_COMPRESSED_BYTES=131072
+REPORTS_MAX_DETAILS_DECOMPRESSED_BYTES=1048576
+REPORTS_BLOB_RETENTION_DAYS=30
+REPORTS_MAX_BLOBS_PER_GROUP=10
+REPORTS_STORAGE_PREFIX=reports
+REPORTS_RATE_LIMIT_PER_KEY_PER_MINUTE=100
 ```
 
 For convenience, you can also use the `.env.local` file, which contains all the variables already filled in. Ensure that your environment variables are properly set before running the application to avoid misconfigurations.

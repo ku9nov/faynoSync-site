@@ -7,8 +7,8 @@ interface ApiStatsProps {
 }
 
 export default function ApiStats({ 
-  totalEndpoints = 54, 
-  categories = 9
+  totalEndpoints = 57, 
+  categories = 10
 }: ApiStatsProps): JSX.Element {
   const [apiVersion, setApiVersion] = React.useState({
     version: 'v0.0.0',

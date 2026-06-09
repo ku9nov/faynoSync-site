@@ -1,0 +1,107 @@
+---
+title: List Group Detail Blobs
+description: Retrieve metadata and short-lived presigned download URLs for the stored debug detail blobs of a FaynoSync report group.
+---
+
+# List Group Detail Blobs
+
+Returns metadata for the stored debug detail blobs of a single report group, plus a short-lived (15 minute) presigned download URL per blob, generated against the private bucket.
+
+Only the latest N blobs per group are retained (configurable via `REPORTS_MAX_BLOBS_PER_GROUP`); older blobs and their storage objects are removed when newer ones arrive, and each blob document also expires via TTL after `REPORTS_BLOB_RETENTION_DAYS`.
+
+This is an authenticated (JWT) route, active only when `REPORTS_ENABLED=true`.
+
+## Endpoint
+
+```
+GET /reports/groups/:groupHash/blobs
+```
+
+## Authentication
+
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <jwt_token>` |
+
+Gated by `CheckPermission(download, apps)`. Admins see every app under their account; team users only see apps in their `allowed_apps`. Queries are scoped by accessible `app_id`, so blobs from another owner's identically-hashed group are never returned.
+
+## Path Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `groupHash` | string | ✅ | The group's SHA-256 hash; must be exactly 64 hex characters (otherwise `400`) |
+
+## Example Request
+
+```bash
+curl -s 'http://localhost:9000/reports/groups/1ab3.../blobs' \
+  --header 'Authorization: Bearer <jwt_token>'
+```
+
+## Response
+
+### Success Response (200 OK)
+
+```json
+{
+  "items": [
+    {
+      "id": "667...",
+      "group_hash": "1ab3...",
+      "app_id": "663...",
+      "application": { "name": "test", "version": "1.4.2", "channel": "stable" },
+      "system": { "platform": "windows", "arch": "amd64" },
+      "event": { "type": "crash", "reason": "panic_nil_pointer" },
+      "storage": {
+        "driver": "aws",
+        "key": "reports/test/2026/06/08/1ab3...-9c1f.json.gz",
+        "compressed_size": 142,
+        "decompressed_size": 38,
+        "content_type": "application/json",
+        "encoding": "gzip"
+      },
+      "created_at": "2026-06-08T12:00:00Z",
+      "expires_at": "2026-07-08T12:00:00Z",
+      "url": "https://...presigned..."
+    }
+  ]
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `items` | array | Array of blob metadata objects |
+
+#### Blob Object
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Mongo document id |
+| `group_hash` | string | Group hash this blob belongs to |
+| `app_id` | string | Owning application id |
+| `application.name` | string | Application name |
+| `application.version` | string | Version |
+| `application.channel` | string | Channel |
+| `system.platform` | string | Platform |
+| `system.arch` | string | Architecture |
+| `event.type` | string | Event type |
+| `event.reason` | string | Reason identifier |
+| `storage.driver` | string | Storage driver (e.g. `aws`) |
+| `storage.key` | string | Object key in the private bucket |
+| `storage.compressed_size` | number | Stored (compressed) size in bytes |
+| `storage.decompressed_size` | number | Decompressed size in bytes |
+| `storage.content_type` | string | Original payload content type (`application/json`) |
+| `storage.encoding` | string | Compression encoding (`gzip`) |
+| `created_at` | string | Blob creation timestamp |
+| `expires_at` | string | TTL expiry (`created_at` + `REPORTS_BLOB_RETENTION_DAYS`) |
+| `url` | string | Short-lived (15 min) presigned download URL |
+
+`storage.bucket` and `owner` are never serialized.
+
+## Notes
+
+- The presigned `url` is valid for ~15 minutes; re-call the endpoint to obtain fresh URLs.
+- The stored object is the **compressed** payload; decompress it client-side to read the original JSON debug object.
+- Blobs live in the **private** bucket (`S3_BUCKET_NAME_PRIVATE`) and are only reachable through these presigned URLs.

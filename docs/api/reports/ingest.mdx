@@ -1,0 +1,191 @@
+---
+title: Ingest Report
+description: Public FaynoSync endpoint for clients to submit update, install, crash, and runtime failure reports authenticated by a per-app report key.
+---
+
+# Ingest Report
+
+Accepts a single operational failure report from a client, validates it, builds a deterministic `groupHash`, and increments the matching aggregation group with one MongoDB upsert. Optional debug `details` are stored as a size-bounded blob in the private bucket.
+
+This is a **public** route (no JWT). It is registered before the global JWT middleware and is authenticated by the report key. It is active only when `REPORTS_ENABLED=true`.
+
+## Endpoint
+
+```
+POST /reports/ingest
+```
+
+## Authentication
+
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer rpk_<64_hex>` |
+
+The server looks up the report key by value, resolves its `app_id`, and verifies that `application.name` in the body matches the key's app and that the app's `reports` flag is enabled.
+
+## Required Headers
+
+| Header | Type | Required | Description |
+|--------|------|----------|-------------|
+| `Authorization` | string | ✅ | `Bearer` followed by the app's report key (`rpk_` + 64 hex) |
+| `X-Device-ID` | string | ✅ | Anonymous technical device identifier, used for rate limits and dedup only. Never stored in report documents or included in `groupHash` |
+| `Content-Type` | string | ✅ | `application/json` |
+
+## Request Body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `application.name` | string | ✅ | Application name; must match the report key's app |
+| `application.version` | string | ✅ | Client version (validated for syntax, not required to exist in release metadata) |
+| `application.channel` | string | ✅ | Release channel (e.g. `stable`, `beta`) |
+| `system.platform` | string | ✅ | Platform (e.g. `windows`, `linux`, `darwin`) |
+| `system.arch` | string | ✅ | Architecture (e.g. `amd64`, `arm64`) |
+| `event.type` | string | ✅ | One of the allowed event types (see below) |
+| `event.reason` | string | ✅ | Short machine-readable identifier, regex `^[a-zA-Z0-9._-]{1,128}$` |
+| `details` | object | ❌ | Optional compressed debug payload (see [Details](#details)) |
+
+### Event types
+
+`event.type` is a strict enum. Clients cannot send arbitrary types; new types require explicit server support.
+
+| Value | Meaning |
+|-------|---------|
+| `crash` | Application crashed at runtime |
+| `startup_failure` | Application failed to start |
+| `update_failure` | An update failed to apply |
+| `install_failure` | An install failed |
+| `rollback_failure` | A rollback failed |
+
+### Reason
+
+`event.reason` is a short identifier used for grouping, filtering, and alerting — **not** a human-readable message. It must match `^[a-zA-Z0-9._-]{1,128}$` and must not contain stack traces, HTML, logs, or binary data.
+
+Examples: `checksum_mismatch`, `disk_full`, `access_denied`, `missing_dependency`, `panic_nil_pointer`, `signature_verification_failed`.
+
+### Details
+
+`details` is optional. When present, the server checks the compressed size, base64-decodes it, decompresses the gzip stream under a hard decompressed-size limit (enforced with `io.LimitReader`; the client-declared size is never trusted), stores the **compressed** bytes in the private bucket, and writes metadata to `report_blobs`. Details are excluded from `groupHash`.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `details.encoding` | string | ✅ | Must be `gzip+base64` |
+| `details.content_type` | string | ✅ | Must be `application/json` |
+| `details.payload` | string | ✅ | The JSON debug object, gzip-compressed then base64-encoded |
+
+## Example Request
+
+### Minimal report
+
+```bash
+curl -i -X POST 'http://localhost:9000/reports/ingest' \
+  --header 'Authorization: Bearer rpk_87077831a3c0c3f5a3cca1b1a5441e36033550708e92b832166d8550ba847315' \
+  --header 'X-Device-ID: 7f3c9a2e-1b4d-4c8a-9f12-abc123def456' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "application": { "name": "test", "version": "1.4.2", "channel": "stable" },
+    "system":      { "platform": "windows", "arch": "amd64" },
+    "event":       { "type": "update_failure", "reason": "checksum_mismatch" }
+  }'
+```
+
+### Report with details
+
+```bash
+# build a payload: gzip then base64
+PAYLOAD=$(printf '{"message":"sha mismatch","stack":"..."}' | gzip | base64 -w0)
+
+curl -i -X POST 'http://localhost:9000/reports/ingest' \
+  --header 'Authorization: Bearer rpk_8707...7315' \
+  --header 'X-Device-ID: 7f3c9a2e-1b4d-4c8a-9f12-abc123def456' \
+  --header 'Content-Type: application/json' \
+  --data "{
+    \"application\": { \"name\": \"test\", \"version\": \"1.4.2\", \"channel\": \"stable\" },
+    \"system\":      { \"platform\": \"windows\", \"arch\": \"amd64\" },
+    \"event\":       { \"type\": \"crash\", \"reason\": \"panic_nil_pointer\" },
+    \"details\":     { \"encoding\": \"gzip+base64\", \"content_type\": \"application/json\", \"payload\": \"$PAYLOAD\" }
+  }"
+```
+
+## Response
+
+### Success Response (202 Accepted)
+
+```json
+{
+  "status": "accepted",
+  "group_hash": "9f2b...",
+  "stored_details": false
+}
+```
+
+When details were stored:
+
+```json
+{
+  "status": "accepted",
+  "group_hash": "1ab3...",
+  "stored_details": true
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `status` | string | Always `accepted` on success |
+| `group_hash` | string | The deterministic SHA-256 group hash the report was counted into |
+| `stored_details` | boolean | `true` only when the blob was written to the private bucket and `report_blobs` metadata inserted |
+
+`stored_details` is `false` if no details were sent, or if a storage outage prevented the write. On a storage outage the response is still `202`, the base count is preserved, and `stats.detailsRejected` is incremented.
+
+## Status Codes
+
+| Code | When |
+|------|------|
+| `202 Accepted` | Report counted (with or without details) |
+| `400 Bad Request` | Missing `X-Device-ID`, malformed JSON, missing/invalid field, bad `event.type` / `event.reason`, or unsupported details encoding/content type |
+| `401 Unauthorized` | Missing/non-Bearer `Authorization`, or unknown report key |
+| `403 Forbidden` | Reports disabled for the app, or `application.name` does not match the key's app |
+| `413 Payload Too Large` | Body over `REPORTS_MAX_BODY_BYTES`, or compressed/decompressed details over their limits |
+| `429 Too Many Requests` | A rate limit was hit |
+| `500 Internal Server Error` | Unexpected Mongo error on the base upsert |
+
+> `403 reports disabled` is largely theoretical: disabling reports deletes the app's report key, so requests fail at `401` first. The `reports` flag is still re-checked on every request as defence in depth.
+
+### Error examples
+
+```json
+// 401 — unknown / missing key
+{ "error": "invalid report key" }
+
+// 403 — application.name does not match the key's app
+{ "error": "report key does not belong to this application" }
+
+// 400 — event.type not in the enum
+{ "error": "invalid event.type" }
+
+// 413 — decompressed details exceed REPORTS_MAX_DETAILS_DECOMPRESSED_BYTES
+{ "error": "decompressed details too large" }
+
+// 429 — repeat of the same report from the same device within the hour
+{ "error": "rate limit exceeded" }
+```
+
+## Rate Limits
+
+Because ingestion is public, rate limits are mandatory. They are evaluated **after** `groupHash` is built and **before** the Mongo upsert, using fixed-window counters in Redis:
+
+| Dimension | Limit |
+|-----------|-------|
+| Per report key | `REPORTS_RATE_LIMIT_PER_KEY_PER_MINUTE` requests/minute (default `100`) |
+| Per `X-Device-ID` + `groupHash` | 1 request/hour |
+| Per `groupHash` | 30 requests/minute |
+
+The per-device limit is scoped by `groupHash`, so a single device can still emit different event types within the hour — only repeats of the *same* failure are suppressed. On a Redis error the limiter **fails open** (allows the request) and logs, since rate limiting is abuse control, not a trust boundary.
+
+## Notes
+
+- A minimal report (no details) costs exactly one Mongo upsert; the base count is always incremented even when a blob fails to store.
+- The server validates `application.name`, `application.channel`, `system.platform`, `system.arch`, and `application.version` with the same validators used by telemetry ingestion. Only `event.reason` has its own dedicated regex.
+- The report key is never copied into `report_groups` or `report_blobs`; it already lives in `report_keys`.
+- Report ingestion never mutates rollout state and never feeds update-metadata trust decisions.

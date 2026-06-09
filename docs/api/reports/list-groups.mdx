@@ -1,0 +1,129 @@
+---
+title: List Report Groups
+description: Retrieve aggregated FaynoSync report groups filtered by app, version, channel, platform, arch, event type, reason, and time range.
+---
+
+# List Report Groups
+
+Returns a paginated list of aggregated report groups. Each group is one combination of stable dimensions (app, version, channel, platform, arch, event type, reason) with running statistics. Results are sorted by `stats.lastSeen` descending.
+
+This is an authenticated (JWT) route, active only when `REPORTS_ENABLED=true`.
+
+## Endpoint
+
+```
+GET /reports/groups
+```
+
+## Authentication
+
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <jwt_token>` |
+
+Gated by `CheckPermission(download, apps)`:
+
+- **Admins** see every app under their account.
+- **Team users** must have the `apps.download` permission and only see apps present in their `allowed_apps`.
+
+## Query Parameters
+
+All parameters are optional. `from`/`to` are RFC3339 and filter on `stats.lastSeen`.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `app` | string | Filter by application name |
+| `version` | string | Filter by version |
+| `channel` | string | Filter by channel |
+| `platform` | string | Filter by platform |
+| `arch` | string | Filter by architecture |
+| `type` | string | Filter by event type (e.g. `update_failure`) |
+| `reason` | string | Filter by reason (e.g. `checksum_mismatch`) |
+| `from` | string | RFC3339 lower bound on `stats.lastSeen` |
+| `to` | string | RFC3339 upper bound on `stats.lastSeen` |
+| `page` | number | Page number (default `1`) |
+| `limit` | number | Page size (default `20`) |
+
+## Example Request
+
+```bash
+curl -s 'http://localhost:9000/reports/groups?app=test&limit=20' \
+  --header 'Authorization: Bearer <jwt_token>'
+```
+
+### With filters
+
+```bash
+curl -s 'http://localhost:9000/reports/groups?app=test&version=1.4.2&channel=stable&platform=windows&arch=amd64&type=update_failure&reason=checksum_mismatch&from=2026-05-01T00:00:00Z&to=2026-06-01T00:00:00Z&page=1&limit=20' \
+  --header 'Authorization: Bearer <jwt_token>'
+```
+
+## Response
+
+### Success Response (200 OK)
+
+```json
+{
+  "items": [
+    {
+      "id": "665...",
+      "group_hash": "9f2b...",
+      "app_id": "663...",
+      "application": { "name": "test", "version": "1.4.2", "channel": "stable" },
+      "system": { "platform": "windows", "arch": "amd64" },
+      "event": { "type": "update_failure", "reason": "checksum_mismatch" },
+      "stats": {
+        "count": 182,
+        "first_seen": "2026-05-20T10:00:00Z",
+        "last_seen": "2026-05-20T12:00:00Z",
+        "details_stored": 17,
+        "details_rejected": 3
+      },
+      "created_at": "2026-05-20T10:00:00Z",
+      "updated_at": "2026-05-20T12:00:00Z"
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "limit": 20
+}
+```
+
+`owner` and `storage.bucket` are never serialized.
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `items` | array | Array of report group objects |
+| `total` | number | Total groups matching the filters |
+| `page` | number | Current page |
+| `limit` | number | Page size |
+
+#### Report Group Object
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Mongo document id |
+| `group_hash` | string | Deterministic SHA-256 group hash |
+| `app_id` | string | Owning application id (partition key) |
+| `application.name` | string | Application name |
+| `application.version` | string | Version |
+| `application.channel` | string | Channel |
+| `system.platform` | string | Platform |
+| `system.arch` | string | Architecture |
+| `event.type` | string | Event type |
+| `event.reason` | string | Reason identifier |
+| `stats.count` | number | Total reports counted into this group |
+| `stats.first_seen` | string | First time this group was seen |
+| `stats.last_seen` | string | Most recent time this group was seen |
+| `stats.details_stored` | number | Detail blobs successfully stored |
+| `stats.details_rejected` | number | Detail payloads that failed to store |
+| `created_at` | string | Group creation timestamp |
+| `updated_at` | string | Last update timestamp |
+
+## Notes
+
+- Results are always sorted by `stats.last_seen` descending.
+- The grouping identity is the composite `(app_id, group_hash)`; `group_hash` alone is not globally unique across owners.
+- To inspect debug payloads for a group, use [List Group Detail Blobs](/docs/api/reports/list-detail-blobs).

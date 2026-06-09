@@ -169,6 +169,16 @@ const sidebars: SidebarsConfig = {
             'api/tuf/recovery',
           ],
         },
+        {
+          type: 'category',
+          label: 'Reports Management',
+          link: { type: 'doc', id: 'api/reports/reports-introduction' },
+          items: [
+            'api/reports/ingest',
+            'api/reports/list-groups',
+            'api/reports/list-detail-blobs',
+          ],
+        },
       ],
     },
     'performance',
