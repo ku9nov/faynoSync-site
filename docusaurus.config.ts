@@ -241,20 +241,7 @@ const config: Config = {
           ],
         },
       ],
-      copyright: `
-        <div class="footer-copyright-enhanced">
-          <div class="footer-brand">
-            <img src="/img/favicon.png" alt="FaynoSync" class="footer-logo" />
-            <span class="footer-brand-text">FaynoSync</span>
-          </div>
-          <div class="footer-tagline">
-            Powerful auto-updater service for modern applications
-          </div>
-          <div class="footer-copyright-text">
-            Copyright © ${new Date().getFullYear()} FaynoSync. Built with 💜 for developers.
-          </div>
-        </div>
-      `,
+      copyright: `Copyright © ${new Date().getFullYear()} FaynoSync. Built with 💜 for developers.`,
     },
     prism: {
       theme: prismThemes.vsLight,
