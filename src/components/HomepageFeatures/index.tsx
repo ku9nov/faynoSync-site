@@ -278,7 +278,7 @@ const HeroUpdateFlow = () => {
   return (
     <div className="premium-hero-update-flow fade-in-up" style={{ animationDelay: '0.2s' }}>
       <div className="premium-hero-grid">
-        <div className="premium-hero-copy">
+        <div className="premium-hero-intro">
           <div className="premium-copy-badge">Live release orchestration</div>
           <h2>From CI build to every client endpoint.</h2>
           <p>
@@ -289,21 +289,6 @@ const HeroUpdateFlow = () => {
             <span><Wrench size={14} /> CI/CD aware delivery</span>
             <span><Shield size={14} /> Verified update flow</span>
             <span><Globe size={14} /> Multi-platform fan-out</span>
-          </div>
-          <div className="premium-copy-cta">
-            <Link
-              to="/docs/getting-started"
-              className="enhanced-button button-primary premium-hero-button"
-            >
-              Start Building
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-            <Link
-              to="/demo"
-              className="enhanced-button button-primary premium-hero-button premium-hero-button-ghost"
-            >
-              Watch Demo
-            </Link>
           </div>
         </div>
 
@@ -768,10 +753,27 @@ const useCases = [
   }
 ]
 
+const formatStars = (count: number) =>
+  count >= 1000 ? `${(count / 1000).toFixed(1)}k` : `${count}`
+
 export default function HomePage() {
   const { siteConfig } = useDocusaurusContext()
   const { visibleSections, visibleCards } = useScrollAnimation()
-  
+  const [stars, setStars] = useState<number | null>(null)
+
+  useEffect(() => {
+    fetch('https://api.github.com/repos/ku9nov/faynoSync', {
+      headers: { Accept: 'application/vnd.github.v3+json' },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (typeof data.stargazers_count === 'number') {
+          setStars(data.stargazers_count)
+        }
+      })
+      .catch(() => {})
+  }, [])
+
   return (
     <Layout title="FaynoSync - Auto-Updater" description="FaynoSync is a powerful auto-updater service for desktop applications. Effortless updates with maximum flexibility and multi-platform support.">
       <div className="bg-gradient relative overflow-hidden">
@@ -788,10 +790,32 @@ export default function HomePage() {
         <section className="relative flex flex-col items-center justify-center min-h-[88vh] text-white px-4 py-8" style={{ zIndex: 10 }}>
           <h1 className="text-center mb-6 hero-title">
             <span className="hero-title-brand">FaynoSync</span>
+            <span className="hero-title-sub">Secure auto-updater service for desktop &amp; cross-platform apps</span>
           </h1>
           <p className="text-xl md:text-2xl text-center mb-8 max-w-3xl fade-in-up">
             {siteConfig.tagline}
           </p>
+          <div className="hero-cta-row fade-in-up">
+            <Link to="/docs/getting-started" className="enhanced-button button-primary hero-cta-primary">
+              Start Building
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link to="/demo" className="enhanced-button hero-cta-secondary">
+              Watch Demo
+            </Link>
+            <a
+              href="https://github.com/ku9nov/faynoSync"
+              className="enhanced-button hero-cta-secondary hero-cta-github"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Star className="h-4 w-4" />
+              {stars !== null && (
+                <span className="hero-cta-stars">{formatStars(stars)}</span>
+              )}
+              GitHub
+            </a>
+          </div>
           <HeroUpdateFlow />
         </section>
 

@@ -25,6 +25,50 @@ const config: Config = {
   // Static files configuration
   staticDirectories: ['static'],
 
+  headTags: [
+    {
+      tagName: 'meta',
+      attributes: {
+        name: 'keywords',
+        content:
+          'auto-updater, software updates, desktop app updates, Electron updater, Squirrel, Tauri, release management, version distribution, multi-cloud, S3, MinIO, update server, FaynoSync',
+      },
+    },
+    {
+      tagName: 'meta',
+      attributes: {property: 'og:type', content: 'website'},
+    },
+    {
+      tagName: 'meta',
+      attributes: {property: 'og:site_name', content: 'FaynoSync'},
+    },
+    {
+      tagName: 'script',
+      attributes: {type: 'application/ld+json'},
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'SoftwareApplication',
+        name: 'FaynoSync',
+        applicationCategory: 'DeveloperApplication',
+        operatingSystem: 'Windows, macOS, Linux',
+        description:
+          'FaynoSync is a powerful auto-updater service for desktop and cross-platform applications, with multi-cloud distribution, telemetry, and secure delivery.',
+        url: 'https://faynosync.com',
+        softwareHelp: 'https://faynosync.com/docs/getting-started',
+        offers: {
+          '@type': 'Offer',
+          price: '0',
+          priceCurrency: 'USD',
+        },
+        author: {
+          '@type': 'Organization',
+          name: 'FaynoSync',
+          url: 'https://faynosync.com',
+        },
+      }),
+    },
+  ],
+
 
 
   // Even if you don't use internationalization, you can use this field to set
@@ -86,8 +130,11 @@ const config: Config = {
   ],
 
   themeConfig: {
-    // Replace with your project's social card
-    image: 'img/docusaurus-social-card.jpg',
+    image: 'img/faynosync-social-card.png',
+    colorMode: {
+      defaultMode: 'dark',
+      respectPrefersColorScheme: false,
+    },
     navbar: {
       // title: 'FaynoSync',
       logo: {
@@ -104,12 +151,6 @@ const config: Config = {
         },
         {to: '/blog', label: 'Blog', position: 'left'},
         {to: '/demo', label: 'Demo Dashboard', position: 'left'},
-        {
-          href: 'https://github.com/ku9nov/faynoSync',
-          label: 'GitHub',
-          position: 'right',
-          className: 'header-github-link',
-        },
       ],
     },
     footer: {

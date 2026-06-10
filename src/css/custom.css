@@ -3024,6 +3024,67 @@ body {
   text-shadow: 0 6px 24px rgba(34, 211, 238, 0.25);
 }
 
+.hero-title-sub {
+  display: block;
+  margin-top: 0.6rem;
+  font-size: clamp(1rem, 2vw, 1.4rem);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.hero-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  margin-bottom: 2.75rem;
+  animation-delay: 0.15s;
+}
+
+.hero-cta-primary,
+.hero-cta-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.85rem 1.6rem;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.hero-cta-primary {
+  background: linear-gradient(135deg, #7c3aed 0%, #06b6d4 100%);
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(34, 211, 238, 0.28);
+}
+
+.hero-cta-secondary {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.34);
+  color: #fff;
+}
+
+.hero-cta-secondary:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+.hero-cta-stars {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(250, 204, 21, 0.16);
+  border: 1px solid rgba(250, 204, 21, 0.4);
+  color: #fde68a;
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
 .gradient-text {
   background: linear-gradient(135deg, #8B5CF6 0%, #06B6D4 50%, #10B981 100%);
   -webkit-background-clip: text;
@@ -4353,18 +4414,18 @@ canvas {
 }
 
 .premium-hero-grid {
-  display: grid;
-  grid-template-columns: minmax(280px, 0.8fr) minmax(520px, 1.2fr);
-  gap: 1rem;
-  align-items: stretch;
-}
-
-.premium-hero-copy {
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: 1rem;
-  padding: 1.15rem 1rem;
+  gap: 1.1rem;
+}
+
+.premium-hero-intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem 0.2rem;
 }
 
 .premium-copy-badge {
@@ -4380,25 +4441,26 @@ canvas {
   text-transform: uppercase;
 }
 
-.premium-hero-copy h2 {
+.premium-hero-intro h2 {
   margin: 0;
   color: var(--ifm-font-color-base);
   font-size: clamp(1.55rem, 2.2vw, 2.2rem);
   line-height: 1.18;
 }
 
-.premium-hero-copy p {
+.premium-hero-intro p {
   margin: 0;
   color: var(--ifm-color-content-secondary);
   font-size: 0.95rem;
   line-height: 1.58;
-  max-width: 40ch;
+  max-width: 56ch;
 }
 
 .premium-copy-points {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.45rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem 1.2rem;
 }
 
 .premium-copy-points span {
@@ -4407,25 +4469,6 @@ canvas {
   gap: 0.45rem;
   color: var(--ifm-color-content-secondary);
   font-size: 0.8rem;
-}
-
-.premium-copy-cta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.65rem;
-}
-
-.premium-hero-button {
-  gap: 0.35rem;
-  padding: 0.72rem 1rem;
-  border-radius: 11px;
-  font-size: 0.86rem;
-  font-weight: 600;
-}
-
-.premium-hero-button.premium-hero-button-ghost {
-  background: rgba(30, 41, 59, 0.65);
-  border: 1px solid rgba(148, 163, 184, 0.34);
 }
 
 .premium-hero-visual {
@@ -4800,16 +4843,16 @@ canvas {
   color: rgba(55, 48, 163, 0.94);
 }
 
-[data-theme='light'] .premium-hero-copy h2 {
+[data-theme='light'] .premium-hero-intro h2 {
   color: rgba(15, 23, 42, 0.98);
 }
 
-[data-theme='light'] .premium-hero-copy p,
+[data-theme='light'] .premium-hero-intro p,
 [data-theme='light'] .premium-copy-points span {
   color: rgba(51, 65, 85, 0.95);
 }
 
-[data-theme='light'] .premium-hero-button.premium-hero-button-ghost {
+[data-theme='light'] .hero-cta-secondary {
   background: rgba(255, 255, 255, 0.86);
   border-color: rgba(196, 181, 253, 0.8);
   color: rgba(88, 28, 135, 0.88);
@@ -4915,11 +4958,7 @@ canvas {
 }
 
 @media (max-width: 1100px) {
-  .premium-hero-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .premium-hero-copy p {
+  .premium-hero-intro p {
     max-width: 100%;
   }
 }
@@ -4928,6 +4967,27 @@ canvas {
   .premium-hero-update-flow {
     padding: 0.84rem;
     border-radius: 18px;
+  }
+
+  .hero-title-sub {
+    font-size: 1.05rem;
+  }
+
+  .hero-cta-row {
+    width: 100%;
+    gap: 0.6rem;
+    margin-bottom: 2rem;
+  }
+
+  .hero-cta-primary,
+  .hero-cta-secondary {
+    flex: 1 1 100%;
+    justify-content: center;
+    padding: 0.8rem 1.2rem;
+  }
+
+  .premium-hero-intro {
+    padding: 0.4rem 0.5rem 0;
   }
 
   .release-stage-row {
