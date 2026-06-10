@@ -3,7 +3,9 @@ import Link from '@docusaurus/Link'
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext'
 import Layout from '@theme/Layout'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { ArrowRight, Cloud, Hash, Zap, Globe, Rocket, Wrench, Laptop, Globe2, Smartphone, Shield, Zap as Lightning, Users, BarChart2, GitMerge, RefreshCw, Star, Download, Upload, Settings, Database, Lock, Clock, TrendingUp } from 'lucide-react'
+import { ArrowRight, Cloud, Hash, Zap, Globe, Rocket, Wrench, Laptop, Globe2, Smartphone, Shield, Zap as Lightning, Users, BarChart2, GitMerge, RefreshCw, Star, Download, Upload, Settings, Database, Lock, Clock, TrendingUp, Package, Key, ShieldCheck, Cpu } from 'lucide-react'
+import { SiJenkins, SiGithubactions, SiGitlab, SiDocker, SiLinux, SiApple, SiElectron, SiArm } from 'react-icons/si'
+import { FaWindows } from 'react-icons/fa'
 import AnimatedBanner from '../AnimatedBanner';
 
 const hexToRgb = (hex: string) => {
@@ -335,31 +337,29 @@ const HeroUpdateFlow = () => {
                 {activeStage === 'build' && (
                   <div className="premium-scene-build" aria-label="Build stage in CI/CD">
                     <svg viewBox="0 0 700 450" className="premium-scene-svg" role="img" aria-label="Build pipeline topology">
-                      <path className="premium-wire" d="M102 109 H350" />
-                      <path className="premium-wire" d="M350 109 H600" />
+                      <path className="premium-wire" d="M104 102 L350 157" />
+                      <path className="premium-wire" d="M104 157 H350" />
+                      <path className="premium-wire" d="M104 212 L350 157" />
+                      <path className="premium-wire premium-wire-active" d="M350 157 H590" />
                     </svg>
-                    <div className="premium-node node-build-source">
-                      <Wrench size={15} />
-                      <span>CI/CD</span>
+                    <div className="premium-ci-stack" aria-hidden="true">
+                      <div className="premium-ci-chip"><SiJenkins style={{ color: '#D24939' }} /><span>Jenkins</span></div>
+                      <div className="premium-ci-chip"><SiGithubactions style={{ color: '#2088FF' }} /><span>GitHub Actions</span></div>
+                      <div className="premium-ci-chip"><SiGitlab style={{ color: '#FC6D26' }} /><span>GitLab CI</span></div>
                     </div>
                     <div className="premium-node node-build-compile">
-                      <Hash size={15} />
+                      <SiDocker style={{ color: '#2496ED' }} size={19} />
                       <span>Compile</span>
                     </div>
                     <div className="premium-node node-build-artifact">
-                      <Download size={15} />
+                      <Package size={19} />
                       <span>Artifact</span>
                     </div>
                     <div className="premium-build-terminal" aria-hidden="true">
-                      <span />
-                      <span />
-                      <span />
-                    </div>
-                    <div className="premium-build-bars" aria-hidden="true">
-                      <i />
-                      <i />
-                      <i />
-                      <i />
+                      <div className="term-line"><span className="term-prompt">$</span> go build -o app ./...</div>
+                      <div className="term-line term-line-2"><span className="term-ok">✓</span> compiled 142 packages</div>
+                      <div className="term-line term-line-3"><span className="term-prompt">$</span> packaging app-release.zip</div>
+                      <div className="premium-build-progress"><i /></div>
                     </div>
                   </div>
                 )}
@@ -367,20 +367,40 @@ const HeroUpdateFlow = () => {
                 {activeStage === 'upload' && (
                   <div className="premium-scene-upload" aria-label="Upload stage to FaynoSync server">
                     <svg viewBox="0 0 700 450" className="premium-scene-svg" role="img" aria-label="Upload topology">
-                      <path className="premium-wire" d="M165 135 H538" />
+                      <path className="premium-wire premium-wire-active" d="M350 176 V250" />
                     </svg>
-                    <div className="premium-node node-upload-source">
-                      <Download size={15} />
-                      <span>Signed bundle</span>
-                    </div>
-                    <div className="premium-node node-upload-target">
-                      <Cloud size={15} />
-                      <span>FaynoSync Server</span>
+                    <div className="premium-cli-window" aria-hidden="true">
+                      <div className="cli-titlebar"><span /><span /><span /><em>faynosync-cli</em></div>
+                      <div className="cli-body">
+                        <div className="cli-row"><span className="term-prompt">$</span> faynosync-cli upload \</div>
+                        <div className="cli-row cli-arg">--app ExampleApp \</div>
+                        <div className="cli-row cli-arg">--file ./release/app-release.zip \</div>
+                        <div className="cli-row cli-arg">--version 1.4.2.17 \</div>
+                        <div className="cli-row cli-arg">--channel stable --publish \</div>
+                        <div className="cli-row cli-arg">--platform darwin --arch arm64</div>
+                      </div>
                     </div>
                     <div className="premium-upload-stream" aria-hidden="true">
                       <span />
                       <span />
                       <span />
+                      <span />
+                    </div>
+                    <div className="premium-server-card" aria-hidden="true">
+                      <div className="server-card-head">
+                        <img src="/img/favicon.png" alt="" />
+                        <span>FaynoSync Server</span>
+                      </div>
+                      <div className="server-card-body">
+                        <div className="server-card-cols">
+                          <div className="server-row"><Cloud size={13} /> S3 object storage</div>
+                          <div className="server-row"><Database size={13} /> Metadata registry</div>
+                        </div>
+                        <div className="server-progress">
+                          <div className="upload-progress-track"><i /></div>
+                          <span className="server-status"><span className="server-live-dot" /> Receiving app-release.zip…</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -388,18 +408,29 @@ const HeroUpdateFlow = () => {
                 {activeStage === 'test' && (
                   <div className="premium-scene-test" aria-label="Testing stage with validation nodes">
                     <svg viewBox="0 0 700 450" className="premium-scene-svg" role="img" aria-label="Testing topology">
-                      <path className="premium-wire" d="M350 118 V204" />
-                      <path className="premium-wire" d="M350 204 H172" />
-                      <path className="premium-wire" d="M350 204 H528" />
+                      <path className="premium-wire" d="M350 116 V188" />
                     </svg>
                     <div className="premium-node node-test-hub">
                       <Shield size={15} />
                       <span>QA Control</span>
                     </div>
                     <div className="premium-check-list" aria-hidden="true">
-                      <div><TrendingUp size={13} /> API checks</div>
-                      <div><Zap size={13} /> Smoke tests</div>
-                      <div><Lock size={13} /> Signature verify</div>
+                      <div className="check-row">
+                        <span className="check-status"><span className="check-spin" /><span className="check-done">✓</span></span>
+                        <TrendingUp size={13} /> API integration checks
+                      </div>
+                      <div className="check-row">
+                        <span className="check-status"><span className="check-spin" /><span className="check-done">✓</span></span>
+                        <Zap size={13} /> Smoke &amp; regression tests
+                      </div>
+                      <div className="check-row">
+                        <span className="check-status"><span className="check-spin" /><span className="check-done">✓</span></span>
+                        <Lock size={13} /> Signature verification
+                      </div>
+                      <div className="check-row">
+                        <span className="check-status"><span className="check-spin" /><span className="check-done">✓</span></span>
+                        <Cpu size={13} /> Multi-arch build matrix
+                      </div>
                     </div>
                   </div>
                 )}
@@ -407,17 +438,26 @@ const HeroUpdateFlow = () => {
                 {activeStage === 'publish' && (
                   <div className="premium-scene-publish" aria-label="Publish approved release">
                     <svg viewBox="0 0 700 450" className="premium-scene-svg" role="img" aria-label="Publish topology">
-                      <path className="premium-wire" d="M168 141 H536" />
+                      <path className="premium-wire" d="M123 188 H350" />
+                      <path className="premium-wire premium-wire-active" d="M350 188 H582" />
                     </svg>
                     <div className="premium-node node-publish-release">
-                      <Rocket size={16} />
+                      <Package size={16} />
                       <span>Release candidate</span>
+                    </div>
+                    <div className="premium-sign-core" aria-hidden="true">
+                      <span className="sign-ring" />
+                      <span className="sign-ring sign-ring-2" />
+                      <span className="sign-key"><Key size={18} /></span>
+                      <span className="sign-badge"><ShieldCheck size={13} /> signed</span>
                     </div>
                     <div className="premium-node node-publish-server">
                       <Database size={16} />
                       <span>Trusted registry</span>
                     </div>
-                    <div className="premium-publish-status" aria-hidden="true">Approved and published</div>
+                    <div className="premium-publish-status" aria-hidden="true">
+                      <Lock size={12} /> Signed &amp; published
+                    </div>
                   </div>
                 )}
 
@@ -435,12 +475,12 @@ const HeroUpdateFlow = () => {
                       <Cloud size={16} />
                       <span>FaynoSync Server</span>
                     </div>
-                    <div className="premium-node node-client linux"><Laptop size={14} /><span>Linux</span></div>
-                    <div className="premium-node node-client windows"><Laptop size={14} /><span>Windows</span></div>
-                    <div className="premium-node node-client mac"><Laptop size={14} /><span>macOS</span></div>
-                    <div className="premium-node node-client arm"><Smartphone size={14} /><span>ARM</span></div>
-                    <div className="premium-node node-client electron"><Globe2 size={14} /><span>Electron</span></div>
-                    <div className="premium-node node-client edge"><Cloud size={14} /><span>Edge</span></div>
+                    <div className="premium-node node-client linux"><SiLinux style={{ color: '#FCC624' }} size={15} /><span>Linux</span><em>x64</em></div>
+                    <div className="premium-node node-client windows"><FaWindows style={{ color: '#0078D4' }} size={15} /><span>Windows</span><em>x64</em></div>
+                    <div className="premium-node node-client mac"><SiApple size={15} /><span>macOS</span><em>arm64</em></div>
+                    <div className="premium-node node-client arm"><SiArm style={{ color: '#A2AAAD' }} size={15} /><span>Mobile</span><em>arm64</em></div>
+                    <div className="premium-node node-client electron"><SiElectron style={{ color: '#9FEAF9' }} size={15} /><span>Electron</span><em>universal</em></div>
+                    <div className="premium-node node-client edge"><Globe2 size={14} /><span>Edge CDN</span><em>S3</em></div>
                     <div className="premium-fanout-packets" aria-hidden="true">
                       <span className="packet-1" />
                       <span className="packet-2" />
