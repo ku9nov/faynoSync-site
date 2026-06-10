@@ -1,0 +1,83 @@
+.toggle {
+  display: flex;
+  align-items: center;
+}
+
+.switch {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 58px;
+  height: 30px;
+  padding: 0 7px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.06) 100%);
+  cursor: pointer;
+  transition: background 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.switch:hover {
+  border-color: rgba(255, 255, 255, 0.35);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.25), 0 0 0 4px rgba(255, 255, 255, 0.06);
+}
+
+.switchDark {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.35) 0%, rgba(30, 27, 75, 0.5) 100%);
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  transition: color 0.35s ease, opacity 0.35s ease, transform 0.35s ease;
+}
+
+.sun {
+  color: #fbbf24;
+}
+
+.moon {
+  color: #c7d2fe;
+}
+
+/* Dim the icon on the side the knob is NOT covering */
+.switch .sun {
+  opacity: 1;
+}
+.switch .moon {
+  opacity: 0.45;
+}
+.switchDark .sun {
+  opacity: 0.45;
+}
+.switchDark .moon {
+  opacity: 1;
+}
+
+.knob {
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  background: #ffffff;
+  transform: translateY(-50%);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), background 0.35s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  z-index: 0;
+}
+
+.switchDark .knob {
+  transform: translate(28px, -50%);
+  background: #e0e7ff;
+}
+
+.disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}

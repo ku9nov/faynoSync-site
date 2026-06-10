@@ -239,22 +239,35 @@
 /* ===== ENHANCED NAVBAR STYLES ===== */
 .navbar {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 100%) !important;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
   position: fixed !important;
-  width: 100%;
-  top: 0;
+  top: 1rem;
+  left: 0;
+  right: 0;
+  width: calc(100% - 3rem);
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+  height: auto;
   z-index: 1000;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 0.75rem 0;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 20px;
+  padding: 0.6rem 0;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.18),
+    0 2px 8px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 [data-theme='dark'] .navbar {
-  background: linear-gradient(135deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.1) 100%) !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.35) 0%, rgba(0, 0, 0, 0.15) 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.4),
+    0 2px 8px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 /* Hide external link icon in navbar */
 .navbar__link [class*="iconExternalLink"] {
@@ -272,29 +285,17 @@
 
 /* Navbar brand/logo */
 .navbar__brand {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   text-decoration: none;
   transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
+  margin-right: 0;
 }
 
-.navbar__brand::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, var(--ifm-color-primary) 0%, var(--ifm-color-primary-lighter) 100%);
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  border-radius: 8px;
-}
-
-.navbar__brand:hover::before {
-  opacity: 0.1;
+.navbar__logo {
+  margin-right: 0;
+  border-radius: 50%;
+  transition: transform 0.3s ease;
 }
 
 /* .navbar__title {
@@ -406,9 +407,8 @@
   align-items: center;
 }
 
-/* Navbar icons (GitHub, theme toggle, etc.) */
-.navbar__item svg,
-.navbar__item .clean-btn {
+/* Navbar link icons (GitHub, etc.) — theme toggle is styled in its own module */
+.navbar__item a svg {
   width: 20px;
   height: 20px;
   color: rgba(255, 255, 255, 0.8);
@@ -419,8 +419,7 @@
   overflow: hidden;
 }
 
-.navbar__item svg::before,
-.navbar__item .clean-btn::before {
+.navbar__item a svg::before {
   content: '';
   position: absolute;
   top: 0;
@@ -433,16 +432,14 @@
   border-radius: 6px;
 }
 
-.navbar__item:hover svg,
-.navbar__item:hover .clean-btn {
+.navbar__item:hover a svg {
   color: white;
   transform: scale(1.1);
   background: rgba(255, 255, 255, 0.1);
   border-radius: 6px;
 }
 
-.navbar__item:hover svg::before,
-.navbar__item:hover .clean-btn::before {
+.navbar__item:hover a svg::before {
   opacity: 0.1;
 }
 
@@ -615,10 +612,16 @@
 }
 
 @media (max-width: 768px) {
+  .navbar {
+    top: 0.5rem;
+    width: calc(100% - 1.5rem);
+    border-radius: 16px;
+  }
+
   .navbar__inner {
     padding: 0 1rem;
   }
-  
+
   .navbar__title {
     font-size: 1rem;
   }
@@ -681,7 +684,7 @@
 
 /* Add padding to main content to account for fixed navbar */
 .main-wrapper {
-  padding-top: var(--ifm-navbar-height);
+  padding-top: calc(var(--ifm-navbar-height) + 1.5rem);
 }
 
 @media (max-width: 900px) {
@@ -924,9 +927,9 @@
   border-radius: 0 16px 16px 0;
   margin: 1rem 0 1rem 1rem;
   padding: 1.5rem 0;
-  height: calc(100vh - 2rem - var(--ifm-navbar-height));
+  height: calc(100vh - 3rem - var(--ifm-navbar-height));
   position: sticky;
-  top: calc(var(--ifm-navbar-height) + 1rem);
+  top: calc(var(--ifm-navbar-height) + 2rem);
   overflow-y: auto;
   width: var(--doc-sidebar-width);
   min-width: var(--doc-sidebar-width);
@@ -1537,8 +1540,8 @@
   padding: 1.5rem;
   margin: 1rem 0 1rem 1rem;
   position: sticky;
-  top: calc(var(--ifm-navbar-height) + 1rem);
-  max-height: calc(100vh - 2rem - var(--ifm-navbar-height));
+  top: calc(var(--ifm-navbar-height) + 2rem);
+  max-height: calc(100vh - 3rem - var(--ifm-navbar-height));
   overflow-y: auto;
 }
 
