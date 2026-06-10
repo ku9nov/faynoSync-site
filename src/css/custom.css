@@ -5054,10 +5054,12 @@ canvas {
 }
 
 .node-client {
-  width: 124px;
-  min-width: 122px;
+  width: 148px;
+  min-width: 146px;
+  padding: 0.48rem 0.56rem;
   justify-content: center;
-  gap: 0.36rem;
+  gap: 0.34rem;
+  font-size: 0.86rem;
   animation: premiumClientLand 3s ease-in-out infinite;
 }
 
@@ -5065,7 +5067,7 @@ canvas {
 
 .node-client em {
   font-style: normal;
-  font-size: 0.56rem;
+  font-size: 0.64rem;
   font-weight: 700;
   letter-spacing: 0.02em;
   padding: 0.06rem 0.32rem;

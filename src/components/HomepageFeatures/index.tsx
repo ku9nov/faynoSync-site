@@ -475,12 +475,12 @@ const HeroUpdateFlow = () => {
                       <Cloud size={16} />
                       <span>FaynoSync Server</span>
                     </div>
-                    <div className="premium-node node-client linux"><SiLinux style={{ color: '#FCC624' }} size={15} /><span>Linux</span><em>x64</em></div>
-                    <div className="premium-node node-client windows"><FaWindows style={{ color: '#0078D4' }} size={15} /><span>Windows</span><em>x64</em></div>
-                    <div className="premium-node node-client mac"><SiApple size={15} /><span>macOS</span><em>arm64</em></div>
-                    <div className="premium-node node-client arm"><SiArm style={{ color: '#A2AAAD' }} size={15} /><span>Mobile</span><em>arm64</em></div>
-                    <div className="premium-node node-client electron"><SiElectron style={{ color: '#9FEAF9' }} size={15} /><span>Electron</span><em>universal</em></div>
-                    <div className="premium-node node-client edge"><Globe2 size={14} /><span>Edge CDN</span><em>S3</em></div>
+                    <div className="premium-node node-client linux"><SiLinux style={{ color: '#FCC624' }} size={18} /><span>Linux</span><em>x64</em></div>
+                    <div className="premium-node node-client windows"><FaWindows style={{ color: '#0078D4' }} size={18} /><span>Windows</span><em>x64</em></div>
+                    <div className="premium-node node-client mac"><SiApple size={18} /><span>macOS</span><em>arm64</em></div>
+                    <div className="premium-node node-client arm"><SiArm style={{ color: '#A2AAAD' }} size={18} /><span>Mobile</span><em>arm64</em></div>
+                    <div className="premium-node node-client electron"><SiElectron style={{ color: '#9FEAF9' }} size={18} /><span>Electron</span><em>universal</em></div>
+                    <div className="premium-node node-client edge"><Globe2 size={17} /><span>Edge CDN</span><em>S3</em></div>
                     <div className="premium-fanout-packets" aria-hidden="true">
                       <span className="packet-1" />
                       <span className="packet-2" />
