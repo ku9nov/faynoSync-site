@@ -774,22 +774,26 @@ const useCases = [
   {
     title: 'Desktop Applications',
     description: 'Perfect for Electron apps, native desktop applications, and cross-platform software that needs reliable update mechanisms.',
-    icon: <Laptop className="h-8 w-8" />
+    icon: <Laptop className="h-8 w-8" />,
+    color: featureColors[1], // cyan
   },
   {
     title: 'Development Teams',
     description: 'Streamline your development workflow with automated deployment pipelines and version management.',
-    icon: <Users className="h-8 w-8" />
+    icon: <Users className="h-8 w-8" />,
+    color: featureColors[2], // green
   },
   {
     title: 'Enterprise Software',
     description: 'Meet enterprise requirements with advanced security, compliance features, and detailed audit trails.',
-    icon: <Shield className="h-8 w-8" />
+    icon: <Shield className="h-8 w-8" />,
+    color: featureColors[0], // purple
   },
   {
     title: 'SaaS Platforms',
     description: 'Provide seamless updates for client applications while maintaining high availability and performance.',
-    icon: <Cloud className="h-8 w-8" />
+    icon: <Cloud className="h-8 w-8" />,
+    color: featureColors[3], // yellow
   }
 ]
 
@@ -966,10 +970,11 @@ export default function HomePage() {
               {useCases.map((useCase, idx) => (
                 <div
                   key={useCase.title}
-                  className={`enhanced-use-case-card use-case-slide-${idx % 2 === 0 ? 'left' : 'right'} bg-white/10 rounded-xl p-8 backdrop-blur-sm group`}
+                  className={`enhanced-use-case-card use-case-slide-${idx % 2 === 0 ? 'left' : 'right'} rounded-xl p-8 backdrop-blur-sm group`}
+                  style={{ '--use-case-color': useCase.color } as React.CSSProperties}
                 >
-                  <div className="text-blue-400 mb-4 enhanced-use-case-icon transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">{useCase.icon}</div>
-                  <h3 className="text-2xl font-semibold text-white mb-4 transition-colors duration-300 group-hover:text-blue-300">{useCase.title}</h3>
+                  <div className="enhanced-use-case-icon mb-5 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">{useCase.icon}</div>
+                  <h3 className="text-2xl font-semibold text-white mb-4">{useCase.title}</h3>
                   <p className="text-gray-200 text-lg transition-colors duration-300 group-hover:text-white">{useCase.description}</p>
                   <div className="use-case-hover-line"></div>
                 </div>
