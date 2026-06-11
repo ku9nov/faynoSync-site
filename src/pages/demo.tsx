@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Layout from '@theme/Layout';
 import Link from '@docusaurus/Link';
-import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import { ArrowRight, Play, Download, Github } from 'lucide-react';
 import styles from './demo.module.css';
 
@@ -115,7 +114,6 @@ const DemoParticles = () => {
 };
 
 export default function Demo(): JSX.Element {
-  const {siteConfig} = useDocusaurusContext();
   const visibleCards = useDemoScrollAnimation();
   
   const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
@@ -130,7 +128,7 @@ export default function Demo(): JSX.Element {
 
   return (
     <Layout
-      title={`Demo Dashboard - ${siteConfig.title}`}
+      title="Demo Dashboard"
       description="Watch FaynoSync dashboard in action with our interactive demo video. See how to manage applications, track updates, and monitor your auto-updater service in real-time.">
       <main className={`${styles.main} bg-gradient relative overflow-hidden`}>
         {/* Animated Background Elements */}

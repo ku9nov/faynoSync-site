@@ -115,6 +115,7 @@ const config: Config = {
           anonymizeIP: true,
         },
         sitemap: {
+          lastmod: 'date',
           changefreq: 'weekly',
           priority: 0.5,
           ignorePatterns: [
@@ -128,6 +129,32 @@ const config: Config = {
             '/blog/rss.xml',
           ],
           filename: 'sitemap.xml',
+          createSitemapItems: async (params) => {
+            const {defaultCreateSitemapItems, ...rest} = params;
+            const items = await defaultCreateSitemapItems(rest);
+            return items.map((item) => {
+              const path = new URL(item.url).pathname;
+              if (path === '/') {
+                return {...item, priority: 1.0};
+              }
+              if (
+                path === '/docs/intro' ||
+                path === '/docs/getting-started' ||
+                path.startsWith('/docs/getting-started/') ||
+                path === '/blog' ||
+                path === '/demo'
+              ) {
+                return {...item, priority: 0.8};
+              }
+              if (path.startsWith('/blog/')) {
+                return {...item, priority: 0.7};
+              }
+              if (path.startsWith('/docs/api/')) {
+                return {...item, priority: 0.3};
+              }
+              return item;
+            });
+          },
         },
       } satisfies Preset.Options,
     ],
