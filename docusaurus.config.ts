@@ -79,6 +79,20 @@ const config: Config = {
     locales: ['en'],
   },
 
+  plugins: [
+    [
+      'docusaurus-plugin-llms',
+      {
+        generateLLMsTxt: true,
+        generateLLMsFullTxt: true,
+        includeBlog: true,
+        title: 'FaynoSync - Auto-Updater Service',
+        description:
+          'FaynoSync is a self-hosted, open-source auto-updater service for desktop and cross-platform applications (Electron, Tauri, Squirrel), with multi-cloud distribution, telemetry, and secure delivery.',
+      },
+    ],
+  ],
+
   presets: [
     [
       'classic',
@@ -182,6 +196,7 @@ const config: Config = {
         },
         {to: '/blog', label: 'Blog', position: 'left'},
         {to: '/demo', label: 'Demo Dashboard', position: 'left'},
+        {to: '/faq', label: 'FAQ', position: 'left'},
       ],
     },
     footer: {

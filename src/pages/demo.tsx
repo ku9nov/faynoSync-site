@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Layout from '@theme/Layout';
+import Head from '@docusaurus/Head';
 import Link from '@docusaurus/Link';
+import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import { ArrowRight, Play, Download, Github } from 'lucide-react';
 import styles from './demo.module.css';
 
@@ -115,7 +117,17 @@ const DemoParticles = () => {
 
 export default function Demo(): JSX.Element {
   const visibleCards = useDemoScrollAnimation();
-  
+  const { siteConfig } = useDocusaurusContext();
+  const siteUrl = siteConfig.url.replace(/\/$/, '');
+  const breadcrumbSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: `${siteUrl}/` },
+      { '@type': 'ListItem', position: 2, name: 'Demo Dashboard', item: `${siteUrl}/demo` },
+    ],
+  };
+
   const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
     console.error('Video error:', e);
     const video = e.currentTarget;
@@ -130,6 +142,11 @@ export default function Demo(): JSX.Element {
     <Layout
       title="Demo Dashboard"
       description="Watch FaynoSync dashboard in action with our interactive demo video. See how to manage applications, track updates, and monitor your auto-updater service in real-time.">
+      <Head>
+        <script type="application/ld+json">
+          {JSON.stringify(breadcrumbSchema)}
+        </script>
+      </Head>
       <main className={`${styles.main} bg-gradient relative overflow-hidden`}>
         {/* Animated Background Elements */}
         <DemoParticles />

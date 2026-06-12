@@ -819,7 +819,7 @@ export default function HomePage() {
   }, [])
 
   return (
-    <Layout description="FaynoSync is a powerful auto-updater service for desktop applications. Effortless updates with maximum flexibility and multi-platform support.">
+    <Layout description="FaynoSync is a powerful auto-updater service for desktop and cross-platform applications, delivering effortless updates with multi-cloud distribution, built-in telemetry, and secure, reliable delivery you fully control.">
       <div className="bg-gradient relative overflow-hidden">
         {/* Animated Background Elements */}
         <FloatingParticles />

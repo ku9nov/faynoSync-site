@@ -36,6 +36,26 @@ Allow: /css/
 Allow: /js/
 Allow: /videos/
 
+# AI crawlers — explicitly welcome for citation in AI search/assistants
+User-agent: GPTBot
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: ClaudeBot
+User-agent: anthropic-ai
+User-agent: Claude-Web
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: Google-Extended
+User-agent: Applebot-Extended
+User-agent: CCBot
+User-agent: Bytespider
+Allow: /
+Allow: /llms.txt
+Allow: /llms-full.txt
+Disallow: /search
+Disallow: /blog/tags/
+Disallow: /blog/authors/
+
 # Sitemap location
 Sitemap: https://faynosync.com/sitemap.xml
 
