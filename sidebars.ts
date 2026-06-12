@@ -181,6 +181,7 @@ const sidebars: SidebarsConfig = {
         },
       ],
     },
+    'cli',
     'performance',
     'edge',
     'team_based_auth',

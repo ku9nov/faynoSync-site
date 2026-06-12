@@ -1,13 +1,314 @@
 ---
 title: JavaScript SDK
-description: JavaScript and TypeScript client SDK for faynoSync update checks.
+description: Production-oriented JavaScript/TypeScript SDK for checking application updates with faynoSync.
 sidebar_position: 3
 ---
 
 # JavaScript SDK
 
-Coming soon.
+Production-oriented JavaScript/TypeScript SDK for checking application updates with faynoSync.
 
-The JavaScript / TypeScript SDK will provide the same goals as the [Go SDK](/docs/sdk/go/sdk): typed update checks, optional edge-first delivery, and client-side optimizations without requiring changes to the core faynoSync API.
+This package is a small typed transport and developer experience layer. It does not implement update installation, platform normalization, metadata verification, caching, or business rules.
 
-For now, use the [Go SDK](/docs/sdk/go/sdk) or call `/checkVersion` on your faynoSync API directly from your client.
+:::info Edge delivery requires an SDK
+Edge response caching and the edge-first fallback flow are designed to work correctly when clients use an official faynoSync SDK (this JS SDK or the [Go SDK](../go/sdk)). Raw `/checkVersion` calls do not provide the same edge orchestration, `source` semantics, or SDK-optimized telemetry paths. See the [SDK overview](../intro) for context.
+:::
+
+## Requirements
+
+Node.js 18 or later. The SDK uses the built-in global `fetch` and `AbortSignal.timeout`.
+
+## Installation
+
+```sh
+npm install @faynosync/sdk-js
+```
+
+## Quick Start
+
+```ts
+import { Client } from '@faynosync/sdk-js';
+
+const client = new Client({
+  baseURL: 'https://api.example.com',
+});
+
+const resp = await client.checkForUpdates({
+  owner: 'admin',
+  appName: 'test',
+  version: '0.0.0.5',
+  channel: 'nightly',
+  platform: 'darwin',
+  arch: 'arm64',
+});
+
+if (resp.updateAvailable) {
+  if (resp.updateUrl !== '') {
+    console.log('Update is available:', resp.updateUrl);
+  }
+  for (const pkg of resp.packageUrls) {
+    console.log(`${pkg.package} update is available:`, pkg.url);
+  }
+}
+```
+
+## Client Configuration
+
+```ts
+import { Client } from '@faynosync/sdk-js';
+
+const client = new Client({
+  baseURL: 'https://api.example.com',
+  edgeURL: 'https://cdn.example.com',
+  timeoutMs: 10_000,
+  fetch: customFetch,
+});
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `baseURL` | `string` | Yes | Base faynoSync API URL used for update checks. Must be an absolute URL. |
+| `edgeURL` | `string` | No | Optional edge endpoint tried first for static JSON responses. |
+| `timeoutMs` | `number` | No | Per-request timeout in milliseconds. Defaults to `30000`. |
+| `fetch` | `typeof fetch` | No | Custom `fetch` implementation for proxies, pooling, or logging. |
+
+Notes:
+
+- `baseURL` is required and is validated as an absolute URL.
+- If `fetch` is omitted, the SDK uses `globalThis.fetch` (Node.js 18+ built-in).
+- The same `timeoutMs` is applied to every request.
+- The client is safe for concurrent use.
+
+## checkForUpdates Contract
+
+`checkForUpdates` sends a request and resolves to a typed `UpdateResponse`. An optional `AbortSignal` can be passed as the second argument to cancel the request.
+
+```ts
+const controller = new AbortController();
+setTimeout(() => controller.abort(), 5_000);
+
+const resp = await client.checkForUpdates(opts, controller.signal);
+```
+
+The request also respects `timeoutMs`: whichever fires first — your signal or the timeout — aborts the request.
+
+### CheckOptions
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `owner` | `string` | Yes | Application owner username. |
+| `appName` | `string` | Yes | Application name. |
+| `version` | `string` | Yes | Current client version. |
+| `channel` | `string` | Conditional | Release channel value used by your faynoSync setup. |
+| `platform` | `string` | Conditional | Platform value used by your faynoSync setup. |
+| `arch` | `string` | Conditional | Architecture value used by your faynoSync setup. |
+| `deviceId` | `string` | No | Device identifier. Sent as the `X-Device-ID` header, and triggers a telemetry beacon after a successful edge response. |
+
+The SDK only validates `owner`, `appName`, and `version` as required; omitted fields are sent as empty query values. `channel`, `platform`, and `arch` are not validated client-side, but if the target app in your faynoSync instance defines channels, platforms, or architectures, you must provide the matching values or the check will not resolve to the correct release.
+
+### Request Mapping
+
+Base API endpoint:
+
+```text
+GET /checkVersion?app_name=test&version=0.0.0.5&channel=nightly&platform=darwin&arch=arm64&owner=admin
+X-Device-ID: optional-device-id
+```
+
+Query parameters are built from the named fields on `CheckOptions`. You pass a typed object instead of a generic key-value map, which keeps the API explicit and easy to validate.
+
+## Response Contract
+
+`checkForUpdates` decodes the server response into a typed `UpdateResponse`.
+
+### Core Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `updateAvailable` | `boolean` | Whether an update is available for the request scope. |
+| `updateUrl` | `string` | Direct binary update URL (single artifact flow). Empty string when not present. |
+| `packageUrls` | `readonly PackageUpdateURL[]` | Package-specific update URLs extracted from dynamic response keys, sorted alphabetically by package name. |
+| `changelog` | `string` | Optional release notes or markdown changelog. |
+| `critical` | `boolean` | Indicates a critical update. |
+| `isIntermediateRequired` | `boolean` | Indicates whether an intermediate update is required. |
+| `possibleRollback` | `boolean` | Indicates rollback metadata from the server response. |
+| `source` | `UpdateSource` | Where the response came from: `'edge'`, `'api'`, or `'unknown'`. |
+
+A `PackageUpdateURL` has two fields:
+
+```ts
+interface PackageUpdateURL {
+  readonly package: string; // e.g. 'deb', 'rpm', 'msi'
+  readonly url: string;
+}
+```
+
+### Dynamic Package URL Mapping
+
+faynoSync can return package-specific URL fields with dynamic suffixes, for example:
+
+- `update_url_deb`
+- `update_url_rpm`
+- `update_url_msi`
+
+Other package types use the same `update_url_<package>` pattern (for example, `update_url_appimage` or `update_url_pkg`). The SDK maps every `update_url_*` string field into the typed `packageUrls` collection:
+
+```ts
+for (const pkg of resp.packageUrls) {
+  console.log(pkg.package, pkg.url);
+}
+```
+
+### Source Semantics
+
+| Value | Meaning |
+|-------|---------|
+| `'edge'` | The response was served from the edge JSON endpoint. |
+| `'api'` | The response was served by the `baseURL` API, after a direct call or fallback. |
+| `'unknown'` | Default before the source is resolved; not expected on a returned response. |
+
+## Edge Fallback Behavior
+
+Edge delivery only works as intended when update checks go through an official faynoSync SDK. The server can publish cached JSON for CDN/object storage, but the client must implement edge-first requests, API fallback, and the optional telemetry flow that the SDK provides.
+
+When `edgeURL` is configured, the SDK first requests:
+
+```text
+GET /responses/{owner}/{appName}/{channel}/{platform}/{arch}/{version}.json
+```
+
+Example:
+
+```text
+GET /responses/admin/test/nightly/darwin/arm64/0.0.0.5.json
+```
+
+In the edge path, `-` in the version is normalized to `.` (so `2.0.0-4` resolves to `2.0.0.4.json`), matching the Base API behavior.
+
+### Fallback Decision Matrix
+
+| Edge Result | Fallback to `baseURL` API | Final `source` |
+|-------------|----------------------------|----------------|
+| HTTP 200 + valid JSON | No | `'edge'` |
+| Network error | Yes | `'api'` when API succeeds |
+| Timeout | Yes | `'api'` when API succeeds |
+| Invalid JSON | Yes | `'api'` when API succeeds |
+| HTTP 404 | Yes | `'api'` when API succeeds |
+| Any non-200 status | Yes | `'api'` when API succeeds |
+
+If the request was aborted, the SDK does not fall back. If both edge and API fail, `checkForUpdates` rejects with a `CheckError`.
+
+### Edge Telemetry
+
+When `deviceId` is set and an edge response succeeds, the SDK sends a telemetry beacon to `GET /telemetry/beacon` (with `is_latest` derived from `updateAvailable`). Telemetry failures are swallowed and never affect the update-check result.
+
+## Platform, Channel, and Architecture Values
+
+faynoSync supports custom values for platform, channel, and architecture. The SDK never normalizes or remaps them.
+
+Examples of values that are **not** automatically transformed:
+
+- `macos` to `darwin`
+- `osx` to `darwin`
+- `stable` to `default`
+
+Whatever you set in `channel`, `platform`, and `arch` is sent as-is.
+
+## Optional System Helpers
+
+The SDK provides optional helpers that return the current Node.js runtime values:
+
+```ts
+import { systemPlatform, systemArch } from '@faynosync/sdk-js';
+
+const platform = systemPlatform(); // process.platform — e.g. 'darwin', 'linux', 'win32'
+const arch     = systemArch();     // process.arch    — e.g. 'arm64', 'x64'
+```
+
+These helpers are never called automatically. Use them only when Node.js runtime values match your faynoSync configuration.
+
+## Error Handling
+
+The SDK exports a typed error hierarchy:
+
+```text
+FaynoSyncError
+├── ValidationError        // missing/invalid configuration or options
+└── RequestFailedError
+    ├── EndpointError      // a single edge or API request failed
+    └── CheckError         // the overall check failed (wraps edge/api errors)
+```
+
+Validation errors are exported as singleton instances — compare them with `===`. Request failures are class instances — narrow them with `instanceof`.
+
+```ts
+import {
+  Client,
+  CheckError,
+  EndpointError,
+  ErrMissingBaseURL,
+  ErrMissingOwner,
+  ErrMissingAppName,
+  ErrMissingVersion,
+} from '@faynosync/sdk-js';
+
+try {
+  const resp = await client.checkForUpdates(opts);
+} catch (err) {
+  if (err === ErrMissingBaseURL) {
+    // configure Client baseURL
+  } else if (err === ErrMissingOwner) {
+    // set opts.owner
+  } else if (err === ErrMissingAppName) {
+    // set opts.appName
+  } else if (err === ErrMissingVersion) {
+    // set opts.version
+  } else if (err instanceof CheckError) {
+    // every edge/api attempt failed
+    console.error('edge error:', err.edgeError?.message);
+    console.error('api error:', err.apiError?.message);
+
+    if (err.apiError instanceof EndpointError) {
+      console.error('url:', err.apiError.endpointUrl);
+      console.error('status:', err.apiError.statusCode);
+    }
+  }
+}
+```
+
+A failed update check always rejects with a `CheckError`. Its `edgeError` and `apiError` fields hold the underlying `EndpointError` for each attempt (the edge error is absent when `edgeURL` is not configured). Each `EndpointError` carries the `source`, `endpointUrl`, optional `statusCode`, and a `cause` for transport-level failures.
+
+### Validation Error Reference
+
+| Error | Trigger |
+|-------|---------|
+| `ErrMissingBaseURL` | `baseURL` is empty. |
+| `ErrInvalidBaseURL` | `baseURL` is not a valid absolute URL. |
+| `ErrInvalidEdgeURL` | `edgeURL` is set but is not a valid absolute URL. |
+| `ErrMissingOwner` | `opts.owner` is empty. |
+| `ErrMissingAppName` | `opts.appName` is empty. |
+| `ErrMissingVersion` | `opts.version` is empty. |
+
+## Examples
+
+Runnable examples live in the [faynosync-sdk-js](https://github.com/ku9nov/faynosync-sdk-js) repository:
+
+| Example | Description | Source |
+|---------|-------------|--------|
+| Basic | Minimal update check using runtime platform/arch detection | [examples/basic](https://github.com/ku9nov/faynosync-sdk-js/blob/main/examples/basic/index.ts) |
+| Edge fallback | `edgeURL` configured with `deviceId` telemetry | [examples/edge-fallback](https://github.com/ku9nov/faynosync-sdk-js/blob/main/examples/edge-fallback/index.ts) |
+| Custom fetch | Custom `fetch` function and `timeoutMs` | [examples/custom-fetch](https://github.com/ku9nov/faynosync-sdk-js/blob/main/examples/custom-fetch/index.ts) |
+
+Run any example with:
+
+```sh
+npx ts-node examples/basic/index.ts
+```
+
+## Security Scope
+
+This SDK version performs update-check transport requests and typed response decoding only.
+
+It does not verify TUF metadata, signatures, thresholds, expiration, rollback protection, or cache safety. Applications that need secure update metadata verification must perform that verification in the appropriate faynoSync component or a future SDK layer that explicitly implements it.
+
+No signature, threshold, expiration, rollback, freeze, root-of-trust, or cache protection is weakened by this transport-only SDK.
