@@ -176,8 +176,7 @@ export default function Demo(): JSX.Element {
                 onError={handleVideoError}
                 onLoadedData={handleVideoLoad}
               >
-                <source src="/videos/demo.mov" type="video/quicktime" />
-                <source src="/videos/demo.mov" type="video/mp4" />
+                <source src="/videos/demo.mp4" type="video/mp4" />
                 Your browser does not support the video tag.
               </video>
             </div>
