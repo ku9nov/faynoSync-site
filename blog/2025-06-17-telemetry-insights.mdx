@@ -3,152 +3,193 @@ slug: telemetry-insights
 title: Telemetry Insights — Understand Your Users Better 📊
 authors: [ku9nov]
 tags: [faynoSync, telemetry, analytics]
-description: Explore Telemetry Insights in FaynoSync to understand your users — track version adoption, platform distribution, and engagement with built-in analytics that reveal how your app is really used.
+description: Track version adoption, platform distribution, and active users with faynoSync's built-in, privacy-first telemetry — collected via checkVersion and a dedicated beacon endpoint, stored in Redis.
 ---
 
 # Telemetry Insights — Understand Your Users Better 📊
 
-Want to know how your users are using your application? Need insights into version adoption and platform distribution? Meet Telemetry Insights — your window into user behavior and application usage!
+Once your app is in users' hands, the obvious questions follow: How many people actually run it? Which version are they on? Which platforms should you prioritize? Shipping updates blind is guesswork — faynoSync's built-in telemetry turns those questions into data.
+
+The best part: it's privacy-first and you already have most of the plumbing. Telemetry is collected from the same [`/checkVersion`](https://faynosync.com/docs/api/info/latest) calls your clients already make — you just add one header. This post covers what's tracked, the critical `X-Device-ID` header, how to enable it, the beacon endpoint for SDK/edge flows, and how to read the data.
 
 ---
 
 ## What is Telemetry? 🤔
 
-Telemetry is your application's built-in analytics system that:
-- 📈 Tracks user engagement
-- 🔍 Monitors version distribution
-- 🌍 Analyzes platform usage
-- 📊 Provides valuable insights
+Telemetry is faynoSync's built-in analytics layer that:
+- 📈 Tracks user engagement and active clients
+- 🔍 Monitors version distribution and adoption
+- 🌍 Analyzes platform and architecture usage
+- 📊 Aggregates it all into daily stats
 
-It helps you make data-driven decisions about your application's future!
+It helps you make data-driven decisions about your application's future. Full reference: [Telemetry System docs](https://faynosync.com/docs/telemetry).
 
 ---
 
 ## What You Can Track 🎯
 
-### 1. User Analytics
-- 👥 Total unique users
-- 🔄 Daily active users
+### 1. Client Analytics
+- 👥 Unique clients and active users
 - 📱 Platform distribution
 - 💻 Architecture breakdown
 
 ### 2. Version Insights
 - 📦 Version adoption rates
-- ⚡ Update patterns
-- 🎯 Outdated version tracking
+- 🎯 Clients on the latest version vs. outdated clients
 - 📈 Version distribution trends
 
 ### 3. Channel Analytics
-- 🎨 Channel popularity
-- 📊 User preferences
-- 🔄 Update frequency
-- 🎯 Channel-specific insights
+- 🎨 Channel popularity (stable, beta, nightly, alpha)
+- 📊 Per-channel client counts
 
 ---
 
-## How to Enable It? 🔌
+## How it works
 
-Just add this to your `.env` file:
+Telemetry data is collected **automatically** when clients call the `/checkVersion` endpoint — as long as they send the `X-Device-ID` header. For each request faynoSync records the device ID, app name, platform, channel, architecture, and reported version.
+
+The data is stored **in Redis with a 30-day retention period**, aggregated daily, and organized by administrator → application → date → metric. No separate database, no extra service.
+
+---
+
+## The `X-Device-ID` header — the part that matters most
+
+Telemetry is only collected when the client sends an `X-Device-ID` header. Without it, the request still works — but it won't count toward your stats. This ID is what lets faynoSync count *unique devices* instead of raw requests.
+
+```http
+GET /checkVersion?app_name=myapp&version=1.0.0&channel=stable&platform=darwin&arch=arm64
+X-Device-ID: 3f6c1a8e-9b2d-4c77-bc1e-2a9f0d5e7a11
+```
+
+### Implementation guidelines
+- **Generate a UUID v4** (or similar) on first launch.
+- **Persist it** in secure, durable storage on the device.
+- **Reuse the same ID** across app restarts and updates.
+- **Never change it** for an existing installation, or you'll double-count that user.
+
+### Keep it anonymous
+The device ID must **not** contain any personal data:
+- ❌ No names, emails, or account identifiers
+- ❌ No IP addresses
+- ❌ No sensitive data
+
+It's an opaque identifier and nothing more. This is what keeps faynoSync telemetry privacy-first by design — you control the ID, and a random UUID reveals nothing about the user.
+
+---
+
+## How to Enable It 🔌
+
+Add this to your `.env` file:
 ```bash
 ENABLE_TELEMETRY=true
 ```
 
-That's it! Your application will start collecting valuable insights automatically.
+That's the server side. Then make sure your clients send `X-Device-ID` on their `/checkVersion` calls, and stats start accumulating automatically.
 
 ---
 
-## What Data is Collected? 📝
+## Collecting telemetry without checkVersion: the beacon endpoint
 
-### Essential Metrics
-1. **Device Information** 📱
-   - Platform (Windows, macOS, Linux, etc.)
-   - Architecture (x64, arm64, etc.)
-   - Channel (stable, beta, nightly)
+If your client doesn't call `/checkVersion` — for example, [SDK](https://faynosync.com/docs/sdk/intro) or edge flows where updates come from edge infrastructure — use the dedicated `/telemetry/beacon` endpoint instead. It records the same data but is optimized for speed, validating requests against an in-memory snapshot rather than reading full metadata per call.
 
-2. **Version Data** 📦
-   - Current version
-   - Update frequency
-   - Version adoption rates
+```bash
+curl --location 'http://localhost:9000/telemetry/beacon?app_name=myapp&version=1.0.0&channel=stable&platform=linux&arch=amd64&owner=admin' \
+--header 'X-Device-ID: 3f6c1a8e-9b2d-4c77-bc1e-2a9f0d5e7a11'
+```
 
-3. **Usage Patterns** 📊
-   - Daily active users
-   - Update check frequency
-   - Channel preferences
+- Requires no auth token, but **all query parameters and `X-Device-ID` are required**.
+- Returns `204 No Content` on success.
+- If you already call `/checkVersion`, you do **not** need the beacon.
+
+See [Telemetry beacon](https://faynosync.com/docs/api/info/telemetry_beacon) and [Edge and S3 Response Cache](https://faynosync.com/docs/edge) for the architecture behind it.
 
 ---
 
-## Privacy First 🔒
+## How to Access Insights 📊
 
-### What We Don't Collect
-- ❌ Personal information
-- ❌ IP addresses
-- ❌ Sensitive data
-- ❌ User behavior outside the app
+### Dashboard
+Log in to your admin dashboard and open the Telemetry section to explore charts for clients, versions, platforms, and channels.
 
-### Security Measures
-- 🔐 Anonymous device IDs
-- 📅 30-day data retention
-- 👥 Admin and team access (admin can only see their own apps' stats)
-
----
-
-## How to Access Insights? 📊
-
-### Dashboard View
-1. Log in to your admin dashboard
-2. Navigate to the Telemetry section
-3. Explore your insights!
-
-### API Access
+### API
 ```http
 GET /telemetry?range=week
 ```
 
-Available filters:
-- 📅 Date range
-- 📦 Application
-- 🎨 Channel
-- 📱 Platform
-- 💻 Architecture
+Available query parameters:
+
+| Parameter | Description |
+|-----------|-------------|
+| `date` | Specific date (`YYYY-MM-DD`) |
+| `range` | Time range: `week` or `month` |
+| `apps` | Filter by application(s) |
+| `channels` | Filter by channel(s) |
+| `platforms` | Filter by platform(s) |
+| `architectures` | Filter by architecture(s) |
+
+### Reading the response
+The API returns aggregated stats. The `summary` block is where the headline numbers live:
+
+```json
+{
+  "date": "2026-06-16",
+  "admin": "ku9n",
+  "summary": {
+    "total_requests": 1765,
+    "unique_clients": 1751,
+    "clients_using_latest_version": 167,
+    "clients_outdated": 1584,
+    "total_active_apps": 5
+  },
+  "platforms": [
+    { "platform": "windows", "client_count": 229 },
+    { "platform": "linux", "client_count": 215 },
+    { "platform": "darwin", "client_count": 207 }
+  ],
+  "channels": [
+    { "channel": "stable", "client_count": 448 },
+    { "channel": "beta", "client_count": 446 },
+    { "channel": "nightly", "client_count": 435 }
+  ],
+  "daily_stats": [
+    { "date": "2026-06-15", "total_requests": 400, "unique_clients": 400, "clients_using_latest_version": 37, "clients_outdated": 363 }
+  ]
+}
+```
+
+What the key fields tell you:
+- **`unique_clients`** — real device count (thanks to `X-Device-ID`), not inflated by repeat polling.
+- **`clients_using_latest_version` vs `clients_outdated`** — your update adoption rate at a glance. In the example above, most clients are still on older builds — a clear signal to investigate why updates aren't landing.
+- **`platforms` / `architectures` / `channels`** — where to focus QA and build effort.
+- **`daily_stats`** — trends over time: growing user base, adoption after a release, lingering outdated clients.
+
+The full response also includes a `versions` block with per-version client counts. See the [complete example](https://faynosync.com/docs/telemetry#example-response) in the docs.
+
+---
+
+## Access control & privacy 🔒
+
+- **Per-admin isolation** — each administrator sees telemetry only for their own apps.
+- **Team users** — can view all statistics but can only filter/sort resources they have access to; access is verified by the API.
+- **Anonymous by design** — identification is via the opaque `X-Device-ID` you generate; no PII, no IP addresses.
+- **30-day retention** — data ages out automatically.
+
+---
+
+## Limitations 📝
+
+1. Data is retained for 30 days.
+2. Statistics are only collected when `X-Device-ID` is provided.
+3. Team users have limited filtering capabilities.
+4. Data is aggregated daily (not real-time per request).
 
 ---
 
 ## Best Practices 💡
 
-1. **Early Implementation** 🚀
-   - Enable telemetry from day one
-   - Track version adoption
-   - Monitor user engagement
-
-2. **Regular Analysis** 📊
-   - Review weekly reports
-   - Track version distribution
-   - Monitor platform usage
-
-3. **Data-Driven Decisions** 🎯
-   - Use insights for updates
-   - Optimize for popular platforms
-   - Focus on user preferences
-
----
-
-## Example Insights 📈
-
-Here's what you might discover:
-- 75% of users are on the latest version
-- Most popular platform: Windows (40%)
-- Highest engagement: Beta channel
-- Most popular architecture: x64 (45%)
-- Top 3 versions in use:
-  - v1.2.0: 35%
-  - v1.1.0: 25%
-  - v1.0.0: 15%
-- Client trends:
-  - Growing user base
-  - Latest version adoption
-  - Outdated clients
-- API usage:
-  - Total version check requests
+- **Enable from day one** — telemetry is only as good as its history; you can't backfill.
+- **Generate device IDs correctly** — UUID v4, persistent, never reused or mutated.
+- **Review trends weekly** — watch adoption after each release and chase down outdated-client spikes.
+- **Let the data drive the roadmap** — prioritize the platforms and channels your users actually run.
 
 ---
 
@@ -161,13 +202,23 @@ Here's what you might discover:
 📦 API Docs: [https://faynosync.com/docs/api](https://faynosync.com/docs/api)  
 🖥️ Dashboard UI: [https://github.com/ku9nov/faynoSync-dashboard](https://github.com/ku9nov/faynoSync-dashboard)
 
-3. Enable telemetry in your `.env` file
+3. Set `ENABLE_TELEMETRY=true` and send `X-Device-ID` from your clients.
 
-4. Start collecting valuable insights! 📊
+4. Open the Telemetry dashboard and start collecting insights. 📊
 
 ---
 
-If you find this project helpful, please consider **subscribing**, **leaving a comment**, or giving it a **star**, create **Issue** or **feature request** on GitHub.  
+## Related reading
+
+- [Rollout Health Reports — Catch Failed Updates Before They Spread](https://faynosync.com/blog/rollout-health-reports)
+- [Scaling Update Checks with Edge + S3 Response Cache](https://faynosync.com/blog/edge-s3-cache)
+- [How to Setup Auto Update for Electron App](https://faynosync.com/blog/electron-auto-update)
+- [Performance Mode — Speed Up Your API](https://faynosync.com/blog/performance-mode)
+- [Telemetry System docs](https://faynosync.com/docs/telemetry)
+
+---
+
+If you find this project helpful, please consider **subscribing**, **leaving a comment**, or giving it a **star**, create an **Issue** or **feature request** on GitHub.  
 Your support keeps the project alive and growing 💚
 
---- 
+---

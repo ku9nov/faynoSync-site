@@ -28,6 +28,16 @@ performance:
   permalink: /performance
   description: Performance documentation for FaynoSync
 
+edge:
+  label: Edge
+  permalink: /edge
+  description: Edge and S3 response cache documentation for FaynoSync
+
+reports:
+  label: Reports
+  permalink: /reports
+  description: Report ingestion and rollout health documentation for FaynoSync
+
 team:
   label: Team
   permalink: /team

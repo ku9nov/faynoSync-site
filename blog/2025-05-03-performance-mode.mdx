@@ -3,129 +3,177 @@ slug: performance-mode
 title: Performance Mode — Speed Up Your API
 authors: [ku9nov]
 tags: [faynoSync, performance]
-description: Enable Performance Mode in FaynoSync to handle thousands of update checks per minute — a Redis-backed caching layer that cuts response times and database load for high-traffic update servers.
+description: Enable Performance Mode in faynoSync to handle thousands of update checks per minute — a Redis-backed cache plus an optional Nginx microcache layer that cut response times and database load.
 ---
 
 # Performance Mode — Speed Up Your API ⚡
 
-Is your faynoSync instance handling thousands of update checks per minute? Worried about database load? Meet Performance Mode — your API's new best friend for handling high traffic efficiently!
+Update checks are bursty and repetitive. Every running copy of your app polls the same `/checkVersion` endpoint with nearly identical parameters, and each call validates the app, channel, platform, and architecture against MongoDB. At a few hundred clients that's fine. At thousands it's the same handful of database queries, repeated thousands of times a minute.
+
+Performance Mode fixes that with caching. This post explains how it works, how to configure Redis, how cache invalidation keeps results correct, and how to stack an optional Nginx microcache on top for a multi-layer strategy.
 
 ---
 
 ## What is Performance Mode? 🤔
 
-Performance Mode is a smart caching system that:
+Performance Mode is a Redis-backed caching layer for the API that:
 - 🚀 Reduces response times
 - 📉 Lowers database load
 - 💾 Optimizes resource usage
 
-It works by caching frequently requested data in Redis, making your API responses lightning-fast!
+When enabled, faynoSync caches the result of `/checkVersion` in Redis and serves repeat requests straight from memory instead of re-querying MongoDB. See the [Performance Mode docs](https://faynosync.com/docs/performance) for the reference.
 
 ---
 
 ## How It Works 🛠️
 
-### The Magic Behind the Scenes
-1. **Request Arrives** 📥
-   - API checks if Performance Mode is enabled (`PERFORMANCE_MODE=true`)
-   - Looks for cached data in Redis
+```text
+                 ┌─────────────────────────────┐
+client ──────▶   │  GET /checkVersion           │
+                 └──────────────┬──────────────┘
+                                │
+                   PERFORMANCE_MODE=true?
+                                │
+                 ┌──────────────┴──────────────┐
+                 ▼                              ▼
+          look up in Redis               (disabled) query
+                 │                         MongoDB every time
+        ┌────────┴────────┐
+        ▼                 ▼
+   cache HIT          cache MISS
+   return from        query MongoDB,
+   Redis (fast)       store in Redis,
+                      then return
+```
 
-2. **Cache Check** 🔍
-   - If data exists in cache → returns it immediately
-   - If not → queries the database
+1. **Request arrives** — the API checks whether `PERFORMANCE_MODE=true`.
+2. **Cache check** — it looks for cached data in Redis for that request.
+   - HIT → return immediately.
+   - MISS → query MongoDB, store the result in Redis, then return.
+3. **Next request** — the same query is now a cache hit.
 
-3. **Cache Update** 💾
-   - New data is stored in Redis
-   - Ready for next request
-
-### What Gets Cached?
-Currently, Performance Mode is implemented for the `checkVersion` endpoint, which is one of the most frequently called endpoints in the system.
+### What gets cached?
+Performance Mode is currently implemented for the **`/checkVersion`** endpoint — by far the most frequently called one, since every client polls it for updates.
 
 ---
 
 ## Why Do We Need It? 🎯
 
-### 1. Database Load Reduction
-- 📊 Fewer queries to MongoDB
-- 💪 Less strain on your database
-- 🎯 Better resource utilization
+- **Database load reduction** — far fewer MongoDB queries for the same repeated update checks.
+- **Faster response times** — cached responses come from memory, no database round-trip.
+- **Resource optimization** — lower CPU and DB pressure means the same hardware scales further.
 
-### 2. Faster Response Times
-- ⚡ Cached responses are returned instantly
-- 🏎️ No need to wait for database queries
-- 🎮 Perfect for high-traffic scenarios
-
-### 3. Resource Optimization
-- 🌱 Lower CPU usage
-- 💧 Reduced memory consumption
-- 📈 Better scalability
+This matters most exactly when it's hardest: traffic spikes right after you publish a release and every client checks in at once.
 
 ---
 
-## How to Enable It? 🔌
+## How to Enable It 🔌
 
-Just add this to your `.env` file:
+Enable the mode and point faynoSync at your Redis instance in `.env`:
+
 ```bash
 PERFORMANCE_MODE=true
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
+REDIS_DB=0
 ```
 
-That's it! Your API will automatically start using Redis for caching.
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PERFORMANCE_MODE` | `false` | Master switch for Redis caching |
+| `REDIS_HOST` | `localhost` | Redis hostname or IP |
+| `REDIS_PORT` | `6379` | Redis port |
+| `REDIS_PASSWORD` | _(empty)_ | Leave empty if Redis has no auth |
+| `REDIS_DB` | `0` | Redis database number |
+
+That's it — once `PERFORMANCE_MODE=true` and Redis is reachable, the API starts caching automatically. Full reference in the [environment overview](https://faynosync.com/docs/getting-started/env-overview).
 
 ---
 
-## Testing Performance 🧪
+## Cache invalidation — staying correct 🔄
 
-Want to see the difference? Try this test script:
+A cache is only useful if it never serves stale "latest version" info. faynoSync handles this for you:
+
+> When you upload a new application with `publish` set to `true`, the Redis keys for that app are removed. The next `/checkVersion` request repopulates the cache with fresh data.
+
+So the moment you publish a release, the old cached answer for that app is gone — the next client to check gets the new version, and everyone after them gets it from cache again. No manual flushing, no risk of pinning users to an old build.
+
+---
+
+## Going further: add an Nginx microcache 🧱
+
+For very high traffic you can stack a second cache layer in front of the API. Nginx can microcache `/checkVersion` responses for a few seconds, absorbing bursts before they ever reach faynoSync.
+
+```nginx
+# In the http block
+proxy_cache_path /tmp/nginx_cache levels=1:2 keys_zone=checkversion_cache:10m inactive=60s max_size=100m;
+
+# In the server block
+location = /checkVersion {
+    proxy_pass http://127.0.0.1:9000;
+
+    proxy_cache checkversion_cache;
+    proxy_cache_valid 200 60s;
+    proxy_cache_key "$scheme$request_method$host$request_uri";
+
+    # Serve stale cache if the backend is slow or erroring
+    proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
+    proxy_cache_lock on;
+    proxy_cache_background_update on;
+
+    add_header X-Cache-Status $upstream_cache_status;
+}
+```
+
+This gives you a **two-layer strategy**: Nginx absorbs identical requests for ~60s at the edge of your server, and Redis (Performance Mode) handles everything that gets through. The `X-Cache-Status` header tells you what happened:
+
+- `HIT` — served from Nginx
+- `MISS` — went to the backend
+- `UPDATING` — cache being refreshed in the background
+- `STALE` — backend was unhealthy, stale copy served
+
+The full Nginx block (with rate limiting and proxy headers) is in the [Performance Mode docs](https://faynosync.com/docs/performance).
+
+---
+
+## Measuring the difference 🧪
+
+Don't guess — measure on your own hardware. This script fires 1000 sequential `/checkVersion` requests and reports timing:
 
 ```bash
-start_time=$(date +%s); 
-for i in {1..1000}; do 
-  response=$(curl -s -w "Connect Time: %{time_connect}s, Start Transfer Time: %{time_starttransfer}s, Total Time: %{time_total}s\n" -o /dev/stdout --location 'http://localhost:9000/checkVersion?app_name=myapp&version=0.0.3&channel=nightly&platform=null&arch=null'); 
-  echo "$response"; 
-done; 
-end_time=$(date +%s); 
-total_time=$((end_time - start_time)); 
+start_time=$(date +%s);
+for i in {1..1000}; do
+  response=$(curl -s -w "Connect Time: %{time_connect}s, Start Transfer Time: %{time_starttransfer}s, Total Time: %{time_total}s\n" -o /dev/stdout --location 'http://localhost:9000/checkVersion?app_name=myapp&version=0.0.3&channel=nightly&platform=null&arch=null');
+  echo "$response";
+done;
+end_time=$(date +%s);
+total_time=$((end_time - start_time));
 echo "Total execution time: $total_time seconds"
 ```
 
-Compare the results with and without Performance Mode enabled!
+Run it twice — once with `PERFORMANCE_MODE=false`, once with `true` — and compare `Total execution time` and `Start Transfer Time` (time to first byte). Absolute numbers depend on your hardware, network, and Redis setup, so treat your own measurements as the source of truth.
 
 ---
 
-## Important Notes 📝
+## When to use it ⚡
 
-1. **Cache Invalidation** 🔄
-   - Cache is automatically cleared when you publish a new version
-   - New data is cached on the next request
-   - Ensures users always get the latest information
+**Use Performance Mode when:**
+- You expect high or bursty traffic (especially right after publishing releases).
+- Many clients poll `/checkVersion` frequently.
+- Response time is critical.
 
-2. **Current Implementation** 🎯
-   - Only implemented for `checkVersion` endpoint
-   - Perfect for high-frequency update checks
-   - More endpoints might be added in the future
+**It matters less when:**
+- You have a small, low-traffic deployment.
+- Update checks are rare.
 
-3. **When to Use** ⚡
-   - High-traffic environments
-   - Systems with frequent update checks
-   - Scenarios where response time is critical
+In production with real users, the recommendation is simple: turn it on.
 
 ---
 
-## Best Practices 💡
+## Related: Edge caching
 
-1. **Enable in Production** 🚀
-   - Always use Performance Mode in production
-   - Especially if you expect high traffic
-
-2. **Monitor Performance** 📊
-   - Keep an eye on response times
-   - Watch Redis memory usage
-   - Track database load
-
-3. **Regular Updates** 🔄
-   - Cache is automatically managed
-   - No manual intervention needed
-   - Just focus on your app!
+Performance Mode is **not** the same as Edge caching. Performance Mode caches at the API layer in Redis; edge mode stores full JSON responses in object storage closer to users. They're independent — you can run one, the other, or both. If you're scaling globally, read [Edge caching](https://faynosync.com/docs/edge).
 
 ---
 
@@ -145,7 +193,16 @@ Compare the results with and without Performance Mode enabled!
 
 ---
 
-If you find this project helpful, please consider **subscribing**, **leaving a comment**, or giving it a **star**, create **Issue** or **feature request** on GitHub.  
+## Related reading
+
+- [Scaling Update Checks with Edge + S3 Response Cache](https://faynosync.com/blog/edge-s3-cache)
+- [Fetch Latest Version of App — Smart Update Links](https://faynosync.com/blog/fetch-latest-version)
+- [How to Setup Auto Update for Electron App](https://faynosync.com/blog/electron-auto-update)
+- [Performance Mode docs](https://faynosync.com/docs/performance)
+
+---
+
+If you find this project helpful, please consider **subscribing**, **leaving a comment**, or giving it a **star**, create an **Issue** or **feature request** on GitHub.  
 Your support keeps the project alive and growing 💚
 
---- 
+---

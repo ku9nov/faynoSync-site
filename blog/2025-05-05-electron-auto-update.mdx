@@ -3,28 +3,51 @@ slug: electron-auto-update
 title: How to Setup Auto Update for Electron App
 authors: [ku9nov]
 tags: [faynoSync, electron, auto-update, development]
-description: Step-by-step guide for adding automatic update checks to an Electron application with FaynoSync.
+description: A complete guide to adding automatic updates to an Electron app with faynoSync — covering both a custom update flow and native electron-updater integration, plus code signing, critical updates, and troubleshooting.
 ---
 
 # How to Setup Auto Update for Electron App 🔄
 
-Today, we'll explore how to create a simple Electron app and add auto-update functionality using faynoSync. Let's make your app smarter with automatic version checking and updates!
+Shipping an Electron app is easy. Keeping every user on the latest version is the hard part. Unlike apps on the App Store or Google Play, a desktop app you distribute yourself has no built-in update channel — so you have to build one.
+
+This guide shows how to add automatic updates to an Electron app using [faynoSync](https://faynosync.com/docs/intro), a self-hosted, open-source update server. We'll cover two approaches:
+
+- **A custom update flow** — you call faynoSync's `checkVersion` API yourself and control the UX end to end.
+- **Native `electron-updater` integration** — faynoSync speaks the electron-builder protocol, so the standard updater works out of the box.
+
+We'll also cover the parts most tutorials skip: code signing, critical updates, changelogs, and what to do when updates silently don't work.
+
+---
+
+## Two ways to auto-update an Electron app
+
+| | Custom flow | electron-updater (electron-builder) |
+|---|---|---|
+| Control over UX | Full | Limited to autoUpdater events |
+| Install handling | You implement it | Automatic (download + relaunch) |
+| Code signing required | No (for download links) | Yes (macOS/Windows) |
+| Best for | Custom installers, portable apps | Standard packaged apps (.dmg/.nsis/.AppImage) |
+| faynoSync support | `manual` updater | `electron-builder` updater |
+
+If you just want the app to update itself with minimal code, go with `electron-updater`. If you need full control over the download and install step, use the custom flow. Both talk to the same faynoSync instance.
 
 ---
 
 ## Prerequisites 📋
 
 Before we begin, make sure you have:
-- A running faynoSync instance
+- A running faynoSync instance — see [Getting Started](https://faynosync.com/docs/getting-started)
 - Published versions 0.0.1 and 0.0.2 of your app
 - Created an app in faynoSync named "myapp"
-- Created a channel in faynoSync named "nightly" 
+- Created a channel in faynoSync named "nightly"
 - Created a platform in faynoSync named (darwin/linux/windows)
-- Created a architecture in faynoSync named (amd64/arm64)
+- Created an architecture in faynoSync named (amd64/arm64)
 
 ---
 
-## Let's Get Started! 🚀
+## Approach A: Custom update flow
+
+This approach gives you complete control: you ask faynoSync whether an update exists and decide how to present it. Under the hood it uses the default `manual` updater, which returns plain JSON with direct download URLs.
 
 ### 1. Initialize Your Project
 
@@ -174,11 +197,14 @@ function checkUpdates() {
     .then((data) => {
       console.log(data);
       if (data.update_available) {
-        const message = `You have an older version. Would you like to update your app?`;
+        const message = data.critical
+          ? `A critical update is available. Please update now.`
+          : `You have an older version. Would you like to update your app?`;
         dialog.showMessageBox({
           type: 'question',
-          title: 'Update available',
+          title: data.critical ? 'Critical update' : 'Update available',
           message: message,
+          detail: data.changelog || undefined,
           buttons: ['Yes', 'No'],
           defaultId: 0,
         }).then(({ response }) => {
@@ -197,6 +223,8 @@ function checkUpdates() {
     .catch(() => {});
 }
 ```
+
+Notice we now read two extra fields from the response: `critical` and `changelog`. faynoSync returns these automatically — `critical` lets you force the prompt, and `changelog` shows users what changed. We'll cover them in detail below.
 
 ### 5. Main Window Creation
 ```javascript
@@ -228,16 +256,14 @@ function createWindow() {
 app.whenReady().then(createWindow);
 ```
 
----
-
-## Running Your App 🏃‍♂️
+### Running Your App 🏃‍♂️
 
 To start your app, simply run:
 ```bash
 npm start
 ```
 
-If everything is set up correctly in faynoSync and a newer version exists, you'll see something like this in your logs:
+If a newer version exists, you'll see something like this in your logs:
 ```json
 {
   "critical": false,
@@ -246,16 +272,161 @@ If everything is set up correctly in faynoSync and a newer version exists, you'l
 }
 ```
 
-And in your app's UI, you'll see a notification about the available update. After agreeing to update, you can download and install the new version.
+And in your app's UI, you'll see a notification about the available update. After agreeing, the user downloads and installs the new version.
 
 ---
 
-## Next Steps 🚀
+## Approach B: Native electron-updater integration
 
-1. Customize the update process to match your app's needs
-2. Add more sophisticated update handling
-3. Implement your own update installation logic
-4. Add progress indicators for downloads
+Most production Electron apps are packaged with [electron-builder](https://www.electron.build/) and use its `electron-updater` module. The good news: faynoSync ships an `electron-builder` updater that returns the exact YAML feed (`latest.yml`, `latest-mac.yml`, `latest-linux.yml`) the updater expects — so you don't need GitHub Releases or an S3 generic provider.
+
+### 1. Upload builds for the electron-builder updater
+
+When uploading, pass the `updater` parameter so faynoSync isolates the artifacts and generates the matching `*.yml`:
+
+```bash
+curl -X POST --location 'http://localhost:9000/upload' \
+--header 'Authorization: Bearer <jwt_token>' \
+--form 'file=@"/path/to/myapp-0.0.2.dmg"' \
+--form 'file=@"/path/to/latest-mac.yml"' \
+--form 'data="{\"app_name\":\"myapp\",\"version\":\"0.0.2\",\"channel\":\"nightly\",\"publish\":true,\"platform\":\"darwin\",\"arch\":\"arm64\",\"updater\":\"electron-builder\"}"'
+```
+
+### 2. Point electron-updater at faynoSync
+
+In your app, configure the feed to use the `generic` provider and faynoSync's electron-builder endpoint:
+
+```javascript
+const { autoUpdater } = require('electron-updater');
+
+autoUpdater.setFeedURL({
+  provider: 'generic',
+  url: 'http://localhost:9000/checkVersion?app_name=myapp&channel=nightly&platform=darwin&arch=arm64&owner=example&updater=electron-builder',
+});
+```
+
+faynoSync responds with electron-builder-compatible YAML:
+
+```yaml
+version: 0.0.2
+files:
+  - url: myapp-0.0.2.dmg
+    sha512: <sha512_hash>
+    size: <file_size>
+path: myapp-0.0.2.dmg
+sha512: <sha512_hash>
+releaseDate: '2026-01-15T10:00:00.000Z'
+```
+
+See the [Updaters Support](https://faynosync.com/docs/updaters) doc for the full list of supported updaters (`squirrel_windows`, `squirrel_darwin`, `tauri`, and more).
+
+### 3. Wire up the autoUpdater events
+
+```javascript
+const { app, dialog } = require('electron');
+const { autoUpdater } = require('electron-updater');
+
+app.whenReady().then(() => {
+  autoUpdater.checkForUpdates();
+});
+
+autoUpdater.on('update-available', (info) => {
+  console.log('Update available:', info.version);
+});
+
+autoUpdater.on('download-progress', (progress) => {
+  console.log(`Downloaded ${Math.round(progress.percent)}%`);
+});
+
+autoUpdater.on('update-downloaded', () => {
+  dialog.showMessageBox({
+    type: 'info',
+    title: 'Update ready',
+    message: 'A new version has been downloaded. Restart to apply it?',
+    buttons: ['Restart', 'Later'],
+  }).then(({ response }) => {
+    if (response === 0) autoUpdater.quitAndInstall();
+  });
+});
+
+autoUpdater.on('error', (err) => {
+  console.error('Update error:', err);
+});
+```
+
+That's the whole flow: `electron-updater` downloads the package in the background and `quitAndInstall()` swaps the binary and relaunches.
+
+---
+
+## Code signing and notarization
+
+`electron-updater` will **refuse to install unsigned updates** on macOS and Windows. This is the single most common reason auto-updates "work in dev but not in production." Before shipping:
+
+- **macOS** — sign with a Developer ID certificate and notarize the app, otherwise Gatekeeper blocks it and the updater silently fails. With electron-builder, set `mac.notarize` and provide `APPLE_ID` / `APPLE_APP_SPECIFIC_PASSWORD` / `APPLE_TEAM_ID` in your build environment.
+- **Windows** — sign the installer with an Authenticode certificate (EV or OV). Unsigned installers trigger SmartScreen warnings and break differential updates. If you don't want to buy a traditional certificate, Microsoft's [Azure Trusted Signing](https://azure.microsoft.com/en-us/products/trusted-signing) offers a fully managed signing service for about **$9.99/month** — a cheap, modern alternative for individual developers and small teams.
+- **Linux** — AppImage updates don't require signing, which makes Linux the easiest target to test the flow first.
+
+The custom flow (Approach A) sidesteps the updater's signature checks because you open download links yourself — but you still owe your users signed binaries.
+
+---
+
+## Critical updates, changelogs, and required intermediate builds
+
+faynoSync's `checkVersion` response carries three fields that make updates smarter:
+
+- **`critical`** — mark a release as critical at upload time, and the API flags it here. Use it to make the update prompt non-dismissible.
+- **`changelog`** — markdown release notes returned alongside the update, so you can show "What's new" without a second request.
+- **`is_intermediate_required`** — an informational flag. When a mandatory intermediate build exists between the user's version and latest, faynoSync returns the download link for that **intermediate** version (not latest) and sets this field to `true`. The intermediate build must be installed before the latest one — it's used for migrations that can't be skipped, such as database schema changes.
+
+```json
+{
+  "update_available": true,
+  "critical": true,
+  "is_intermediate_required": true,
+  "changelog": "### Changelog\n\n- Added feature X\n- Fixed bug Y",
+  "update_url_dmg": "https://<bucket>.s3.amazonaws.com/myapp/stable/darwin/amd64/myapp-0.0.5.dmg"
+}
+```
+
+If `is_intermediate_required` is `true`, prompt the user to install the returned version, then check again — repeat until they reach latest. Read more in [Required Intermediate Build](https://faynosync.com/docs/intermediate_build).
+
+---
+
+## Troubleshooting
+
+| Symptom | Likely cause |
+|---|---|
+| `update_available` is always `false` | `version` in the request matches the latest, or wrong `channel`/`platform`/`arch` |
+| electron-updater says "No published versions" | The `*.yml` feed wasn't uploaded, or `updater=electron-builder` was omitted on upload |
+| Update downloads but won't install (macOS/Windows) | App or installer isn't code signed / notarized |
+| Works locally, fails in packaged app | `setFeedURL` points to `localhost` — use your public faynoSync URL in production |
+| 401 on upload | Missing or expired JWT — re-authenticate against `/login` |
+
+Tip: run faynoSync's [`/info/latest`](https://faynosync.com/docs/api/info/latest) endpoint manually with `curl` to confirm the server returns what you expect before debugging the client.
+
+---
+
+## How to try faynoSync?
+
+1. Follow the Getting Started guide:
+👉 [https://faynosync.com/docs/getting-started](https://faynosync.com/docs/getting-started)
+
+2. Create your app using the REST API or web dashboard:
+📦 API Docs: [https://faynosync.com/docs/api](https://faynosync.com/docs/api)
+🖥️ Dashboard UI: [https://github.com/ku9nov/faynoSync-dashboard](https://github.com/ku9nov/faynoSync-dashboard)
+
+3. Upload at least two versions of your application.
+
+4. Check for updates with this simple request:
+📡 [`/info/latest`](https://faynosync.com/docs/api/info/latest)
+
+---
+
+## Related reading
+
+- [Fetch Latest Version of App — Smart Update Links](https://faynosync.com/blog/fetch-latest-version)
+- [Performance Mode — Speed Up Your API](https://faynosync.com/blog/performance-mode)
+- [Updaters Support](https://faynosync.com/docs/updaters)
 
 ---
 
@@ -267,21 +438,5 @@ If you have any questions or need assistance:
 
 ---
 
-## How to try faynoSync?
-
-1. Follow the Getting Started guide:  
-👉 [https://faynosync.com/docs/getting-started](https://faynosync.com/docs/getting-started)
-
-2. Create your app using the REST API or web dashboard:  
-📦 API Docs: [https://faynosync.com/docs/api](https://faynosync.com/docs/api)  
-🖥️ Dashboard UI: [https://github.com/ku9nov/faynoSync-dashboard](https://github.com/ku9nov/faynoSync-dashboard)
-
-3. Upload at least two versions of your application.
-
-4. Check for updates with this simple request:  
-📡 [`/info/latest`](https://faynosync.com/docs/api/info/latest)
-
----
-
-If you find this project helpful, please consider **subscribing**, **leaving a comment**, or giving it a **star**, create **Issue** or **feature request** on GitHub.  
+If you find this project helpful, please consider **subscribing**, **leaving a comment**, or giving it a **star**, create an **Issue** or **feature request** on GitHub.
 Your support keeps the project alive and growing 💚

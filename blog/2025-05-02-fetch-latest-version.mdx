@@ -3,12 +3,16 @@ slug: fetch-latest-version
 title: Fetch Latest Version of App — Smart Update Links
 authors: [ku9nov]
 tags: [faynoSync, api]
-description: Use the FaynoSync fetch-latest-version endpoint to build smart download links that always point to the newest release, with examples across stable, beta, and nightly channels for seamless updates.
+description: Build download links that always point to the newest release with faynoSync's /apps/latest endpoint — with copy-paste examples for landing pages, OS auto-detection, CI pipelines, and Docker.
 ---
 
 # Fetch Latest Version of App — Smart Update Links 🔄
 
-Ever needed to share a download link that always points to the latest version of your app? Or wanted to set up automatic updates for your users? The `Fetch latest version of app` endpoint is your perfect solution! Let's explore how it works with some real-world examples.
+Ever needed a download link that always points to the latest version of your app — one you can put on a landing page, in a README, or inside a CI pipeline and never touch again? That's exactly what faynoSync's [`/apps/latest`](https://faynosync.com/docs/api/info/fetch-latest-build) endpoint is for.
+
+Instead of hardcoding `myapp-1.2.3.dmg` and updating it on every release, you point users at a stable URL and faynoSync resolves it to the newest matching build. This post walks through the endpoint with copy-paste examples for landing pages, OS auto-detection, shell scripts, and Docker.
+
+> Looking to check for updates **from inside a running app** (Electron, Tauri, Squirrel)? That's a different endpoint — [`/checkVersion`](https://faynosync.com/docs/api/info/latest). See [How to Setup Auto Update for Electron App](https://faynosync.com/blog/electron-auto-update). `/apps/latest` is for **download links**; `/checkVersion` is for **in-app update checks**.
 
 ---
 
@@ -27,154 +31,201 @@ Let's imagine we have an app called "SpaceExplorer" with the following setup:
 - 🪟 Windows (amd64)
 
 ### Package Types:
-- 📦 .deb (Linux)
-- 📦 .rpm (Linux)
+- 📦 .deb / .rpm (Linux)
 - 📦 .dmg (macOS)
 - 📦 .exe (Windows)
 
 ---
 
+## Endpoint reference
+
+```
+GET /apps/latest?app_name=<app_name>&channel=stable&platform=linux&arch=amd64&owner=admin
+```
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `app_name` | ✅ | The name of the app to fetch |
+| `channel` | ✅* | Release channel (stable, beta, nightly) |
+| `platform` | ❌ | Platform (linux, darwin, windows) |
+| `arch` | ❌ | Architecture (amd64, arm64) |
+| `package` | ❌ | Package type (deb, rpm, dmg, exe) |
+| `owner` | ✅ | Your admin user name |
+
+\* `channel` becomes **mandatory once you've defined channels** for the app. If your app has no channels configured, you can omit it.
+
+Two behaviors make this endpoint convenient:
+
+- **Dynamic responses** — the more parameters you supply, the narrower the result. Supply only `app_name` + `channel` and you get every build in that channel; add `platform`/`arch`/`package` to drill down.
+- **Automatic redirection** — when your filters resolve to a *single* build, faynoSync responds with an HTTP redirect straight to the download URL. Perfect for "Download" buttons.
+
+---
+
 ## Let's Fetch Some Versions! 🎯
 
-### Example 1: Simple Latest Version
+### Example 1: Everything in a channel
 ```bash
-GET /apps/latest?app_name=SpaceExplorer&owner=admin
+curl --location 'http://localhost:9000/apps/latest?app_name=SpaceExplorer&channel=stable&owner=admin'
 ```
 
-This basic request returns ALL available builds:
+Returns all builds in the `stable` channel, grouped by platform → arch → package:
 ```json
 {
-    "stable": {
-        "linux": {
-            "amd64": {
-                "deb": { "url": "..." },
-                "rpm": { "url": "..." }
-            },
-            "arm64": {
-                "deb": { "url": "..." },
-                "rpm": { "url": "..." }
-            }
-        },
-        "darwin": {
-            "amd64": { "dmg": { "url": "..." } },
-            "arm64": { "dmg": { "url": "..." } }
-        },
-        "windows": {
-            "amd64": { "exe": { "url": "..." } }
-        }
+  "stable": {
+    "linux": {
+      "amd64": {
+        "deb": { "url": "https://<bucket>.s3.amazonaws.com/SpaceExplorer/stable/linux/amd64/SpaceExplorer-1.2.3.deb" },
+        "rpm": { "url": "https://<bucket>.s3.amazonaws.com/SpaceExplorer/stable/linux/amd64/SpaceExplorer-1.2.3.rpm" }
+      },
+      "arm64": {
+        "deb": { "url": "..." },
+        "rpm": { "url": "..." }
+      }
     },
-    "beta": {
-        // Similar structure for beta builds
+    "darwin": {
+      "amd64": { "dmg": { "url": "..." } },
+      "arm64": { "dmg": { "url": "..." } }
     },
-    "nightly": {
-        // Similar structure for nightly builds
+    "windows": {
+      "amd64": { "exe": { "url": "..." } }
     }
+  }
 }
 ```
 
-### Example 2: Specific Channel
+### Example 2: Platform-Specific
 ```bash
-GET /apps/latest?app_name=SpaceExplorer&channel=stable&owner=admin
-```
-
-Now we get only stable builds:
-```json
-{
-    "stable": {
-        "linux": {
-            "amd64": {
-                "deb": { "url": "..." },
-                "rpm": { "url": "..." }
-            }
-            // ... other architectures
-        }
-        // ... other platforms
-    }
-}
-```
-
-### Example 3: Platform-Specific
-```bash
-GET /apps/latest?app_name=SpaceExplorer&channel=stable&platform=linux&owner=admin
+curl --location 'http://localhost:9000/apps/latest?app_name=SpaceExplorer&channel=stable&platform=linux&owner=admin'
 ```
 
 Only Linux builds:
 ```json
 {
-    "stable": {
-        "linux": {
-            "amd64": {
-                "deb": { "url": "..." },
-                "rpm": { "url": "..." }
-            },
-            "arm64": {
-                "deb": { "url": "..." },
-                "rpm": { "url": "..." }
-            }
-        }
+  "stable": {
+    "linux": {
+      "amd64": {
+        "deb": { "url": "..." },
+        "rpm": { "url": "..." }
+      },
+      "arm64": {
+        "deb": { "url": "..." },
+        "rpm": { "url": "..." }
+      }
     }
+  }
 }
 ```
 
-### Example 4: Exact Match
+### Example 3: Exact match (auto-redirect to download)
 ```bash
-GET /apps/latest?app_name=SpaceExplorer&channel=stable&platform=linux&arch=amd64&package=deb&owner=admin
+curl -L --location 'http://localhost:9000/apps/latest?app_name=SpaceExplorer&channel=stable&platform=linux&arch=amd64&package=deb&owner=admin'
 ```
 
-This returns a direct download URL:
+Because this resolves to a single build, faynoSync redirects straight to:
 ```
-https://<bucket_name>.s3.amazonaws.com/SpaceExplorer/stable/linux/amd64/SpaceExplorer-1.2.3.deb
+https://<bucket>.s3.amazonaws.com/SpaceExplorer/stable/linux/amd64/SpaceExplorer-1.2.3.deb
 ```
+
+The `-L` flag tells `curl` to follow the redirect and download the file.
 
 ---
 
 ## Smart Features 🧠
 
 1. **Automatic Redirection** 🔄
-   - If only one build matches your criteria, you'll get redirected straight to the download
-   - Perfect for landing pages and direct download links
+   - If only one build matches your filters, you get an HTTP redirect straight to the download.
+   - Ideal for landing pages and direct-download links.
 
 2. **Flexible Responses** 🎯
-   - Get all available builds
-   - Filter by channel
-   - Filter by platform
-   - Filter by architecture
-   - Filter by package type
+   - Get all builds in a channel, or filter by platform, architecture, and package type.
+
+3. **Stable URLs, moving targets** 🎯
+   - The link never changes; the file it resolves to advances with every release.
 
 ---
 
 ## Real-World Use Cases 🌍
 
-### 1. Landing Page Downloads
+### 1. Landing page download buttons
 ```html
 <!-- For Linux users -->
-<a href="/apps/latest?app_name=SpaceExplorer&platform=linux&arch=amd64&package=deb&owner=admin">
-    Download for Linux (.deb)
+<a href="https://updates.yourdomain.com/apps/latest?app_name=SpaceExplorer&channel=stable&platform=linux&arch=amd64&package=deb&owner=admin">
+  Download for Linux (.deb)
 </a>
 
 <!-- For macOS users -->
-<a href="/apps/latest?app_name=SpaceExplorer&platform=darwin&arch=arm64&package=dmg&owner=admin">
-    Download for macOS (.dmg)
+<a href="https://updates.yourdomain.com/apps/latest?app_name=SpaceExplorer&channel=stable&platform=darwin&arch=arm64&package=dmg&owner=admin">
+  Download for macOS (.dmg)
 </a>
 ```
 
-### 2. Team Testing
-```bash
-# For beta testers
-GET /apps/latest?app_name=SpaceExplorer&channel=beta&platform=darwin&arch=arm64&package=dmg&owner=admin
+### 2. One "Download" button that auto-detects the OS
+Detect the visitor's platform in the browser and build the right link on the fly:
 
-# For nightly build enthusiasts
-GET /apps/latest?app_name=SpaceExplorer&channel=nightly&platform=linux&arch=amd64&package=deb&owner=admin
+```html
+<a id="download" href="#">Download SpaceExplorer</a>
+
+<script>
+  const base = 'https://updates.yourdomain.com/apps/latest';
+  const ua = navigator.userAgent;
+  let platform = 'linux', arch = 'amd64', pkg = 'deb';
+
+  if (ua.includes('Mac')) { platform = 'darwin'; arch = 'arm64'; pkg = 'dmg'; }
+  else if (ua.includes('Win')) { platform = 'windows'; arch = 'amd64'; pkg = 'exe'; }
+
+  const params = new URLSearchParams({
+    app_name: 'SpaceExplorer', channel: 'stable', platform, arch, package: pkg, owner: 'admin',
+  });
+  document.getElementById('download').href = `${base}?${params}`;
+</script>
 ```
+
+### 3. Install the latest build in a shell script
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+URL="https://updates.yourdomain.com/apps/latest?app_name=SpaceExplorer&channel=stable&platform=linux&arch=amd64&package=deb&owner=admin"
+
+curl -L "$URL" -o spaceexplorer.deb
+sudo dpkg -i spaceexplorer.deb
+```
+
+### 4. Always pull the newest build in CI / Docker
+```dockerfile
+FROM ubuntu:24.04
+ARG FAYNOSYNC=https://updates.yourdomain.com/apps/latest?app_name=SpaceExplorer&channel=stable&platform=linux&arch=amd64&package=deb&owner=admin
+RUN apt-get update && apt-get install -y curl \
+  && curl -L "$FAYNOSYNC" -o /tmp/app.deb \
+  && dpkg -i /tmp/app.deb || apt-get -f install -y
+```
+
+### 5. Beta and nightly channels for testers
+```bash
+# Beta testers
+curl -L 'http://localhost:9000/apps/latest?app_name=SpaceExplorer&channel=beta&platform=darwin&arch=arm64&package=dmg&owner=admin'
+
+# Nightly build enthusiasts
+curl -L 'http://localhost:9000/apps/latest?app_name=SpaceExplorer&channel=nightly&platform=linux&arch=amd64&package=deb&owner=admin'
+```
+
+---
+
+## Notes and gotchas
+
+- **Channel is required once defined.** If your app has channels, every `/apps/latest` request must include `channel` — otherwise the request is rejected.
+- **`owner` is mandatory** for access control; it must be your admin user name.
+- **Package types are auto-detected** from what's actually uploaded — you only get a `dmg`/`deb`/`exe` key if such a file exists for that platform/arch.
+- **Redirect only fires for a single match.** If your filters still leave multiple builds (e.g. both `.deb` and `.rpm`), you get JSON instead of a redirect — add `package` to force a direct download.
+- **Use HTTPS in production** and put faynoSync behind your own domain (e.g. `updates.yourdomain.com`) so download links stay stable and trusted.
 
 ---
 
 ## What's Next? 🚀
 
-In our next posts, we'll explore:
-- Performance optimization tips
-
-Stay tuned for more faynoSync tips and tricks! 💚
+- Serving thousands of download checks per minute? See [Performance Mode — Speed Up Your API](https://faynosync.com/blog/performance-mode).
+- Want self-updating desktop apps instead of manual downloads? See [How to Setup Auto Update for Electron App](https://faynosync.com/blog/electron-auto-update).
+- Running multiple admins with same-named apps? The required `owner` parameter comes from [Team-Based Authorization](https://faynosync.com/blog/team-based-auth).
 
 ---
 
@@ -189,12 +240,11 @@ Stay tuned for more faynoSync tips and tricks! 💚
 
 3. Upload at least two versions of your application.
 
-4. Check for updates with this simple request:  
-📡 [`/info/latest`](https://faynosync.com/docs/api/info/latest)
+4. Build a smart download link with [`/apps/latest`](https://faynosync.com/docs/api/info/fetch-latest-build).
 
 ---
 
-If you find this project helpful, please consider **subscribing**, **leaving a comment**, or giving it a **star**, create **Issue** or **feature request** on GitHub.  
+If you find this project helpful, please consider **subscribing**, **leaving a comment**, or giving it a **star**, create an **Issue** or **feature request** on GitHub.  
 Your support keeps the project alive and growing 💚
 
---- 
+---

@@ -1,0 +1,221 @@
+---
+slug: edge-s3-cache
+title: Scaling Update Checks with Edge + S3 Response Cache
+authors: [ku9nov]
+tags: [faynoSync, edge, performance]
+description: Serve repeated update checks from object storage at the edge instead of hitting the API for every client. faynoSync's SDK-driven, edge-first delivery with S3-backed response manifests offloads the hot read path while the API stays the source of truth.
+---
+
+# Scaling Update Checks with Edge + S3 Response Cache
+
+Update checks are the noisiest traffic an update server ever sees. Every running copy of your app polls `/checkVersion` on a timer, almost always with the same parameters, and each call validates the app, channel, platform, and architecture before answering. At a few hundred clients that's nothing. At a hundred thousand, it's the same handful of answers recomputed millions of times a day — and the usual fix is database clustering, replication, and heavier ops you'd rather not run for an update server.
+
+[Performance Mode](https://faynosync.com/docs/performance) already takes the first bite out of this with a Redis cache at the API layer. The next step moves the hot *read* path off the origin entirely: serve repeated checks from object storage at the edge, and let the API handle only cache misses and the control plane.
+
+This post explains how faynoSync's [Edge + S3 response cache](https://faynosync.com/docs/edge) works, how it differs from Performance Mode, and how telemetry stays accurate when checks no longer reach the API.
+
+---
+
+## The problem: load scales with clients, not with answers
+
+The number of *distinct* answers your server can give is small. It's bounded by your dimension matrix:
+
+```text
+N ≈ client_versions × channel × platform × arch × updater × package
+```
+
+The number of *requests* is bounded by your install base times polling frequency. Those two numbers diverge hard as you grow. One hundred thousand clients spread across five client versions still only have a handful of real answers — but they generate one hundred thousand round trips anyway.
+
+Edge mode changes the economics. After warm-up, origin load is driven by **distinct cache keys**, not by raw client count. Five client versions across five dimension combinations produce on the order of **twenty-five** origin calls to build coverage — not one hundred thousand direct checks.
+
+---
+
+## Two supported modes — no forced migration
+
+faynoSync deliberately keeps both read paths. You don't have to move every client at once.
+
+| Mode | How clients check | Best for |
+|------|-------------------|----------|
+| **Dynamic API** | `GET /checkVersion` on the API origin | Existing integrations, scripts, and tools that call the API directly |
+| **Edge + S3 cache** | Official SDK with `EdgeURL` → cached manifests on object storage | High-volume desktop, server, and auto-update clients using SDK edge-first behavior |
+
+Dynamic API behavior is unchanged. Edge mode adds a parallel, cache-friendly read path without forking the core update API.
+
+---
+
+## How edge mode fits together
+
+### What you turn on
+
+Edge response caching is enabled **per application** with the `cdn` flag when you create or update an app (see [Create Application](https://faynosync.com/docs/api/apps/create) and [Update application](https://faynosync.com/docs/api/apps/update-app)).
+
+Two pieces of supporting infrastructure:
+
+- A **public** object storage bucket for response manifests — metadata only; binaries stay on the existing artifact flow. Configure `S3_BUCKET_NAME_CDN` as described in the [Environment Variables Overview](https://faynosync.com/docs/getting-started/env-overview).
+- An **official faynoSync SDK** configured with `BaseURL` (API origin) and optionally `EdgeURL` (edge/CDN base). Edge-first orchestration, fallback, cache fill, and telemetry are built for SDK clients. See the [SDK overview](https://faynosync.com/docs/sdk/intro) and the [Go SDK](https://faynosync.com/docs/sdk/go/sdk).
+
+```go
+client := faynosync.NewClient(faynosync.Config{
+    BaseURL: "http://localhost:9000",
+    EdgeURL: "http://faynosync-cdn-edge.web.garage.localhost:3902",
+})
+```
+
+If `EdgeURL` is omitted, the SDK behaves exactly as before and calls the API directly via `BaseURL`.
+
+### Request flow
+
+```text
+SDK Client (BaseURL + optional EdgeURL)
+  ↓
+If EdgeURL is set, SDK checks edge/S3 first
+  ↓
+  ├─ HIT  → return cached response to client
+  └─ MISS → call Origin API (/checkVersion) via BaseURL
+              ↓
+            API returns normal response
+              ↓
+            SDK persists response to S3 cache path
+              ↓
+            Future checks → edge/S3 HIT
+```
+
+- **HIT** — a manifest object exists for the request dimensions; the SDK returns the cached JSON body to the application.
+- **MISS** — no valid manifest; the SDK calls `/checkVersion`, returns that response, and **persists** it to S3 so later checks become HITs.
+
+The API stays the source of truth. Edge storage is a derived, disposable cache of responses the API already knows how to produce. Rare or brand-new dimension combinations fill themselves naturally through the fallback path the first time something asks — no pre-warm job required.
+
+### What a manifest contains
+
+Each cached file is the **full faynoSync JSON response** for that client context — the same fields the Dynamic API returns:
+
+```json
+{
+  "update_available": true,
+  "update_url_deb": "https://<bucket>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.2.deb",
+  "update_url_rpm": "https://<bucket>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.2.rpm",
+  "changelog": "### Changelog\n\n- Added feature X\n- Fixed bug Y",
+  "critical": true,
+  "is_intermediate_required": true
+}
+```
+
+Objects live at a deterministic path keyed by dimensions:
+
+```text
+/responses/{owner}/{app_name}/{channel}/{platform}/{arch}/{client_version}.json
+```
+
+There is intentionally **no `latest.json` on the CDN**. Version comparison stays on the server (or in precomputed per–client-version manifests). A single "latest" object at the edge would push comparison logic to clients and break faynoSync's model of server-side update decisions.
+
+Cached objects carry standard cache headers, for example:
+
+```text
+Cache-Control: public, max-age=60, must-revalidate
+```
+
+so CDNs and browsers revalidate frequently while still serving hot paths cheaply.
+
+### Publish, unpublish, and invalidation
+
+When you publish or unpublish **any** version for an app, faynoSync **deletes the response manifests** for that application's scope. The next checks for affected dimensions are MISSes; the SDK falls back to `/checkVersion`, repopulates S3, and traffic HITs again. No manual flushing, no risk of pinning users to an old build — the same correctness guarantee Performance Mode gives you, applied to the edge layer.
+
+### Updater-specific behavior
+
+For default JSON update checks, the cached body is the ordinary faynoSync response, and "no update" results are cached under the same key rules as "update available" results. Updater-specific contracts (Electron Builder, Tauri, Squirrel on Windows) still receive the payloads the API produces; only the **lookup path** changes from "always origin" to "edge first, origin on MISS." The JavaScript SDK maps cached JSON to updater-facing HTTP semantics — for example `{"status": "no_content"}` becomes `204 No Content`, and `{"status": "redirect", "url": "..."}` becomes the redirect the updater expects.
+
+---
+
+## Edge cache vs Performance Mode
+
+They solve overlapping problems at different layers, and they're independent — run one, the other, or both.
+
+| Aspect | [Performance Mode](https://faynosync.com/docs/performance) | Edge + S3 cache |
+|--------|-------------------------------------|-----------------|
+| Where it caches | Redis at the API | Object storage manifests at the edge |
+| Who benefits | Any client calling `/checkVersion` | SDK clients with `EdgeURL` and app `cdn` enabled |
+| Cache key | API request signature | Per-dimension manifest path |
+| Invalidation | Redis TTL / cache policies | Publish/unpublish clears app manifest scope |
+| Coupling | `PERFORMANCE_MODE=true` | App `cdn` + SDK + `S3_BUCKET_NAME_CDN` |
+
+Use Performance Mode to shave latency and DB load on the origin. Use edge mode when check volume is dominated by many clients repeating the same dimension keys and you want the origin to see MISS traffic only — not every poll.
+
+---
+
+## Keeping telemetry accurate at the edge
+
+Here's the catch with moving checks off the origin: today, telemetry is collected inside `/checkVersion` when clients send `X-Device-ID`. In edge mode, many checks never reach that endpoint — so without a change, your statistics would silently drop exactly as you scale up.
+
+The fix is a dedicated, fast path. SDK clients that skip `/checkVersion` send a [`/telemetry/beacon`](https://faynosync.com/docs/api/info/telemetry_beacon) request through the edge to the API instead:
+
+```text
+Classic path:  Client → (optional X-Device-ID) inline telemetry → /checkVersion
+Edge path:     Client → edge manifest HIT → (optional X-Device-ID) → /telemetry/beacon
+```
+
+The beacon is built for volume, so it avoids per-request database lookups. Instead, the API keeps a compact **in-memory allow-list index** built from **names only** when metadata changes — owners, applications, channels, platforms, architectures, and versions. Changelog, artifacts, and other heavy fields stay out of memory. On each relevant change (app created, channel added, version published), the service rebuilds the index from a projection and **atomically swaps** the pointer handlers use:
+
+```go
+var allowList atomic.Pointer[TelemetryAllowList]
+
+func ReloadAllowList() {
+    next := BuildAllowListFromDB() // projection: names only
+    allowList.Store(next)
+}
+```
+
+Beacon validation checks that `(owner, app, channel, platform, arch)` exists in the index. The reported **client version is recorded but not required** to match — clients may still report a version you've since removed in the admin UI. Invalid dimension combinations are rejected cheaply, and counters flow to Redis exactly as today's pipeline, so dashboards stay meaningful under edge load.
+
+### Internal benchmarks (local development)
+
+These numbers were measured on a **local Mac** during development. Production hardware, network, and Redis will report different absolute values — treat them as order-of-magnitude guidance, not a SLA. They still show the design goal: validate dimensions from an in-memory snapshot instead of hitting the database on every beacon.
+
+| Approach | Average time to persistence | Requests/sec (`wrk`, 4t/100c/30s) | Avg latency |
+|----------|----------------------------|-----------------|-------------|
+| Previous path (DB-backed validation per request) | ~20.8 ms | ~359 | ~287 ms |
+| Beacon path (in-memory allow-list snapshot) | ~0.15 ms | ~1,192 | ~88 ms |
+
+Under this setup the beacon path handled roughly **3×** more requests per second at lower latency.
+
+---
+
+## When to reach for edge mode
+
+- Your check volume is dominated by many clients repeating the same dimension keys.
+- You want the origin to see MISS traffic only, not every poll.
+- Your clients can adopt the official SDK with `EdgeURL`.
+
+If you're still serving a small or low-traffic deployment, [Performance Mode](https://faynosync.com/docs/performance) alone is usually enough. The two stack cleanly when you outgrow it.
+
+---
+
+## How to try faynoSync?
+
+1. Follow the Getting Started guide:
+👉 [https://faynosync.com/docs/getting-started](https://faynosync.com/docs/getting-started)
+
+2. Create your app using the REST API or web dashboard, and set the `cdn` flag on the app:
+📦 API Docs: [https://faynosync.com/docs/api](https://faynosync.com/docs/api)
+🖥️ Dashboard UI: [https://github.com/ku9nov/faynoSync-dashboard](https://github.com/ku9nov/faynoSync-dashboard)
+
+3. Configure `S3_BUCKET_NAME_CDN` and point the SDK at both `BaseURL` and `EdgeURL`.
+
+4. Read the full reference: [Edge and S3 Response Cache](https://faynosync.com/docs/edge).
+
+---
+
+## Related reading
+
+- [Performance Mode — Speed Up Your API](https://faynosync.com/blog/performance-mode)
+- [Telemetry Insights — Understand Your Users Better](https://faynosync.com/blog/telemetry-insights)
+- [Rollout Health Reports — Catch Failed Updates Before They Spread](https://faynosync.com/blog/rollout-health-reports)
+- [How to Setup Auto Update for Electron App](https://faynosync.com/blog/electron-auto-update)
+- [Edge and S3 Response Cache docs](https://faynosync.com/docs/edge)
+- [SDK overview](https://faynosync.com/docs/sdk/intro)
+
+---
+
+If you find this project helpful, please consider **subscribing**, **leaving a comment**, or giving it a **star**, create an **Issue** or **feature request** on GitHub.
+Your support keeps the project alive and growing.
+
+---

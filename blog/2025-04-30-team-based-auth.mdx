@@ -3,12 +3,14 @@ slug: team-based-auth
 title: Team-Based Authorization in faynoSync — Manage Your Team Like a Pro
 authors: [ku9nov]
 tags: [faynoSync, security, team]
-description: Discover the Team-Based Authorization Matrix in FaynoSync 1.4.0 — create team users, assign granular permissions, and keep data isolated between teams for full control over who can do what.
+description: Set up team-based access control in faynoSync — create team users, assign granular create/edit/delete/upload/download permissions per resource, scope access with allowed lists, and keep every admin's data fully isolated.
 ---
 
 # Team-Based Authorization in faynoSync — Manage Your Team Like a Pro 👥
 
 Managing a team of developers? Need to control who can do what in your faynoSync instance? Starting from version **1.4.0**, faynoSync introduces a powerful **Team Based Authorization Matrix** that gives you complete control over your team's access and permissions.
+
+This is role-based access control (RBAC) built for an update server: one administrator owns an isolated set of team users, each team user gets granular permissions per resource type, and no administrator can ever see another's data. This post walks through the model end to end, with copy-paste API calls verified against the [Team Based Authorization docs](https://faynosync.com/docs/team_based_auth).
 
 ---
 
@@ -20,6 +22,8 @@ Think of it as your team's digital headquarters! The Team Based Authorization Ma
 - 🔐 Assign specific permissions
 - 🏢 Keep data isolated between different teams
 - 📊 Track who can do what
+
+Every team user belongs to exactly one administrator, and everything a team user creates is automatically owned by that administrator. There is no shared global namespace — isolation is the default, not an add-on.
 
 ---
 
@@ -35,9 +39,11 @@ Think of it as your team's digital headquarters! The Team Based Authorization Ma
 ### The Team User 👤
 - A unique member of your team
 - Belongs only to you (their admin)
-- Can't manage other users
+- Can't manage other users — the entire user-management API is off-limits to them
 - Can only work with resources you've allowed
 - Everything they create belongs to you
+
+When a team user with the **Create** permission creates a resource, that resource is automatically added to their list of allowed resources — so they can immediately work with what they just made, and nothing else.
 
 ---
 
@@ -46,17 +52,28 @@ Think of it as your team's digital headquarters! The Team Based Authorization Ma
 Each team member can have different permissions for different types of resources:
 
 ### Resource Types:
-- 📱 Applications
-- 📊 Channels
-- 💻 Platforms
-- 🏗️ Architectures
+- 📱 Applications (`apps`)
+- 📊 Channels (`channels`)
+- 💻 Platforms (`platforms`)
+- 🏗️ Architectures (`archs`)
 
 ### Available Permissions:
 - ➕ Create
 - ✏️ Edit
 - 🗑️ Delete
-- ⬆️ Upload (for apps)
-- ⬇️ Download (for apps)
+- ⬆️ Upload (apps only)
+- ⬇️ Download (apps only)
+
+### Permissions reference
+
+`upload` and `download` apply **only** to `apps`; channels, platforms, and architectures expose just create/edit/delete. Each resource block also carries an `allowed` array — the list of specific resource IDs the user may act on.
+
+| Resource | create | edit | delete | upload | download | allowed |
+|----------|:------:|:----:|:------:|:------:|:--------:|:-------:|
+| `apps` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `channels` | ✅ | ✅ | ✅ | — | — | ✅ |
+| `platforms` | ✅ | ✅ | ✅ | — | — | ✅ |
+| `archs` | ✅ | ✅ | ✅ | — | — | ✅ |
 
 ---
 
@@ -67,6 +84,23 @@ Each team member can have different permissions for different types of resources
 - 👀 You (as admin) can see everything your team creates
 - 📝 Different teams can have resources with the same names
 
+That last point matters in practice: two different administrators can both own an app called `myapp`, a `stable` channel, or a `linux` platform without any collision — names are unique only **within** an administrator's scope, never globally.
+
+---
+
+## The `owner` query parameter
+
+Because resource names are no longer globally unique, the public read endpoints need to know **whose** `myapp` you mean. Two endpoints now require an `owner` query parameter — the administrator's account name:
+
+- `GET /checkVersion`
+- `GET /apps/latest`
+
+```bash
+curl 'http://localhost:9000/checkVersion?app_name=myapp&version=1.0.0&channel=stable&platform=darwin&arch=arm64&owner=admin'
+```
+
+If you build update-check URLs in your client or CI, make sure `owner` is part of them — otherwise the server can't resolve the right scope. See [Fetch Latest Version of App](https://faynosync.com/blog/fetch-latest-version) for how these links are constructed.
+
 ---
 
 ## How to Manage Your Team? 🎯
@@ -74,6 +108,9 @@ Each team member can have different permissions for different types of resources
 ### Option 1: Using the API
 
 #### Creating a Team User
+
+`POST /user/create` takes a username, a password, and a full `permissions` object. Here's a complete, valid request — `teamuser1` can create and edit apps and download their artifacts, but can't delete or upload:
+
 ```bash
 curl -X POST 'http://localhost:9000/user/create' \
   -H 'Authorization: Bearer <jwt_token>' \
@@ -82,31 +119,45 @@ curl -X POST 'http://localhost:9000/user/create' \
     "username": "teamuser1",
     "password": "password123",
     "permissions": {
-      "apps": {
-        "create": true,
-        "delete": false,
-        "edit": true,
-        "download": true,
-        "upload": false
-      }
-      // ... other permissions
+      "apps":      { "create": true, "edit": true, "delete": false, "upload": false, "download": true, "allowed": [""] },
+      "channels":  { "create": true, "edit": true, "delete": false, "allowed": [""] },
+      "platforms": { "create": true, "edit": true, "delete": false, "allowed": [""] },
+      "archs":     { "create": true, "edit": true, "delete": false, "allowed": [""] }
     }
   }'
 ```
 
+```json
+{ "message": "Team user created successfully" }
+```
+
+The `allowed` array holds the resource **IDs** the user can act on. Leaving it empty means "no pre-granted resources" — but with `create: true`, anything the user creates is added to `allowed` automatically.
+
 #### Updating Permissions
+
+`POST /user/update` replaces the user's credentials and permission set. Here we revoke `create` on apps but grant `delete` and `upload`, and widen the `allowed` list:
+
 ```bash
 curl -X POST 'http://localhost:9000/user/update' \
   -H 'Authorization: Bearer <jwt_token>' \
   -H 'Content-Type: application/json' \
   -d '{
     "username": "teamuser1",
-    "password": "newpassword123",
+    "password": "password1234",
     "permissions": {
-      // ... updated permissions
+      "apps":      { "create": false, "edit": true, "delete": true, "upload": true, "download": true, "allowed": ["<app_id_1>", "<app_id_2>"] },
+      "channels":  { "create": true, "edit": true, "delete": true, "allowed": [""] },
+      "platforms": { "create": true, "edit": true, "delete": false, "allowed": [""] },
+      "archs":     { "create": true, "edit": true, "delete": false, "allowed": [""] }
     }
   }'
 ```
+
+```json
+{ "message": "Team user updated successfully" }
+```
+
+Permission and password changes take effect immediately. Full reference: [Create User](https://faynosync.com/docs/api/team/create) and [Update User](https://faynosync.com/docs/api/team/update).
 
 ### Option 2: Using the Web Dashboard 🖥️
 
@@ -136,13 +187,32 @@ This visual interface makes it much easier to:
 
 ---
 
-## What's Next? 🚀
+## Expected behavior at a glance
 
-In our next posts, we'll explore:
-- Local development and deployment to server
-- How to properly use `Fetch latest version of app` request
+| Action | Team User | Administrator |
+|--------|-----------|---------------|
+| Create resources | ✅ (within admin scope) | ✅ |
+| Edit resources | ✅ (only own admin's) | ✅ |
+| Delete resources | ✅ (only own admin's) | ✅ |
+| Manage users | ❌ | ✅ |
+| Access user API | ❌ | ✅ |
+| Access other admins' data | ❌ | ❌ |
 
-Stay tuned for more faynoSync tips and tricks! 💚
+---
+
+## How team permissions reach the rest of faynoSync
+
+The same `apps.download` permission and the team user's `allowed` apps gate more than artifact downloads. The [report ingestion read API](https://faynosync.com/blog/rollout-health-reports) — `GET /reports/groups` — is also gated by `CheckPermission(download, apps)`, so a team user only sees rollout-health reports for apps in their `allowed_apps`. The same scoping idea applies across [telemetry](https://faynosync.com/blog/telemetry-insights) views: team users can read stats but only filter resources they have access to. One permission model, enforced everywhere.
+
+---
+
+## Common questions
+
+**A team user can't see an app they should have access to.** Check the `allowed` array for `apps` — visibility is opt-in. Either add the app's ID to `allowed` via `/user/update`, or have the user create the resource themselves (which auto-adds it).
+
+**Two teams need an app with the same name.** That's fully supported — names are unique per administrator, not globally. Just remember to pass `owner` on `/checkVersion` and `/apps/latest`.
+
+**A team user got a 403 on user management.** Expected. The entire user API is admin-only; team users cannot create, edit, or delete users, including themselves.
 
 ---
 
@@ -162,7 +232,16 @@ Stay tuned for more faynoSync tips and tricks! 💚
 
 ---
 
+## Related reading
+
+- [Private Apps in faynoSync — Keep Your Software Secure](https://faynosync.com/blog/private-apps)
+- [Fetch Latest Version of App — Smart Update Links](https://faynosync.com/blog/fetch-latest-version)
+- [Rollout Health Reports — Catch Failed Updates Before They Spread](https://faynosync.com/blog/rollout-health-reports)
+- [Team Based Authorization docs](https://faynosync.com/docs/team_based_auth)
+
+---
+
 If you find this project helpful, please consider **subscribing**, **leaving a comment**, or giving it a **star**, create **Issue** or **feature request** on GitHub.  
 Your support keeps the project alive and growing 💚
 
---- 
+---

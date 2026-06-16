@@ -1,0 +1,251 @@
+---
+slug: rollout-health-reports
+title: Rollout Health Reports — Catch Failed Updates Before They Spread
+authors: [ku9nov]
+tags: [faynoSync, reports, telemetry]
+description: faynoSync report ingestion lets clients send update, install, and crash failures to a public endpoint that aggregates them into rollout-health groups — cheap to ingest, privacy-conscious, and bounded in storage, without becoming an APM or crash-analytics platform.
+---
+
+# Rollout Health Reports — Catch Failed Updates Before They Spread
+
+[Telemetry](https://faynosync.com/blog/telemetry-insights) tells you who's running which version. It doesn't tell you when an update *fails* — when the download checksum doesn't match, the installer hits a full disk, or the app panics on first launch after a release. Those failures are exactly the ones you want to catch in the first hour of a rollout, before they reach the rest of your install base.
+
+faynoSync's **report ingestion** fills that gap. Clients send short operational failure reports to a public endpoint; the server validates, groups, and aggregates them into a rollout-health picture by app, version, channel, platform, and architecture. The design is deliberately narrow: cheap to ingest, stable for aggregation, and bounded in storage — **not** a logging pipeline, an APM, or a Sentry replacement.
+
+This post covers what reports are, how ingestion works, the privacy boundary, and how to read rollout health from the aggregated groups. Everything here is verified against the [Reports Management docs](https://faynosync.com/docs/api/reports/reports-introduction).
+
+---
+
+## What reports are (and aren't)
+
+Reports give you:
+
+- A simple **public** endpoint for clients to send update/install/runtime failure events.
+- An **aggregated** view of rollout health grouped by stable technical dimensions.
+- Optional, size-bounded debug **details** stored separately for support investigations.
+- Groundwork for a future auto-pause / rollback decision engine.
+
+Reports are explicitly **not** a general-purpose logging pipeline, a full APM, or a crash-analytics platform — and they avoid collecting user identity by design. Reports also never feed update-metadata trust decisions: signing, expiration, version monotonicity, and rollback protection are untouched.
+
+---
+
+## Enabling reports
+
+Ingestion is gated by a dedicated environment flag, similar to TUF routes. When `REPORTS_ENABLED=false`, **neither** the ingestion endpoint nor the read API is registered.
+
+```env
+REPORTS_ENABLED=true
+REPORTS_MAX_BODY_BYTES=262144
+REPORTS_MAX_DETAILS_COMPRESSED_BYTES=131072
+REPORTS_MAX_DETAILS_DECOMPRESSED_BYTES=1048576
+REPORTS_BLOB_RETENTION_DAYS=30
+REPORTS_MAX_BLOBS_PER_GROUP=10
+REPORTS_STORAGE_PREFIX=reports
+REPORTS_RATE_LIMIT_PER_KEY_PER_MINUTE=100
+```
+
+Two things to know:
+
+- Enabling reports **forces a Redis connection**, since rate limits depend on Redis.
+- Detail blobs reuse the existing `STORAGE_DRIVER` / `S3_*` configuration but are written to the **private** bucket (`S3_BUCKET_NAME_PRIVATE`) and are only retrievable through short-lived presigned URLs.
+
+Full variable reference: [Environment Variables Overview](https://faynosync.com/docs/getting-started/env-overview).
+
+---
+
+## Two auth paths: clients ingest, admins read
+
+Reports split cleanly into a public write path and an authenticated read path.
+
+| Path | Endpoint | Auth |
+|------|----------|------|
+| **Ingestion** (clients) | `POST /reports/ingest` | Per-app **report key** `rpk_<64 hex>` as `Authorization: Bearer rpk_...` — no JWT |
+| **Read** (admins/team) | `GET /reports/groups`, `GET /reports/groups/:groupHash/blobs` | JWT, gated by `CheckPermission(download, apps)` |
+
+Report keys are managed through the existing `report_keys` lifecycle — one key per app with `reports` enabled. They're effectively **public client credentials** shipped inside your app, so abuse protection comes from the `REPORTS_ENABLED` gate, the per-app `reports` flag, and rate limits — not from key secrecy.
+
+On the read side, admins see every app under their account; team users only see apps in their `allowed_apps`. Scoping is enforced in the repository: every query filters on the requester's accessible `app_id`s, so cross-owner access is impossible even when two owners' reports share a hash.
+
+---
+
+## Sending a report
+
+A minimal report is self-contained and costs exactly one MongoDB upsert:
+
+```bash
+curl -i -X POST 'http://localhost:9000/reports/ingest' \
+  --header 'Authorization: Bearer rpk_87077831a3c0c3f5a3cca1b1a5441e36033550708e92b832166d8550ba847315' \
+  --header 'X-Device-ID: 7f3c9a2e-1b4d-4c8a-9f12-abc123def456' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "application": { "name": "test", "version": "1.4.2", "channel": "stable" },
+    "system":      { "platform": "windows", "arch": "amd64" },
+    "event":       { "type": "update_failure", "reason": "checksum_mismatch" }
+  }'
+```
+
+```json
+{ "status": "accepted", "group_hash": "9f2b...", "stored_details": false }
+```
+
+Every field except `details` is required: `application.name/version/channel`, `system.platform/arch`, and `event.type/reason`. The server validates `name`, `channel`, `platform`, `arch`, and `version` with the **same validators telemetry ingestion uses** — and verifies the report key actually belongs to `application.name`, so you can't accidentally point one app's key at another.
+
+### Event type is a strict enum
+
+Clients cannot invent event types. New types require explicit server support, which keeps analytics consistent across SDKs:
+
+| Value | Meaning |
+|-------|---------|
+| `crash` | Application crashed at runtime |
+| `startup_failure` | Application failed to start |
+| `update_failure` | An update failed to apply |
+| `install_failure` | An install failed |
+| `rollback_failure` | A rollback failed |
+
+### Reason is an identifier, not a message
+
+`event.reason` is a short machine-readable identifier matching `^[a-zA-Z0-9._-]{1,128}$` — used for grouping, filtering, and alerting. It must **not** contain stack traces, HTML, logs, or binary data. Good values: `checksum_mismatch`, `disk_full`, `access_denied`, `missing_dependency`, `panic_nil_pointer`, `signature_verification_failed`.
+
+The split matters: `reason` drives grouping and charts; human-readable debugging context goes into optional `details`, which never affects grouping. Unlike `event.type`, SDKs can introduce **new reasons without a server deploy** — only new event types need server support.
+
+---
+
+## Optional details: bounded, private, debug-only
+
+When you need more than a reason, attach a `details` blob. It's the JSON debug object, gzip-compressed then base64-encoded:
+
+```bash
+PAYLOAD=$(printf '{"message":"sha mismatch","stack":"..."}' | gzip | base64 -w0)
+
+curl -i -X POST 'http://localhost:9000/reports/ingest' \
+  --header 'Authorization: Bearer rpk_8707...7315' \
+  --header 'X-Device-ID: 7f3c9a2e-1b4d-4c8a-9f12-abc123def456' \
+  --header 'Content-Type: application/json' \
+  --data "{
+    \"application\": { \"name\": \"test\", \"version\": \"1.4.2\", \"channel\": \"stable\" },
+    \"system\":      { \"platform\": \"windows\", \"arch\": \"amd64\" },
+    \"event\":       { \"type\": \"crash\", \"reason\": \"panic_nil_pointer\" },
+    \"details\":     { \"encoding\": \"gzip+base64\", \"content_type\": \"application/json\", \"payload\": \"$PAYLOAD\" }
+  }"
+```
+
+```json
+{ "status": "accepted", "group_hash": "1ab3...", "stored_details": true }
+```
+
+The server checks the compressed size, base64-decodes, then decompresses the gzip stream **under a hard decompressed-size limit** (`REPORTS_MAX_DETAILS_DECOMPRESSED_BYTES`) enforced with `io.LimitReader`. The client-declared size is never trusted — that's the zip-bomb guard. The compressed bytes land in the private bucket; metadata goes to `report_blobs`.
+
+`stored_details` is `true` only when the blob was actually written. On a storage outage the response is still `202`, the base count is preserved, and `stats.detailsRejected` is incremented — the *fact* of the failure is never lost just because the debug payload couldn't be stored.
+
+Storage stays bounded: faynoSync keeps the latest `REPORTS_MAX_BLOBS_PER_GROUP` blobs per group, and each blob has a TTL of `REPORTS_BLOB_RETENTION_DAYS`. No unbounded arrays in Mongo, no uncontrolled blob growth.
+
+---
+
+## How grouping works
+
+Every report is reduced to a deterministic `groupHash` built **only** from stable dimensions:
+
+```text
+sha256(name | version | channel | platform | arch | event.type | event.reason)
+```
+
+Stack traces, logs, timestamps, client IP, and device identifiers are **excluded** from the hash. That's the whole point: if details affected grouping, every unique stack trace would spawn its own group and the signal would drown in noise. Instead, ten thousand clients hitting the same `checksum_mismatch` on `1.4.2/stable/windows/amd64` collapse into one group with `count: 10000`.
+
+Because app names are unique only per `(app_name, owner)`, the grouping identity stored in Mongo is the composite `(app_id, groupHash)` — two different owners can both have an app named `test` without ever seeing each other's reports.
+
+---
+
+## Reading rollout health
+
+Admins and team users query aggregated groups, sorted by most-recently-seen:
+
+```bash
+curl -s 'http://localhost:9000/reports/groups?app=test&type=update_failure&from=2026-05-01T00:00:00Z&to=2026-06-01T00:00:00Z' \
+  --header 'Authorization: Bearer <jwt_token>'
+```
+
+```json
+{
+  "items": [
+    {
+      "group_hash": "9f2b...",
+      "application": { "name": "test", "version": "1.4.2", "channel": "stable" },
+      "system": { "platform": "windows", "arch": "amd64" },
+      "event": { "type": "update_failure", "reason": "checksum_mismatch" },
+      "stats": {
+        "count": 182,
+        "first_seen": "2026-05-20T10:00:00Z",
+        "last_seen": "2026-05-20T12:00:00Z",
+        "details_stored": 17,
+        "details_rejected": 3
+      }
+    }
+  ],
+  "total": 1, "page": 1, "limit": 20
+}
+```
+
+All filters are optional — `app`, `version`, `channel`, `platform`, `arch`, `type`, `reason`, plus RFC3339 `from`/`to` on `stats.lastSeen` and `page`/`limit`. The `stats` block is the headline: `count` is the blast radius, `first_seen`/`last_seen` tell you whether a failure is fresh or already winding down, and `details_stored` tells you how many debug blobs you can pull for investigation.
+
+To inspect those blobs, call [`GET /reports/groups/:groupHash/blobs`](https://faynosync.com/docs/api/reports/list-detail-blobs) — it returns blob metadata plus a short-lived (15 min) presigned URL per blob against the private bucket. (`owner` and `storage.bucket` are never serialized in either response.)
+
+---
+
+## Rate limits keep a public endpoint safe
+
+Because ingestion is public, rate limits are mandatory. They're evaluated **after** `groupHash` is built and **before** the Mongo upsert, using fixed-window counters in Redis:
+
+| Dimension | Limit |
+|-----------|-------|
+| Per report key | `REPORTS_RATE_LIMIT_PER_KEY_PER_MINUTE` requests/minute (default `100`) |
+| Per `X-Device-ID` + `groupHash` | 1 request/hour |
+| Per `groupHash` | 30 requests/minute |
+
+The per-device limit is scoped **by `groupHash`**, not globally per device — that's deliberate. A single device can legitimately emit a `startup_failure`, then an `update_failure`, then a `crash` within the same hour; only repeats of the *same* failure are suppressed, which is the intended dedup behavior. On a Redis error the limiter **fails open** and logs, since rate limiting is abuse control, not a trust boundary, and a Redis blip must not drop legitimate reports.
+
+---
+
+## The privacy boundary
+
+Reports share the anonymous `X-Device-ID` concept with [telemetry](https://faynosync.com/blog/telemetry-insights), used here only for rate limits and dedup. Critically, `X-Device-ID` is **never** part of `groupHash` and **never** written to `report_groups` or `report_blobs`.
+
+Allowed dimensions are purely technical: app name, version, channel, platform, arch, event type, reason, and an optional debug blob. Avoid email, username, hostname, device serials, stored IPs, and full filesystem paths that may leak usernames. Stripping secrets and personal data from `details` is the client/SDK's responsibility — the server does not run a redaction pipeline.
+
+---
+
+## Where this is headed
+
+Today, reports give you the data. The aggregated `report_groups` are also the natural input for a future **rollout decision engine**: pause a rollout when `update_failure` rate crosses a threshold for a version/channel/platform, alert on a `crash` spike after a release, or suggest a rollback when `rollback_failure` shows up. That's a later layer — the ingestion path itself never mutates rollout state.
+
+---
+
+## How to try faynoSync?
+
+1. Follow the Getting Started guide:
+👉 [https://faynosync.com/docs/getting-started](https://faynosync.com/docs/getting-started)
+
+2. Set `REPORTS_ENABLED=true` (plus the `REPORTS_*` limits) and make sure `S3_BUCKET_NAME_PRIVATE` is configured:
+👉 [Environment Variables Overview](https://faynosync.com/docs/getting-started/env-overview)
+
+3. Enable `reports` on an app to get its `rpk_` report key, then send a failure from your client:
+📡 [Ingest Report](https://faynosync.com/docs/api/reports/ingest)
+
+4. Watch rollout health in the read API or dashboard:
+📊 [List Report Groups](https://faynosync.com/docs/api/reports/list-groups)
+
+---
+
+## Related reading
+
+- [Telemetry Insights — Understand Your Users Better](https://faynosync.com/blog/telemetry-insights)
+- [Scaling Update Checks with Edge + S3 Response Cache](https://faynosync.com/blog/edge-s3-cache)
+- [Team-Based Authorization in faynoSync — Manage Your Team Like a Pro](https://faynosync.com/blog/team-based-auth)
+- [How to Setup Auto Update for Electron App](https://faynosync.com/blog/electron-auto-update)
+- [Reports Management docs](https://faynosync.com/docs/api/reports/reports-introduction)
+
+---
+
+If you find this project helpful, please consider **subscribing**, **leaving a comment**, or giving it a **star**, create an **Issue** or **feature request** on GitHub.
+Your support keeps the project alive and growing.
+
+---

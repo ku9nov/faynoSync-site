@@ -3,12 +3,14 @@ slug: private-apps
 title: Private Apps in faynoSync — Keep Your Software Secure
 authors: [ku9nov]
 tags: [faynoSync, security]
-description: Learn how private apps in FaynoSync keep internal tools, beta builds, and enterprise software secure by storing artifacts in a separate private S3 bucket with restricted, authenticated access.
+description: Keep internal tools, beta builds, and enterprise software private in faynoSync — store artifacts in a separate private S3 bucket, gate downloads with ENABLE_PRIVATE_APP_DOWNLOADING, and serve them through short-lived signed URLs.
 ---
 
 # Private Apps in faynoSync — Keep Your Software Secure 🔒
 
 When developing software, sometimes you need to keep things private. Whether it's internal tools, beta versions, or enterprise applications — not everything should be publicly accessible. That's why faynoSync comes with built-in support for private applications.
+
+This post covers what private apps are, how to create one, how downloads are gated, and how private apps combine with [team access control](https://faynosync.com/blog/team-based-auth). Every flag and endpoint here is verified against the [Create Application](https://faynosync.com/docs/api/apps/create) and [private download](https://faynosync.com/docs/api/apps/download) docs.
 
 ---
 
@@ -30,7 +32,7 @@ Simply check the "Private" option when creating your app through the dashboard i
 
 ### 2. Using the API 📡
 
-When making a POST request to `/app/create`, include the `private` parameter:
+When making a POST request to `/app/create`, include the `private` parameter. The endpoint uses `multipart/form-data`, so the JSON goes in a `data` form field:
 
 ```bash
 curl --location 'http://localhost:9000/app/create' \
@@ -38,14 +40,47 @@ curl --location 'http://localhost:9000/app/create' \
 --form 'data="{\"app\":\"appName\", \"private\": true}"'
 ```
 
+```json
+{ "createAppResult.Created": "641459ffb8760d74164e7e3c" }
+```
+
+The `private` field sits alongside the other creation flags — `description`, a logo `file`, `tuf`, and `cdn` (the [edge cache](https://faynosync.com/blog/edge-s3-cache) toggle). Only `app` is required.
+
+> **Heads up:** `private` is **irreversible**. Once it's `true`, the app cannot be made public later. Decide before you create, not after.
+
 ---
 
 ## How Private Apps Work? 🔐
 
 1. **Storage**: Private apps are stored in a separate S3 bucket (defined by `S3_BUCKET_NAME_PRIVATE` in your environment)
-2. **Access Control**: You can control who can download your private apps through the `ENABLE_PRIVATE_APP_DOWNLOADING` setting:
-   - If `true`: Anyone can download the app using the public API endpoints
-   - If `false`: Only authenticated users can download the app
+2. **Access Control**: You control who can download private apps through the `ENABLE_PRIVATE_APP_DOWNLOADING` setting:
+   - If `true`: apps in the private bucket can be downloaded through the public API — the request redirects straight to the file
+   - If `false`: download links require authentication, and the API returns a short-lived signed URL instead
+
+Both settings live in your `.env`; see the [Environment Variables Overview](https://faynosync.com/docs/getting-started/env-overview) for the full storage configuration (the private bucket is configured per provider — MinIO, AWS, DigitalOcean Spaces, or GCS).
+
+---
+
+## Downloading from a private bucket
+
+Artifacts in the private bucket aren't served by a plain public URL. You fetch them through `GET /download`, passing the object `key`:
+
+```bash
+curl -X GET --location 'http://localhost:9000/download?key=secondapp%2Fstable%2Flinux%2Famd64%2Fsecondapp-0.0.1.deb'
+```
+
+The `key` is URL-encoded and follows the layout `{app_name}/{channel}/{platform}/{arch}/{filename}`. What comes back depends on `ENABLE_PRIVATE_APP_DOWNLOADING`:
+
+- **`true`** — the request is redirected directly to the file.
+- **`false`** — authentication is required, and the response is a JSON `download_url`: a signed URL with a limited lifetime (typically **15 minutes**).
+
+```json
+{
+  "download_url": "https://<bucket>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.1.deb?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=900&X-Amz-Signature=..."
+}
+```
+
+Short-lived signed URLs are the key property: even if a link leaks, it expires in minutes, so it can't be reshared as a permanent public download. Full contract in the [download docs](https://faynosync.com/docs/api/apps/download).
 
 ---
 
@@ -56,7 +91,15 @@ Think of private apps in faynoSync as your software's VIP section! Here's what m
 - 🔒 **Separate Storage**: Your private apps live in their own secure S3 bucket, like having a private vault for your most valuable assets
 - 🔐 **One-Way Privacy**: Once you mark an app as private, it stays private forever. This might sound strict, but it's actually a good thing — it ensures your security settings can't be accidentally changed
 - 👥 **Smart Access Control**: You're in charge! You can decide whether your private apps need authentication to download, giving you perfect control over who gets access
-- 🚫 **Download Protection**: Want to make sure only your team can download the app? Just set `ENABLE_PRIVATE_APP_DOWNLOADING=false`, and only authenticated users will be able to access it
+- 🚫 **Download Protection**: Want to make sure only your team can download the app? Just set `ENABLE_PRIVATE_APP_DOWNLOADING=false`, and only authenticated requests will get a signed URL
+
+---
+
+## Private apps and team access control
+
+Privacy and [team-based authorization](https://faynosync.com/blog/team-based-auth) stack cleanly. The private bucket decides **where** artifacts live and whether downloads need authentication; team permissions decide **who** on your team can manage and download them via the `apps.download` permission and their `allowed` apps. Use `ENABLE_PRIVATE_APP_DOWNLOADING=false` plus scoped team users when you need both restricted distribution and internal least-privilege access.
+
+The same private bucket (`S3_BUCKET_NAME_PRIVATE`) is reused by [report ingestion](https://faynosync.com/blog/rollout-health-reports) for storing debug blobs — sensitive payloads never touch the public/CDN bucket, and are only retrievable through the same short-lived presigned-URL mechanism.
 
 ---
 
@@ -68,20 +111,21 @@ Think of private apps in faynoSync as your software's VIP section! Here's what m
    - Enterprise-specific applications
    - Software requiring license validation
 
-2. Set `ENABLE_PRIVATE_APP_DOWNLOADING=false` when you need strict access control
+2. Decide on `private` **before** creating the app — it can't be undone.
 
-3. Always use authentication tokens when accessing private apps in restricted mode
+3. Set `ENABLE_PRIVATE_APP_DOWNLOADING=false` when you need strict access control, and always send an auth token when fetching from `/download` in that mode.
+
+4. Treat signed URLs as ephemeral — generate them on demand rather than caching or sharing them; they expire by design.
 
 ---
 
-## What's Next? 🚀
+## Common questions
 
-In our next posts, we'll explore:
-- Local development and deployment to server
-- Managing user access and permissions
-- How to properly use `Fetch latest version of app` request
+**Can I make a private app public later?** No. The `private` flag is irreversible by design. Create a new public app instead.
 
-Stay tuned for more faynoSync tips and tricks! 💚
+**Why does `/download` return a URL instead of the file?** You're running with `ENABLE_PRIVATE_APP_DOWNLOADING=false`, so the API hands back a short-lived signed URL that requires authentication — that's the strict mode.
+
+**Where do private artifacts actually live?** In the bucket named by `S3_BUCKET_NAME_PRIVATE`, separate from your public artifact bucket, on whichever provider your `STORAGE_DRIVER` points to.
 
 ---
 
@@ -98,6 +142,15 @@ Stay tuned for more faynoSync tips and tricks! 💚
 
 4. Check for updates with this simple request:  
 📡 [`/info/latest`](https://faynosync.com/docs/api/info/latest)
+
+---
+
+## Related reading
+
+- [Team-Based Authorization in faynoSync — Manage Your Team Like a Pro](https://faynosync.com/blog/team-based-auth)
+- [Rollout Health Reports — Catch Failed Updates Before They Spread](https://faynosync.com/blog/rollout-health-reports)
+- [Scaling Update Checks with Edge + S3 Response Cache](https://faynosync.com/blog/edge-s3-cache)
+- [Create Application docs](https://faynosync.com/docs/api/apps/create)
 
 ---
 
