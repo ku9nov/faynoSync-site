@@ -1,0 +1,78 @@
+---
+title: Squirrel.Mac & Squirrel.Windows Auto-Update Example
+sidebar_label: Squirrel
+description: Squirrel.Mac and Squirrel.Windows auto-update example with faynoSync, using the JavaScript SDK resolveNativeFeed for edge-first native update feeds.
+sidebar_position: 3
+---
+
+# Squirrel Example (native autoUpdater)
+
+An Electron app that updates through the **native Electron `autoUpdater`** — Squirrel.Mac on macOS and Squirrel.Windows on Windows — with feed URLs resolved by the faynoSync [JavaScript SDK](../sdk/js/sdk). This maps to the [`squirrel_darwin` and `squirrel_windows`](../updaters) updater types.
+
+**Repository:** [github.com/ku9nov/faynoSync-squirrel-example](https://github.com/ku9nov/faynoSync-squirrel-example)
+
+## Integration pattern
+
+1. `checkForUpdates` runs as an **edge-first gate** to decide whether an update exists.
+2. If it does, `resolveNativeFeed` resolves the correct Squirrel feed URL — edge-first, with automatic API fallback.
+3. The resolved `feedURL` is passed to the native `autoUpdater.setFeedURL`, and Squirrel downloads/installs.
+
+## Picking the updater per platform
+
+`squirrel_darwin` and `squirrel_windows` use different URL shapes, so the example selects the updater from the runtime platform:
+
+```js
+import { systemPlatform, systemArch } from '@faynosync/sdk-js';
+
+function nativeFeedOptions() {
+  const platform = systemPlatform();
+  return {
+    owner,
+    appName: app_name,
+    version,
+    channel,
+    platform,
+    arch: systemArch(),
+    updater: platform === 'darwin' ? 'squirrel_darwin' : 'squirrel_windows',
+  };
+}
+```
+
+## Resolving the native feed
+
+`resolveNativeFeed` does the edge-first resolution and tells you whether to start Squirrel at all:
+
+```js
+import { autoUpdater } from 'electron';
+
+const feed = await getClient().resolveNativeFeed(nativeFeedOptions());
+
+if (!feed.updateAvailable) {
+  return; // nothing to do — Squirrel is never started
+}
+
+autoUpdater.setFeedURL({ url: feed.feedURL });
+autoUpdater.checkForUpdates();
+```
+
+`feed.source` tells you whether the feed came from `'edge'` or `'api'`.
+
+## Why this goes through the SDK (edge details)
+
+Pointing the native `autoUpdater` straight at a faynoSync URL breaks in several non-obvious cases that `resolveNativeFeed` normalizes:
+
+- **`no_content` vs `204`.** Squirrel.Mac expects `200 { "url": "<zip>" }` or `204 No Content`. But the **edge** mirror returns `200 { "status": "no_content" }` (not a real `204`) when there's no update. The SDK reads that and returns `updateAvailable: false`, so you skip the native updater instead of feeding it a bad response.
+- **`404` on a cold edge.** Until the API has warmed a version's edge object, the edge returns `404`. The SDK falls back to the API (which serves the feed *and* warms the edge for next time), so the first client isn't stuck.
+- **`squirrel_windows` and `/RELEASES`.** Squirrel.Windows appends `/RELEASES` to the feed URL itself. The edge response is a redirect to the absolute `.../RELEASES` file, so the SDK strips the trailing `/RELEASES` and returns the **directory** as `feedURL` — exactly what `setFeedURL` needs. `feed.url` still carries the raw resolved resource (the `.zip` for macOS, the `RELEASES` URL for Windows).
+
+:::tip Debugging Squirrel.Windows 401/403
+Squirrel.Windows fetches `RELEASES` and then the `.nupkg` deep in native code, so an auth error there is hard to trace. The example fetches `RELEASES` itself first and logs each `.nupkg` URL Squirrel will hit — that's where an unexpected `401`/`403` actually originates. See [`src/main/updater.js`](https://github.com/ku9nov/faynoSync-squirrel-example/blob/main/src/main/updater.js).
+:::
+
+The native `autoUpdater` only runs in a packaged app and only on macOS/Windows; the example falls back to opening `resp.updateUrl` otherwise.
+
+## Related reading
+
+- [JavaScript SDK](../sdk/js/sdk) — `resolveNativeFeed`, `NativeFeedResult`, and native updater feeds.
+- [Electron Example](./electron) — `electron-updater` generic provider instead of native Squirrel.
+- [Updaters Support](../updaters) — `squirrel_darwin` / `squirrel_windows` and the `RELEASES` output.

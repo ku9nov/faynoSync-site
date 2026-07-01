@@ -1,0 +1,39 @@
+---
+title: Update Example Apps (Electron, Squirrel, Tauri)
+sidebar_label: Examples
+description: Reference desktop apps that integrate faynoSync updates — Electron, Squirrel, and Tauri — showing edge-first update checks with the JavaScript SDK.
+sidebar_position: 1
+---
+
+# Example Apps
+
+These are runnable reference applications that wire real desktop update flows to a faynoSync instance. Each one targets a different updater and shows how the [JavaScript SDK](../sdk/js/sdk.mdx) fits in — from a simple edge-first update check to full native-feed resolution.
+
+Every example is a complete, buildable app on GitHub. The snippets in these docs are **trimmed to the update logic only** (SDK calls, feed wiring, edge handling); the repositories contain the full UI, packaging, and CI.
+
+## Which example maps to what
+
+| Example | Framework / updater library | faynoSync [updater type](../updaters.mdx) | How the SDK is used |
+|---------|-----------------------------|---------------------------------------|---------------------|
+| [Electron](./electron.mdx) | Electron + `electron-updater` (generic provider) | `electron-builder` (`*.yml`) | SDK `checkForUpdates` as an edge-first gate, then the feed directory is derived from `packageUrls` and handed to `electron-updater`. |
+| [Squirrel](./squirrel.mdx) | Electron native `autoUpdater` (Squirrel.Mac / Squirrel.Windows) | `squirrel_darwin` / `squirrel_windows` | SDK `resolveNativeFeed` resolves the feed edge-first (API fallback), then `setFeedURL`. |
+| [Tauri](./tauri.mdx) | Tauri + `@tauri-apps/plugin-updater` | `tauri` | SDK `checkForUpdates` as an edge-first gate; the native plugin does the signature-verified install. |
+
+## Why the SDK sits in front of the native updater
+
+Native updaters (electron-updater, Squirrel, tauri-plugin-updater) are good at downloading and installing, but they poll the API on every check and don't know about faynoSync's edge (CDN) responses. In each example the SDK runs **first**:
+
+- On the common **no-update** path, the SDK's edge-first `checkForUpdates` (or `resolveNativeFeed`) answers from the CDN and sends the optimized `/telemetry/beacon`, so the API and the native updater are never invoked.
+- Only when an update actually exists does the native updater start, using a feed URL the SDK resolved — pointing at the edge when it's warm, falling back to the API (which warms the edge) on a miss.
+
+Some of the per-example code looks unusual out of context (deriving a feed directory from a package URL, treating `200 { "status": "no_content" }` as "no update", stripping `/RELEASES`). Those are edge-delivery details the SDK normalizes — each page explains them where they appear.
+
+## Prerequisites
+
+All three apps read the same configuration (owner, app name, channel, `BASE_URL`, `EDGE_URL`, and an optional report key) from a `.env` file; see each repo's `.env.example`. They expect an app configured on your faynoSync instance with the matching channel/platform/arch and the relevant updater enabled on the platform.
+
+## Related reading
+
+- [JavaScript SDK](../sdk/js/sdk.mdx) — `checkForUpdates`, `resolveNativeFeed`, `reportEvent`, and edge fallback behavior.
+- [Updaters Support](../updaters.mdx) — how each updater type shapes the server response.
+- [Edge delivery](../edge.mdx) — how faynoSync publishes cached JSON/feeds for CDN delivery.

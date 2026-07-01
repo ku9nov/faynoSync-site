@@ -1,0 +1,105 @@
+---
+title: Electron Auto-Update Example
+sidebar_label: Electron
+description: Electron auto-update example with faynoSync and electron-updater (generic provider), using the JavaScript SDK for an edge-first update check.
+sidebar_position: 2
+---
+
+# Electron Example (electron-updater)
+
+An Electron desktop app that checks for updates with the faynoSync [JavaScript SDK](../sdk/js/sdk) and downloads/installs them through [`electron-updater`](https://www.electron.build/auto-update) using its **generic provider**. This maps to the [`electron-builder`](../updaters) updater type, which produces `*.yml` feed metadata.
+
+**Repository:** [github.com/ku9nov/faynoSync-electron-example](https://github.com/ku9nov/faynoSync-electron-example)
+
+## Integration pattern
+
+1. The SDK's `checkForUpdates` runs first as an **edge-first gate** — it decides whether an update exists (and sends telemetry) before anything native starts.
+2. If an update exists, the app derives the `electron-updater` **feed directory** from the SDK response and hands it to `autoUpdater.setFeedURL`.
+3. `electron-updater` reads `latest*.yml` from that directory and downloads/installs.
+
+## Creating the client
+
+```js
+import { Client, systemPlatform, systemArch } from '@faynosync/sdk-js';
+
+let client;
+function getClient() {
+  if (!client) {
+    client = new Client({ baseURL, edgeURL: edgeURL || undefined });
+  }
+  return client;
+}
+```
+
+`edgeURL` is optional — when set, `checkForUpdates` tries the CDN first and falls back to the API automatically.
+
+## The edge-first update check
+
+```js
+const resp = await getClient().checkForUpdates({
+  owner,
+  appName: app_name,
+  version,
+  channel,
+  platform: systemPlatform(),
+  arch: systemArch(),
+  deviceId,
+});
+
+if (resp.updateAvailable) {
+  // start the background download (see below)
+} else {
+  // already up to date
+}
+```
+
+`systemPlatform()` / `systemArch()` return the Node.js runtime values (`process.platform` / `process.arch`); pass whatever your faynoSync platform/arch config expects.
+
+## Deriving the electron-updater feed directory
+
+`electron-updater`'s generic provider needs the **directory** that contains the `latest*.yml` metadata, not a single file. faynoSync returns that metadata file as a `yml` entry in `packageUrls`, so the app strips the filename to get the directory:
+
+```js
+function feedDirFromPackageUrls(packageUrls) {
+  const yml = (packageUrls || []).find((p) => p.package === 'yml');
+  if (!yml || !yml.url) return null;
+  return yml.url.substring(0, yml.url.lastIndexOf('/'));
+}
+```
+
+Then it configures `electron-updater` and starts the download:
+
+```js
+import { autoUpdater } from 'electron-updater';
+
+const feedUrl = feedDirFromPackageUrls(resp.packageUrls);
+if (feedUrl) {
+  autoUpdater.setFeedURL({ provider: 'generic', url: feedUrl });
+  autoUpdater.checkForUpdates();
+}
+```
+
+:::note Why derive the directory instead of using `updateUrl`
+The SDK's `checkForUpdates` returns direct artifact URLs (`updateUrl`, `packageUrls`) for the *manual* flow. `electron-updater` doesn't consume those directly — it wants the folder holding `latest.yml` / `latest-mac.yml`. The `yml` package URL points at that metadata file, so its parent directory is the feed URL. This keeps a single faynoSync response usable by both a manual "pick a package" UI and the automatic `electron-updater` flow.
+:::
+
+:::info Keep the faynoSync display fields
+The `electron-updater` `*.yml` feed only describes the artifact — it does **not** carry faynoSync's `changelog`, `critical`, or `isIntermediateRequired` flags. That's why the app pulls only the `yml` **URL** out of `packageUrls` to locate the feed directory, but keeps reading those display fields from the SDK's `checkForUpdates` response. If you pointed `electron-updater` at the feed directly and dropped the SDK call, you'd lose the changelog, the critical-update styling, and the intermediate-update signal in the UI.
+
+```js
+const meta = {
+  changelog: resp.changelog,
+  critical: resp.critical,
+  isIntermediateRequired: resp.isIntermediateRequired,
+  source: resp.source,
+};
+```
+:::
+
+`electron-updater` only runs in a packaged app; in dev mode the example falls back to a manual download list built from `packageUrls`. See [`src/main/updater.js`](https://github.com/ku9nov/faynoSync-electron-example/blob/main/src/main/updater.js) and [`src/main/autoUpdate.js`](https://github.com/ku9nov/faynoSync-electron-example/blob/main/src/main/autoUpdate.js) for the full flow.
+
+## Related reading
+
+- [JavaScript SDK](../sdk/js/sdk) — `checkForUpdates`, `packageUrls`, and edge fallback.
+- [Squirrel Example](./squirrel) — native Electron `autoUpdater` with `resolveNativeFeed` instead of the generic provider.
+- [Updaters Support](../updaters) — the `electron-builder` updater and its `*.yml` output.

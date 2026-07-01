@@ -1,0 +1,82 @@
+---
+title: Tauri Auto-Update Example
+sidebar_label: Tauri
+description: Tauri auto-update example with faynoSync — an edge-first update gate via the JavaScript SDK plus tauri-plugin-updater for signature-verified installs.
+sidebar_position: 4
+---
+
+# Tauri Example (tauri-plugin-updater)
+
+A Tauri desktop app that uses the faynoSync [JavaScript SDK](../sdk/js/sdk) for an edge-first update **gate**, then lets [`@tauri-apps/plugin-updater`](https://v2.tauri.app/plugin/updater/) perform the signature-verified download and install. This maps to the [`tauri`](../updaters) updater type (which requires the `signature` field).
+
+**Repository:** [github.com/ku9nov/faynoSync-tauri-example](https://github.com/ku9nov/faynoSync-tauri-example)
+
+## Integration pattern
+
+1. The SDK's `checkForUpdates` runs first as an **edge-first gate**. On the no-update path it answers from the CDN, so the native updater's endpoint is never hit.
+2. Only when the gate reports an update does the app call the plugin's `check()`, which downloads and installs with Tauri's built-in signature verification.
+3. The native updater endpoints themselves are configured edge-first in `tauri.conf.json`.
+
+## Creating the client with Tauri's fetch
+
+Tauri apps run in a WebView, so network calls go through Tauri's HTTP plugin, not the Node.js `fetch`. The SDK accepts a custom `fetch`, so the example injects `@tauri-apps/plugin-http`:
+
+```ts
+import { Client } from '@faynosync/sdk-js';
+import { fetch as tauriFetch } from '@tauri-apps/plugin-http';
+
+let client: Client | null = null;
+function getClient(): Client {
+  if (!client) {
+    client = new Client({
+      baseURL,
+      edgeURL: edgeURL || undefined,
+      fetch: tauriFetch as typeof globalThis.fetch,
+    });
+  }
+  return client;
+}
+```
+
+This is the main reason the SDK exposes a `fetch` option — it lets the same typed client run in any runtime that provides a `fetch`-compatible function.
+
+## The edge-first gate
+
+```ts
+import { check } from '@tauri-apps/plugin-updater';
+import { getVersion } from '@tauri-apps/api/app';
+
+const currentVersion = await getVersion();
+
+const resp = await getClient().checkForUpdates({
+  owner,
+  appName,
+  version: currentVersion,
+  channel,
+  platform: target(),   // maps Tauri's OS name to faynoSync's platform value
+  arch: archName(),
+  deviceId,
+});
+
+if (!resp.updateAvailable) {
+  return; // up to date — the native updater is never started
+}
+
+// Update exists -> hand off to the native, signature-verified updater
+const update = await check();
+if (update) {
+  await update.downloadAndInstall(/* progress callback */);
+}
+```
+
+:::note Why gate before `check()`
+`check()` polls the native updater endpoint and performs signature verification on every call. Running the SDK's edge-first `checkForUpdates` first means the common no-update path is answered from the CDN (and sends the optimized `/telemetry/beacon`), so `check()` — and the API request behind it — only runs when there's actually something to install. The SDK response also carries `critical` and `changelog`, which the flat Tauri updater response doesn't, so the example uses it to enrich the update UI.
+:::
+
+`target()` maps Tauri's OS names (`macos`, `windows`) to the platform values faynoSync expects (`darwin`, `windows`), so the gate and the native endpoint resolve to the same artifacts. See [`src/updater.ts`](https://github.com/ku9nov/faynoSync-tauri-example/blob/main/src/updater.ts).
+
+## Related reading
+
+- [JavaScript SDK](../sdk/js/sdk) — `checkForUpdates`, the custom `fetch` option, and edge fallback.
+- [Squirrel Example](./squirrel) — native feed resolution with `resolveNativeFeed`.
+- [Updaters Support](../updaters) — the `tauri` updater and its `signature` requirement.

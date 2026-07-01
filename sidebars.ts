@@ -46,6 +46,17 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
+      label: 'Examples',
+      link: { type: 'doc', id: 'examples/index' },
+      collapsed: false,
+      items: [
+        'examples/electron',
+        'examples/squirrel',
+        'examples/tauri',
+      ],
+    },
+    {
+      type: 'category',
       label: 'API Reference',
       link: { type: 'doc', id: 'api/API' },  // Ensures API Reference behaves like a category
       collapsed: false,

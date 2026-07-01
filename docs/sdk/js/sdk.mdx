@@ -111,9 +111,11 @@ The SDK only validates `owner`, `appName`, and `version` as required; omitted fi
 Base API endpoint:
 
 ```text
-GET /checkVersion?app_name=test&version=0.0.0.5&channel=nightly&platform=darwin&arch=arm64&owner=admin
+GET /checkVersion?app_name=test&version=0.0.0.5&channel=nightly&platform=darwin&arch=arm64&owner=admin&updater=manual
 X-Device-ID: optional-device-id
 ```
+
+The SDK's own update check always sends `updater=manual`. Framework-native updaters use different `updater` values — see [Native Updater Feeds](#native-updater-feeds).
 
 Query parameters are built from the named fields on `CheckOptions`. You pass a typed object instead of a generic key-value map, which keeps the API explicit and easy to validate.
 
@@ -174,13 +176,13 @@ Edge delivery only works as intended when update checks go through an official f
 When `edgeURL` is configured, the SDK first requests:
 
 ```text
-GET /responses/{owner}/{appName}/{channel}/{platform}/{arch}/{version}.json
+GET /responses/{owner}/{appName}/{channel}/{platform}/{arch}/{updater}/{version}.json
 ```
 
-Example:
+Example (`updater` is `manual` for the SDK's own check):
 
 ```text
-GET /responses/admin/test/nightly/darwin/arm64/0.0.0.5.json
+GET /responses/admin/test/nightly/darwin/arm64/manual/0.0.0.5.json
 ```
 
 In the edge path, `-` in the version is normalized to `.` (so `2.0.0-4` resolves to `2.0.0.4.json`), matching the Base API behavior.
@@ -201,6 +203,135 @@ If the request was aborted, the SDK does not fall back. If both edge and API fai
 ### Edge Telemetry
 
 When `deviceId` is set and an edge response succeeds, the SDK sends a telemetry beacon to `GET /telemetry/beacon` (with `is_latest` derived from `updateAvailable`). Telemetry failures are swallowed and never affect the update-check result.
+
+## Native Updater Feeds
+
+Framework-native updaters (Squirrel.Mac, Squirrel.Windows) poll faynoSync themselves with a different `updater` value and URL shape than the SDK's `manual` check. The SDK owns that wire format so you only pick the updater. Supported values are exported as `NATIVE_UPDATERS`:
+
+```ts
+import { NATIVE_UPDATERS } from '@faynosync/sdk-js';
+// ['squirrel_darwin', 'squirrel_windows']
+```
+
+`NativeFeedOptions` extends `CheckOptions` with a required `updater` field. For native feeds `owner`, `appName`, `version`, `platform`, and `arch` are all required; an unknown `updater` throws `UnsupportedUpdaterError`.
+
+### resolveNativeFeed (recommended)
+
+`resolveNativeFeed` resolves the feed edge-first (falling back to the API) and tells you whether to invoke the native updater at all. When an edge response exists, the returned `feedURL` points at the CDN, so the native updater reads it directly and the API is never hit.
+
+```ts
+const feed = await client.resolveNativeFeed({
+  owner: 'admin',
+  appName: 'test',
+  version: '0.0.1',
+  channel: 'nightly',
+  platform: 'darwin',
+  arch: 'arm64',
+  updater: 'squirrel_darwin', // or 'squirrel_windows'
+});
+
+if (feed.updateAvailable) {
+  autoUpdater.setFeedURL({ url: feed.feedURL });
+  autoUpdater.checkForUpdates();
+}
+```
+
+It resolves to a typed `NativeFeedResult`:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `updateAvailable` | `boolean` | Whether to invoke the native updater. `false` lets you skip it entirely. |
+| `feedURL` | `string` | URL to pass to `setFeedURL`: the edge object when the edge served the feed, otherwise the API endpoint. |
+| `source` | `UpdateSource` | `'edge'` or `'api'`. |
+| `url` | `string` (optional) | The raw resolved resource (the `.zip` for darwin, the `RELEASES` URL for windows). |
+
+Why go through the SDK: Squirrel.Mac expects `200 { "url": "<zip>" }` or `204 No Content`, but the edge mirror returns `200 { "status": "no_content" }` (not `204`) when there is no update, and `404` until the API has warmed that version's edge object. The SDK reads the edge response, returns `updateAvailable: false` on `no_content` so you skip the native updater, and falls back to the API (which warms the edge) on a miss. Pointing the native updater straight at the edge URL yourself would break on those cases.
+
+`feedURL` differs by framework:
+
+- `squirrel_darwin` reads the JSON feed directly, so `feedURL` is the edge object (or the API `/checkVersion` URL on a miss).
+- `squirrel_windows` reads `feedURL/RELEASES`. The SDK resolves the edge redirect response, strips the trailing `/RELEASES`, and returns the **directory** as `feedURL` — pointing Squirrel.Windows at the CDN where `RELEASES` and the `.nupkg` live. On an edge miss it falls back to the API `/update/...` base (which serves `RELEASES` and warms the edge).
+
+### buildNativeFeedURL (low-level)
+
+Builds just the feed URL — no request, no edge fallback — when you want to wire the native updater yourself:
+
+```ts
+const url = client.buildNativeFeedURL({
+  owner: 'admin',
+  appName: 'test',
+  version: '0.0.1',
+  channel: 'nightly',
+  platform: 'darwin',
+  arch: 'arm64',
+  updater: 'squirrel_darwin',
+});
+```
+
+| Updater | Resulting URL |
+|---------|---------------|
+| `squirrel_darwin` | `GET {baseURL}/checkVersion?...&updater=squirrel_darwin` |
+| `squirrel_windows` | `{baseURL}/update/{owner}/{app}/{channel}/{platform}/{arch}/{version}` (Squirrel.Windows appends `/RELEASES` itself) |
+
+## Reports
+
+`reportEvent` posts a failure or diagnostic report to `POST /reports/ingest`. The client stays stateless and app-agnostic, so `reportKey` and `deviceId` are passed per call (like `checkForUpdates`), not stored in `Config`.
+
+```ts
+const resp = await client.reportEvent({
+  reportKey: 'rpk_...',        // sent as Authorization: Bearer
+  deviceId: 'device-1',        // required, sent as X-Device-ID
+  appName: 'test',
+  version: '0.0.0.5',
+  channel: 'nightly',
+  platform: 'darwin',
+  arch: 'arm64',
+  event: { type: 'crash', reason: 'segfault.signal-11' },
+  details: { stack: '...', exitCode: 11 }, // optional raw debug object
+});
+
+console.log(resp.status, resp.groupHash, resp.storedDetails);
+```
+
+### ReportOptions
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `reportKey` | `string` | Yes | Report ingestion key, sent as `Authorization: Bearer`. |
+| `deviceId` | `string` | Yes | Device identifier, sent as `X-Device-ID`. |
+| `appName` | `string` | Yes | Application name. |
+| `version` | `string` | Yes | Client version. |
+| `channel` | `string` | Yes | Release channel. |
+| `platform` | `string` | Yes | Platform value. |
+| `arch` | `string` | Yes | Architecture value. |
+| `event` | `ReportEvent` | Yes | `{ type, reason }` describing the event. |
+| `details` | `Record<string, unknown>` | No | Optional raw debug object. |
+
+`event.type` must be one of `crash`, `startup_failure`, `update_failure`, `install_failure`, or `rollback_failure`. `event.reason` must match `^[a-zA-Z0-9._-]{1,128}$`. All non-`details` fields are validated client-side.
+
+`details` is optional. When supplied, the SDK serializes it with `JSON.stringify`, gzip-compresses it, and base64-encodes the result. The request carries it as:
+
+```json
+{
+  "details": {
+    "encoding": "gzip+base64",
+    "content_type": "application/json",
+    "payload": "<base64(gzip(json))>"
+  }
+}
+```
+
+When `details` is omitted, the field is left out of the request entirely.
+
+A successful request returns HTTP `202` mapped to a typed `ReportResponse`:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `status` | `string` | Server status string (e.g. `accepted`). |
+| `groupHash` | `string` | Grouping hash the server assigned to the report. |
+| `storedDetails` | `boolean` | Whether the server stored the `details` payload. |
+
+Any non-`202` response rejects with an `EndpointError` whose `source` is `'report'` and `statusCode` holds the HTTP status (e.g. `401`, `403`, `429`). Network and JSON failures are wrapped in `EndpointError` as well. An optional `AbortSignal` can be passed as the second argument to cancel the request.
 
 ## Platform, Channel, and Architecture Values
 
@@ -233,11 +364,14 @@ The SDK exports a typed error hierarchy:
 
 ```text
 FaynoSyncError
-├── ValidationError        // missing/invalid configuration or options
+├── ValidationError            // missing/invalid configuration or options
+│   └── UnsupportedUpdaterError // unknown native updater value
 └── RequestFailedError
-    ├── EndpointError      // a single edge or API request failed
-    └── CheckError         // the overall check failed (wraps edge/api errors)
+    ├── EndpointError          // a single edge, API, or report request failed
+    └── CheckError             // the overall check failed (wraps edge/api errors)
 ```
+
+`UnsupportedUpdaterError` is thrown by `buildNativeFeedURL` / `resolveNativeFeed` for an unknown `updater`; narrow it with `instanceof` and read its `updater` field.
 
 Validation errors are exported as singleton instances — compare them with `===`. Request failures are class instances — narrow them with `instanceof`.
 
@@ -288,6 +422,13 @@ A failed update check always rejects with a `CheckError`. Its `edgeError` and `a
 | `ErrMissingOwner` | `opts.owner` is empty. |
 | `ErrMissingAppName` | `opts.appName` is empty. |
 | `ErrMissingVersion` | `opts.version` is empty. |
+| `ErrMissingChannel` | `opts.channel` is empty (native feeds and reports). |
+| `ErrMissingPlatform` | `opts.platform` is empty (native feeds and reports). |
+| `ErrMissingArch` | `opts.arch` is empty (native feeds and reports). |
+| `ErrMissingReportKey` | `reportKey` is empty. |
+| `ErrMissingDeviceId` | `deviceId` is empty (reports). |
+| `ErrInvalidEventType` | `event.type` is not a supported report event type. |
+| `ErrInvalidReason` | `event.reason` does not match `^[a-zA-Z0-9._-]{1,128}$`. |
 
 ## Examples
 
@@ -305,9 +446,11 @@ Run any example with:
 npx ts-node examples/basic/index.ts
 ```
 
+For full desktop integrations wiring this SDK to real native updaters, see the [Example Apps](../../examples) — Electron, Squirrel, and Tauri reference implementations.
+
 ## Security Scope
 
-This SDK version performs update-check transport requests and typed response decoding only.
+This SDK version performs transport requests — update checks, native updater feed resolution, and failure/diagnostic report ingestion — with typed response decoding only.
 
 It does not verify TUF metadata, signatures, thresholds, expiration, rollback protection, or cache safety. Applications that need secure update metadata verification must perform that verification in the appropriate faynoSync component or a future SDK layer that explicitly implements it.
 
