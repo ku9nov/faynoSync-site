@@ -1,0 +1,131 @@
+---
+title: Updaters Support
+description: Complete guide to FaynoSync update mechanisms — Velopack, Squirrel, Electron Builder, Tauri, and manual updates.
+---
+
+# Updaters Support
+
+FaynoSync is designed as a universal platform for application management and updates. The updaters feature allows FaynoSync to work with different update mechanisms and adapt its response or workflow to ensure smooth and proper client application updates.
+
+## Overview
+
+Different applications use various update mechanisms, each with their own protocols and expected server responses. FaynoSync's updaters system lets you configure how the platform responds to update requests based on the specific updater type in use.
+
+Each updater has its own reference page:
+
+- [Manual](./manual.mdx) — the default FaynoSync flow with custom client update logic.
+- [Velopack](./velopack.mdx) — cross-platform installer/updater; faynoSync speaks its **native** feed protocol, no per-language SDK.
+- [Squirrel (macOS)](./squirrel-darwin.mdx) — `squirrel_darwin`.
+- [Squirrel (Windows)](./squirrel-windows.mdx) — `squirrel_windows`, generates `RELEASES`.
+- [Electron Builder](./electron-builder.mdx) — `electron-builder`, generates `*.yml`.
+- [Tauri](./tauri.mdx) — requires a cryptographic `signature`.
+
+## Supported Updaters
+
+| Updater Type | Description | Use Case | Generates Files | Special Requirements |
+|--------------|-------------|----------|-----------------|---------------------|
+| `manual` | Standard FaynoSync update flow | Default updater, works with custom update logic | No | None |
+| `velopack` | Velopack cross-platform installer/updater | Desktop apps (C#, Rust, JS, Python, Go, …) using Velopack | Yes (`releases.{channel}.json` feed) | Requires channel, platform, and arch |
+| `squirrel_darwin` | Squirrel macOS update mechanism | Applications using Squirrel for macOS updates | No | None |
+| `squirrel_windows` | Squirrel Windows update mechanism | Applications using Squirrel for Windows updates | Yes (`RELEASES`) | None |
+| `electron-builder` | Electron Builder update mechanism | Electron applications using electron-builder | Yes (`*.yml`) | None |
+| `tauri` | Tauri update mechanism | Tauri applications with built-in updater | No | Requires `signature` field |
+
+:::info
+More updaters will be added as FaynoSync continues to evolve as a universal update platform.
+:::
+
+:::tip Working examples
+See the [Example Apps](../examples/index.mdx) for runnable desktop integrations: [Electron](../examples/electron.mdx) (`electron-builder`), [Squirrel](../examples/squirrel.mdx) (`squirrel_darwin` / `squirrel_windows`), [Tauri](../examples/tauri.mdx), and [Velopack](../examples/velopack.mdx) (`velopack`, no SDK).
+:::
+
+## Platform Configuration
+
+Updaters are configured at the platform level. Each platform can have multiple updaters configured, with one designated as the default.
+
+### Updater Configuration Structure
+
+```json
+{
+  "type": "updater_type",
+  "default": boolean
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `type` | string | ✅ | The updater type (`manual`, `velopack`, `squirrel_darwin`, `squirrel_windows`, `electron-builder`, `tauri`) |
+| `default` | boolean | ❌ | Whether this updater is the default for the platform (only one can be default) |
+
+### Example Platform Configuration
+
+```json
+{
+  "id": "689f076f9ed9e38071926986",
+  "platform": "darwin",
+  "updaters": [
+    { "type": "manual", "default": true },
+    { "type": "velopack" },
+    { "type": "squirrel_darwin", "default": false },
+    { "type": "electron-builder" },
+    { "type": "tauri" }
+  ]
+}
+```
+
+:::warning
+Only one updater can be set as default per platform. If no updaters are specified during platform creation, `manual` will be automatically set as default.
+:::
+
+## Upload with the `updater` Parameter
+
+Updaters that generate or ingest special files (`RELEASES`, `*.yml`, `releases.{channel}.json`) accept an `updater` parameter in the upload request. This places all uploaded files in an isolated folder specific to that updater type, keeping formats from colliding.
+
+See each updater's page for its exact upload payload. The general shape:
+
+```bash
+curl -X POST --location 'http://localhost:9000/upload' \
+--header 'Authorization: Bearer <jwt_token>' \
+--form 'file=@"/path_to_file/myapp.exe"' \
+--form 'file=@"/path_to_file/RELEASES"' \
+--form 'data="{\"app_name\":\"myapp\",\"version\":\"0.0.1\",\"channel\":\"stable\",\"publish\":true,\"platform\":\"windows\",\"arch\":\"amd64\",\"updater\":\"squirrel_windows\"}"'
+```
+
+## Using Updaters in API Calls
+
+For JSON-style updaters (`manual`, `electron-builder`, `tauri`), request a specific format by adding the `updater` parameter to `/checkVersion`:
+
+```bash
+# Standard request (uses default updater)
+curl -X GET 'http://localhost:9000/checkVersion?app_name=myapp&version=1.0.0&channel=stable&platform=windows&arch=amd64&owner=admin'
+
+# Electron Builder
+curl -X GET 'http://localhost:9000/checkVersion?app_name=myapp&version=1.0.0&channel=stable&platform=windows&arch=amd64&owner=admin&updater=electron-builder'
+
+# Tauri
+curl -X GET 'http://localhost:9000/checkVersion?app_name=myapp&version=1.0.0&channel=stable&platform=darwin&arch=amd64&owner=admin&updater=tauri'
+```
+
+:::note
+[`velopack`](./velopack.mdx) and [`squirrel_windows`](./squirrel-windows.mdx) do **not** use `/checkVersion`. They expose dedicated feed endpoints their clients understand natively — see their pages for the exact URLs.
+:::
+
+### Frontend Dashboard
+
+The FaynoSync frontend dashboard provides a user-friendly interface for configuring updaters:
+
+- **Platform Management** — configure updaters when creating or updating platforms.
+- **Visual Configuration** — set the default updater without editing JSON.
+- **Real-time Testing** — test different updater configurations.
+
+:::tip
+While the API provides full control, the frontend dashboard is recommended for easier management of updater configurations.
+:::
+
+## Best Practices
+
+1. **Choose the right updater** — match your application's actual update mechanism.
+2. **Set a default updater** — always designate one updater as default per platform.
+3. **Use the `updater` parameter on upload** — required for updaters that generate/ingest special files so artifacts land in the correct isolated folder.
+4. **Test configurations** — verify your updater works with your client before shipping.
+5. **Monitor updates** — use the dashboard to track update success rates per updater.

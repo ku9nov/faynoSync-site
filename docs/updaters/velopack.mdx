@@ -1,0 +1,162 @@
+---
+title: Velopack Updater
+description: Ship cross-platform desktop auto-updates with Velopack and FaynoSync — native feed protocol, delta updates, CDN-by-default delivery, and TUF verification, with zero client-side SDK.
+---
+
+# Velopack Updater
+
+[Velopack](https://velopack.io) is a cross-platform installer and auto-update framework for desktop apps, with a single Rust core exposed to C#, Rust, JavaScript, Python, Go, C++, and more. FaynoSync serves Velopack updates through the **stock Velopack client** — no per-language SDK, no glue code.
+
+## A native updater, not a translation layer
+
+Every other updater in FaynoSync adapts an existing FaynoSync response into the shape a client expects. Velopack is the first updater where FaynoSync instead **reproduces the updater's own protocol end to end**: the stock Velopack `HttpSource` talks to FaynoSync exactly as it would to any static file host.
+
+What that means in practice:
+
+- **Zero client-language code.** Velopack drives 5+ languages from one Rust core. Rather than writing (and maintaining) a FaynoSync integration per language, the client uses its built-in `HttpSource` and compares versions itself. No FaynoSync SDK is involved on the client side.
+- **The feed is a projection, not a stored file.** `releases.{channel}.json` is never hand-edited or persisted as the source of truth. FaynoSync holds versions, artifacts, and the `published` flag in the database and **regenerates** the feed from that state on every relevant change.
+- **Metadata is ingested verbatim.** Package hashes (`SHA1`, `SHA256`) and sizes are taken exactly as `vpk` wrote them into `releases.{channel}.json` — FaynoSync does not recompute them. These are stored separately from FaynoSync's TUF hashes; the two never mix.
+
+## Requirements
+
+Velopack in FaynoSync **requires channel, platform, and architecture** on every release. Velopack collapses platform/arch into its channel concept (one `releases.{channel}.json` per file), while FaynoSync keeps three explicit axes — so each combination gets its own feed. Make sure the app has the matching channel, platform, and arch created before uploading.
+
+Configure the `velopack` updater on the platform (see [Platform Configuration](./index.mdx#platform-configuration)).
+
+## Packaging and upload
+
+Pack with `vpk`, then upload the packages plus the generated feed. The `--channel` you pass to `vpk` becomes the FaynoSync channel; platform and arch are separate FaynoSync axes.
+
+```bash
+# 1. Pack (channel baked into the package)
+vpk pack --packId HelloVelopack --packVersion 1.0.3 \
+         --packDir dist/HelloVelopack.app --mainExe HelloVelopack \
+         --channel nightly --outputDir releases
+
+# 2. Upload the full package (+ delta, if present) and the releases feed
+faynosync-cli upload --app HelloVelopack --channel nightly \
+         --platform darwin --arch arm64 --updater velopack \
+         --file releases/HelloVelopack-1.0.3-nightly-full.nupkg \
+         --file releases/HelloVelopack-1.0.3-nightly-delta.nupkg \
+         --file releases/releases.nightly.json
+```
+
+Upload rules enforced by the `velopack` validator:
+
+- At least one `*-full.nupkg` is **required**.
+- Exactly one `releases.{channel}.json` is **required** — it is the sole source of hashes, sizes, types, and versions.
+- `Delta` packages are optional. `Installer`/`Portable` artifacts (e.g. `Setup.pkg`) may be uploaded but never enter the feed; they are stored as version-pinned copies under `installers/` for teams that need to install a **specific** version directly.
+
+The equivalent raw `/upload` call sets `"updater":"velopack"` in the `data` payload and attaches the same files.
+
+## The feed
+
+Clients request `releases.{channel}.json`; FaynoSync builds it from the database in PascalCase, the exact format the stock client parses:
+
+```json
+{
+  "Assets": [
+    {
+      "PackageId": "HelloVelopack",
+      "Version": "1.0.3",
+      "Type": "Full",
+      "FileName": "HelloVelopack-1.0.3-nightly-full.nupkg",
+      "SHA1": "…",
+      "SHA256": "…",
+      "Size": 13355053,
+      "NotesMarkdown": "- fix crash on startup",
+      "NotesHTML": "<ul><li>fix crash on startup</li></ul>"
+    },
+    {
+      "PackageId": "HelloVelopack",
+      "Version": "1.0.3",
+      "Type": "Delta",
+      "FileName": "HelloVelopack-1.0.3-nightly-delta.nupkg",
+      "SHA1": "…", "SHA256": "…", "Size": 172110
+    }
+  ]
+}
+```
+
+- `NotesMarkdown` comes from the version's changelog; `NotesHTML` is rendered from it (sanitized).
+- `FileName` is the **bare package name** — the client resolves each download relative to the feed URL and stores it under the same name.
+- **Unpublishing removes the whole version.** Set `publish = false` and both the `Full` and `Delta` for that version leave the feed together — the version disappears entirely, it is never served half-published.
+- **Delta chaining safety.** A `Delta` is kept only while the version directly below it (its implicit base) is still published with a `Full`. Unpublish an intermediate base and the *higher* versions' deltas can no longer chain, so those deltas drop out while their `Full` packages remain as a fallback.
+
+## Two delivery modes
+
+Both modes use the stock client with zero language-specific code. The only difference is where the app's `UPDATE_URL` points.
+
+| | Mode 1 — CDN / static (default) | Mode 2 — API / dynamic |
+|---|---|---|
+| `UPDATE_URL` base | Object storage / CDN | FaynoSync API route |
+| Who serves the feed | Static object in storage | FaynoSync, per request |
+| API load per check | ~none | every check |
+| publish / unpublish, changelog, delta | ✅ | ✅ |
+| Per-client intermediate stepping | ❌ | ✅ |
+| Scale | Very high (CDN) | Bounded by the API |
+
+### Mode 1 — CDN, on by default
+
+There is **no flag to turn this on**. Whenever a velopack version changes state (upload, publish/unpublish, changelog edit, delete), FaynoSync automatically **materializes** the feed as a static object in `S3_BUCKET_NAME`, next to the packages:
+
+```
+velopack/{owner}/{app}/{platform}/{arch}/releases.{channel}.json
+```
+
+Point the app's `UPDATE_URL` at that base and let the stock client append the feed file:
+
+```python
+# Stock Velopack HttpSource — no SDK
+UPDATE_URL = "https://cdn.example.com/velopack/admin/HelloVelopack/darwin/arm64"
+# client → GET .../releases.nightly.json   (served straight from CDN/storage)
+```
+
+Put a CDN in front of that public bucket and update checks never touch the API.
+
+:::note Not the same as the `cdn` edge cache
+This static-feed materialization is inherent to how Velopack works and is **always on** for velopack apps. It is a different mechanism from the per-app [`cdn` edge/S3 response cache](../edge) used by SDK clients calling `/checkVersion` — that one caches FaynoSync's own JSON responses in `S3_BUCKET_NAME_CDN`. Velopack feeds live in `S3_BUCKET_NAME` and are not governed by the `cdn` flag.
+:::
+
+### Mode 2 — API, dynamic
+
+Point `UPDATE_URL` at the FaynoSync API route instead:
+
+```
+GET /velopack/{owner}/{app}/{platform}/{arch}/releases.{channel}.json?localVersion=..&id=..
+```
+
+FaynoSync builds the feed per request, so it can apply per-client logic the static object can't (object storage ignores query parameters). Package (`*.nupkg`) requests to this route are `302`-redirected to the real storage link.
+
+```python
+UPDATE_URL = "https://api.example.com/velopack/admin/HelloVelopack/darwin/arm64"
+# client → GET .../releases.nightly.json?localVersion=1.0.0
+```
+
+## Intermediate builds
+
+[Required intermediate builds](../intermediate_build) work with Velopack **only in Mode 2**. When the client sends its `localVersion` and a mandatory intermediate exists between it and the latest, FaynoSync caps the feed so the highest `Full` is the intermediate version — the client steps through it, then continues to latest on the next check.
+
+This is currently the way to preserve the intermediate feature for Velopack, since a static CDN object can't make per-client decisions. It is likely a **temporary** split; the goal is to cover intermediate stepping through the CDN path as well.
+
+## TUF verification
+
+Velopack packages can be bound to FaynoSync's [TUF root of trust](../api/tuf/tuf-introduction). With TUF enabled for the app, a client that verifies targets checks each `.nupkg`'s SHA256/size against a TUF-signed target before applying it. Once TUF is on, **an unsigned or mismatched target is rejected** — the update does not apply. This layers FaynoSync's signing guarantees on top of Velopack's own package validation.
+
+## Downgrade and revocation
+
+Set **publish = false** on a version and the next feed regeneration removes it. Clients then resolve the highest still-published version as the target — an effective rollback/revocation without touching files.
+
+## Limitations
+
+- **`critical` is not understood by the stock client** — Velopack always installs the latest available version. Urgency is an application-level UX concern; the server can surface a marker, but enforcement lives in your app code.
+- Feeds are per `(channel, platform, arch)` tuple; deleting the last velopack version of a tuple leaves its old feed object in place (objects are not deleted, only regenerated).
+
+## Related reading
+
+- [Velopack example app](../examples/velopack.mdx) — a runnable Python client using the stock Velopack updater, no SDK.
+- [Updaters Support](./index.mdx) — how each updater shapes the FaynoSync response.
+- [Required Intermediate Build](../intermediate_build) — enforcing update paths (Mode 2).
+- [Edge and S3 Response Cache](../edge) — the separate `cdn` response cache for `/checkVersion`.
+- [TUF](../api/tuf/tuf-introduction) — signing and verification.
+- [Telemetry System](../telemetry) — tracking update adoption.

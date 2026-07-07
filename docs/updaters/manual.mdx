@@ -1,0 +1,39 @@
+---
+title: Manual Updater
+description: The default FaynoSync update flow — standard JSON responses with update_url fields for custom client update logic.
+---
+
+# Manual Updater (Default)
+
+The standard FaynoSync update flow, built for applications that implement their own update logic. When no updater is specified during platform creation, `manual` is set as the default.
+
+## Response Format
+
+- Standard JSON response with `update_url_(extension)` fields (one per artifact type).
+- Compatible with any custom update mechanism — your client decides how to download and apply.
+
+## Checking for Updates
+
+```bash
+curl -X GET 'http://localhost:9000/checkVersion?app_name=myapp&version=1.0.0&channel=stable&platform=windows&arch=amd64&owner=admin'
+```
+
+A typical response:
+
+```json
+{
+  "update_available": true,
+  "critical": false,
+  "changelog": "### Changelog\n\n- Added feature X\n",
+  "update_url_deb": "https://<bucket_name>.s3.amazonaws.com/myapp/stable/linux/amd64/myapp-1.0.1.deb",
+  "update_url_rpm": "https://<bucket_name>.s3.amazonaws.com/myapp/stable/linux/amd64/myapp-1.0.1.rpm"
+}
+```
+
+The manual updater pairs well with the [official SDKs](../sdk/intro), which wrap `/checkVersion`, add edge-first delivery, and expose a small update API.
+
+## Related reading
+
+- [Updaters Support](./index.mdx) — overview of all updater types.
+- [SDK overview](../sdk/intro) — client libraries built around the manual flow.
+- [Required Intermediate Build](../intermediate_build) — enforce update paths.

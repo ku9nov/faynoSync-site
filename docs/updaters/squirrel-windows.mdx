@@ -1,0 +1,56 @@
+---
+title: Squirrel (Windows) Updater
+description: Serve Squirrel.Windows auto-updates from FaynoSync — URL-based routing and the generated RELEASES manifest.
+---
+
+# Squirrel Windows
+
+Uses URL-based routing instead of query parameters for Windows Squirrel updates, and generates a `RELEASES` manifest.
+
+## URL Format
+
+```
+GET /update/{owner}/{app_name}/{channel}/{platform}/{arch}/{version}/
+```
+
+**Example:**
+
+```bash
+curl --location 'http://localhost:9000/update/admin/secondapp/stable/windows/amd64/0.0.0.1/'
+```
+
+:::note
+Squirrel Windows automatically appends `RELEASES` to the end of the URL and checks for updates.
+:::
+
+## Generated Files
+
+| Generated File | Purpose |
+|----------------|---------|
+| `RELEASES` | Contains package names and metadata for Squirrel Windows updates |
+
+## Upload with the `updater` Parameter
+
+Include the `updater` parameter so the `.exe` and `RELEASES` land in an isolated folder:
+
+```bash
+curl -X POST --location 'http://localhost:9000/upload' \
+--header 'Authorization: Bearer <jwt_token>' \
+--form 'file=@"/path_to_file/myapp.exe"' \
+--form 'file=@"/path_to_file/RELEASES"' \
+--form 'data="{\"app_name\":\"myapp\",\"version\":\"0.0.1\",\"channel\":\"stable\",\"publish\":true,\"platform\":\"windows\",\"arch\":\"amd64\",\"updater\":\"squirrel_windows\",\"changelog\":\"### Changelog\\n\\n- Added new feature X\\n- Fixed bug Y\"}"'
+```
+
+Files are then organized as:
+
+```
+/updater/myapp/stable/windows/amd64/0.0.1/
+├── myapp.exe
+└── RELEASES
+```
+
+## Related reading
+
+- [Updaters Support](./index.mdx) — overview of all updater types.
+- [Squirrel (macOS)](./squirrel-darwin.mdx) — the macOS counterpart.
+- [Squirrel example app](../examples/squirrel) — Electron `autoUpdater` wired to FaynoSync.

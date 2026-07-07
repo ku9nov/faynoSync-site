@@ -1,0 +1,26 @@
+---
+title: Squirrel (macOS) Updater
+description: Serve Squirrel.Mac auto-updates from FaynoSync — ZIP-only responses tuned for the macOS Squirrel update mechanism.
+---
+
+# Squirrel Darwin (macOS)
+
+Returns only ZIP archive links for macOS Squirrel updates.
+
+## Key Behavior
+
+- The response contains a `url` field instead of `update_url_zip`.
+- Only ZIP archive links are returned.
+- Optimized for the Squirrel.Mac update mechanism.
+
+## Checking for Updates
+
+```bash
+curl -X GET 'http://localhost:9000/checkVersion?app_name=myapp&version=1.0.0&channel=stable&platform=darwin&arch=amd64&owner=admin&updater=squirrel_darwin'
+```
+
+## Related reading
+
+- [Updaters Support](./index.mdx) — overview of all updater types.
+- [Squirrel (Windows)](./squirrel-windows.mdx) — the Windows counterpart and its `RELEASES` output.
+- [Squirrel example app](../examples/squirrel) — Electron `autoUpdater` wired to FaynoSync.

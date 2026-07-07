@@ -1,0 +1,97 @@
+---
+title: Velopack Auto-Update Example (Python)
+sidebar_label: Velopack
+description: Velopack auto-update example with faynoSync — a Python desktop app updating through the stock Velopack client with no SDK, plus optional TUF verification, telemetry, and failure reports.
+sidebar_position: 5
+---
+
+# Velopack Example (Python, no SDK)
+
+A minimal Python desktop app that consumes updates from a faynoSync [Velopack](../updaters/velopack.mdx) feed using the **stock Velopack client** — no faynoSync SDK, no per-language glue. It reads the feed, optionally binds the artifacts to faynoSync's TUF root of trust, then downloads and applies the update in place.
+
+**Repository:** [github.com/ku9nov/faynoSync-velopack-p3-example](https://github.com/ku9nov/faynoSync-velopack-p3-example)
+
+Unlike the [Electron](./electron.mdx), [Squirrel](./squirrel.mdx), and [Tauri](./tauri.mdx) examples — which run the faynoSync JavaScript SDK as an edge-first gate in front of a native updater — this one uses **no SDK at all**. faynoSync speaks Velopack's native feed protocol, so the stock `UpdateManager` talks to it as it would to any static host. That is the whole point of the [`velopack` updater](../updaters/velopack.mdx).
+
+## Integration pattern
+
+1. Point the stock Velopack `UpdateManager` at a faynoSync `UPDATE_URL`.
+2. `check_for_updates()` fetches `releases.{channel}.json` and compares versions client-side.
+3. Optionally verify each artifact against TUF metadata before applying.
+4. `download_updates()` → `apply_updates_and_exit()`.
+
+## The stock client — zero SDK
+
+The client is the unmodified Velopack `UpdateManager` over an `HttpSource`. faynoSync is just the URL it points at:
+
+```python
+import velopack
+
+opts = velopack.UpdateOptions(AllowVersionDowngrade=True, MaximumDeltasBeforeFallback=10)
+um = velopack.UpdateManager(velopack.HttpSource(url), opts)
+info = um.check_for_updates()
+
+if info is None:
+    log.info("Already on the latest version (%s).", VERSION)
+    return
+
+# ... optional TUF verification (below) ...
+
+um.download_updates(info)
+um.apply_updates_and_exit(info)   # CLI-style: apply and exit, re-run to launch the new version
+```
+
+`AllowVersionDowngrade=True` is what lets the app roll back when you unpublish a version on faynoSync — the feed drops that version and the client resolves the next published one as the target. See [`app.py`](https://github.com/ku9nov/faynoSync-velopack-p3-example/blob/main/app.py).
+
+## Feed URL: CDN by default, API for intermediate
+
+faynoSync serves the Velopack feed two ways, and the app only changes which base it points at. By default it reads the **static feed from the CDN**; set `ASK_API=true` to hit the **dynamic API** instead (needed for [required intermediate builds](../updaters/velopack.mdx#intermediate-builds), which the static object can't compute per client):
+
+```python
+def build_update_url():
+    override = os.environ.get("UPDATE_URL")
+    if override:
+        return override
+    base = API_BASE if ASK_API else BASE
+    return f"{base}/velopack/{OWNER}/{APP}/{detect_platform()}/{detect_arch()}"
+# client → GET {url}/releases.{channel}.json
+```
+
+`detect_platform()` / `detect_arch()` map Python's OS/machine names to the platform and arch values faynoSync expects, so the URL resolves to the right per-`(platform, arch)` feed. The channel is baked into the package at `vpk pack --channel` and appears only in the feed file name.
+
+## TUF verification (optional)
+
+When `TUF_ENABLED=true`, each artifact's SHA256/size is bound to a TUF-signed target before applying. Any mismatch — or an unsigned target once TUF is on — aborts the update:
+
+```python
+if TUF_ENABLED:
+    assets = [info.TargetFullRelease] + (info.DeltasToTarget or [])
+    try:
+        tuf_verify.verify_assets(assets, METADATA_URL, TARGETS_URL, OWNER, APP,
+                                 detect_platform(), detect_arch(), TRUST_DIR)
+    except tuf_verify.VerificationError as e:
+        log.error("TUF verification FAILED, not applying update: %s", e)
+        return
+```
+
+See [`tuf_verify.py`](https://github.com/ku9nov/faynoSync-velopack-p3-example/blob/main/tuf_verify.py).
+
+:::warning TOFU caveat
+On first run with no local `root.json`, the example fetches the initial TUF root over the network (trust-on-first-use). There is **no pinned/embedded root** — fine for this internal example, but a production client must ship the root with the app. See the [TUF docs](../api/tuf/tuf-introduction).
+:::
+
+## Telemetry and reports
+
+Because there is no SDK, the app talks to faynoSync's [telemetry beacon](../api/info/telemetry_beacon) and [reports](../api/reports/ingest) endpoints with plain HTTP — both are fire-and-forget and never block or fail the update:
+
+- `TELEMETRY_ENABLED=true` → `send_beacon(...)` posts to `/telemetry/beacon` on each check ([`telemetry.py`](https://github.com/ku9nov/faynoSync-velopack-p3-example/blob/main/telemetry.py)).
+- `REPORTS_ENABLED=true` with a `FAYNOSYNC_REPORT_KEY` → update failures POST to `/reports/ingest` ([`report.py`](https://github.com/ku9nov/faynoSync-velopack-p3-example/blob/main/report.py)).
+
+The repo's `USAGE.md` walks the full end-to-end flow — publish, update (FULL then DELTA), downgrade, TUF, intermediate builds, telemetry, and reports.
+
+## Related reading
+
+- [Velopack Updater](../updaters/velopack.mdx) — the feed protocol, delivery modes, and delta handling.
+- [Required Intermediate Build](../intermediate_build.mdx) — the feature behind `ASK_API=true`.
+- [TUF](../api/tuf/tuf-introduction) — signing and verification.
+- [Telemetry beacon API](../api/info/telemetry_beacon) — the endpoint used without an SDK.
