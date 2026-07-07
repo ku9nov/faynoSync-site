@@ -1,0 +1,126 @@
+---
+title: Velopack Feed
+description: Serve the dynamic Velopack releases feed from FaynoSync — returns releases.{channel}.json honoring required intermediate builds per client version.
+---
+
+# Velopack Feed Endpoint
+
+Dynamic feed endpoint for [Velopack](../../updaters/velopack.mdx) applications. It returns the `releases.{channel}.json` document the stock Velopack client expects, built from the database on every request so it can honor per-client logic — most importantly [required intermediate builds](../../intermediate_build.mdx).
+
+## Overview
+
+FaynoSync serves Velopack feeds two ways:
+
+- **Static (CDN, default)** — FaynoSync materializes `releases.{channel}.json` to object storage and the client reads it directly. No API involvement. See [Velopack updater](../../updaters/velopack.mdx#mode-1--cdn-on-by-default).
+- **Dynamic (this endpoint)** — the client points its `UPDATE_URL` at the API route. FaynoSync builds the feed per request, which lets it cap the feed at a required intermediate version for the reporting client. Object storage can't do this because it ignores query parameters.
+
+The channel is parsed from the requested file name (`releases.{channel}.json`), so it is not a separate path parameter.
+
+## Endpoint
+
+```
+GET /velopack/{owner}/{app}/{platform}/{arch}/releases.{channel}.json
+```
+
+The same route also resolves package downloads: a request whose final segment ends in `.nupkg` is answered with a `302` redirect to the artifact's real storage link.
+
+## URL Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `owner` | string | ✅ | Name of your admin user |
+| `app` | string | ✅ | Name of the application |
+| `platform` | string | ✅ | Platform (e.g., `darwin`, `windows`, `linux`) |
+| `arch` | string | ✅ | Architecture (e.g., `arm64`, `amd64`) |
+| `channel` | string | ✅ | Parsed from the file name `releases.{channel}.json` (e.g., `nightly`) |
+
+## Query Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `localVersion` | string | ❌ | The client's current version. When set and a required intermediate build exists between it and the latest, the feed is capped so the highest `Full` is that intermediate version. |
+| `id` | string | ❌ | Velopack package id. If present it must equal `app`, otherwise the request is rejected. |
+
+## Example Request
+
+```bash
+curl --location 'http://localhost:9000/velopack/admin/HelloVelopack/darwin/arm64/releases.nightly.json?localVersion=1.0.0&id=HelloVelopack'
+```
+
+## Response
+
+### Success Response (200 OK)
+
+`Content-Type: application/json`. The body is the Velopack feed in PascalCase — the exact shape the stock client parses:
+
+```json
+{
+  "Assets": [
+    {
+      "PackageId": "HelloVelopack",
+      "Version": "1.0.1",
+      "Type": "Full",
+      "FileName": "HelloVelopack-1.0.1-nightly-full.nupkg",
+      "SHA1": "…",
+      "SHA256": "…",
+      "Size": 13355895,
+      "NotesMarkdown": "- fix crash on startup",
+      "NotesHTML": "<ul><li>fix crash on startup</li></ul>"
+    },
+    {
+      "PackageId": "HelloVelopack",
+      "Version": "1.0.1",
+      "Type": "Delta",
+      "FileName": "HelloVelopack-1.0.1-nightly-delta.nupkg",
+      "SHA1": "…", "SHA256": "…", "Size": 189039
+    },
+    {
+      "PackageId": "HelloVelopack",
+      "Version": "1.0.0",
+      "Type": "Full",
+      "FileName": "HelloVelopack-1.0.0-nightly-full.nupkg",
+      "SHA1": "…", "SHA256": "…", "Size": 13355733
+    }
+  ]
+}
+```
+
+In the example above `1.0.2` is published but `1.0.1` is marked intermediate, so a client on `localVersion=1.0.0` is stepped to `1.0.1` first — the feed is capped there. On the next check (now on `1.0.1`) it proceeds to the latest.
+
+### Empty feed
+
+When there are no published velopack releases for the tuple, or the feed can't be built, the endpoint returns `200 OK` with an empty document rather than an error:
+
+```json
+{ "Assets": [] }
+```
+
+### Package redirect (302)
+
+A `.nupkg` request on this route redirects to the package's public storage link:
+
+```
+GET /velopack/admin/HelloVelopack/darwin/arm64/HelloVelopack-1.0.1-nightly-full.nupkg
+→ 302 Found  (Location: <storage link>)
+```
+
+## Configuration Requirements
+
+1. **Updater**: the platform must have the `velopack` updater configured.
+2. **Channel, platform, arch**: Velopack releases require all three — each `(channel, platform, arch)` tuple has its own feed.
+3. **Client `UPDATE_URL`**: point it at `{api_base}/velopack/{owner}/{app}/{platform}/{arch}`; the stock client appends `/releases.{channel}.json`.
+
+## Comparison with the static feed
+
+| Aspect | Static feed (CDN) | This endpoint (API) |
+|--------|-------------------|---------------------|
+| Who serves it | Object storage / CDN | FaynoSync, per request |
+| API load per check | ~none | every check |
+| Required intermediate builds | ❌ | ✅ (`localVersion`) |
+| Enabled by | Always on for velopack apps | Point `UPDATE_URL` at the API |
+
+## Notes
+
+- **Channel from file name** — the channel is not a path parameter; it is read from `releases.{channel}.json`.
+- **Feed format** — PascalCase keys; `Full` and `Delta` asset types; hashes are taken verbatim from the uploaded `releases.{channel}.json`.
+- **Related** — [Velopack updater](../../updaters/velopack.mdx), [Required Intermediate Build](../../intermediate_build.mdx), [Velopack example app](../../examples/velopack.mdx).

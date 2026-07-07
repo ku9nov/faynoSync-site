@@ -141,6 +141,7 @@ const sidebars: SidebarsConfig = {
           items: [
             'api/info/latest',
             'api/info/squirrel-windows',
+            'api/info/velopack-feed',
             'api/info/health',
             'api/info/fetch-latest-build',
             'api/info/whoami',

@@ -27,7 +27,7 @@ description: Complete guide to FaynoSync team-based access control and permissio
 
 - Belongs to a specific administrator and is **isolated** from others.
 
-- **Has no access** to any user-related API (user management endpoints).
+- **Has no access** to any user-related API ([user management endpoints](./api/team/users-introduction)).
 
 - Can only create, edit, or delete **resources that belong to their administrator**.
 
@@ -77,9 +77,9 @@ To prevent collisions from duplicated resource names across different administra
 
 #### Updated Endpoints:
 
-- `GET /checkVersion`
+- [`GET /checkVersion`](./api/info/latest)
 
-- `GET /apps/latest`
+- [`GET /apps/latest`](./api/info/fetch-latest-build)
 
 `owner` is the administrator's account name. It ensures that the correct scope is used when resolving resource names.
 
@@ -126,3 +126,10 @@ To prevent collisions from duplicated resource names across different administra
     </tr>
   </tbody>
 </table>
+
+## Related documentation
+
+- [Team users introduction](./api/team/users-introduction) — managing team users under an administrator.
+- [Update admin permissions](./api/team/updateAdmin) — change a team user's username, password, and permissions.
+- [Login](./api/auth/login) — authenticate as an administrator or team user.
+- [Whoami](./api/info/whoami) — resolve the current authenticated identity and scope.

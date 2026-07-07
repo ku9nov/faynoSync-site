@@ -14,23 +14,23 @@ One of FaynoSync's key strengths is its flexibility and user control. Users can 
 
 ## Key Features
 
-- **Unified Registry**: FaynoSync serves as a central registry for different types of applications, providing a streamlined, intuitive API that simplifies managing your updates.
+- **[Unified Registry](./api/apps/app-introduction)**: FaynoSync serves as a central registry for different types of applications, providing a streamlined, intuitive API that simplifies managing your updates.
 
-- **Multi-Updater Support**: Support for various update mechanisms including Squirrel Windows/macOS, Electron Builder, and custom manual updates with artifact isolation for proper file organization.
+- **Multi-Updater Support**: Support for various update mechanisms including Velopack, Squirrel Windows/macOS, Electron Builder, and custom manual updates with artifact isolation for proper file organization.
 
 - **Seamless Updates**: Keep your applications always up-to-date with a straightforward and efficient auto-updating process that adapts to your specific update mechanism.
 
 - **Maximum Flexibility**: Define your channels, platforms, and architectures freely, giving you complete control over how your updates are managed.
 
-- **Security**: Keep your cloud storage buckets and applications private — downloads are only accessible through authenticated access with granular permissions. FaynoSync implements a TUF-inspired secure update system for metadata signing, verification, and rollback protection.
+- **[Security](./api/tuf/tuf-introduction)**: Keep your cloud storage buckets and applications private — downloads are only accessible through authenticated access with granular permissions. FaynoSync implements a TUF-inspired secure update system for metadata signing, verification, and rollback protection.
 
-- **Team Management**: Create and manage team users with fine-grained permissions, controlling access to applications and resources across your organization.
+- **[Team Management](./team_based_auth)**: Create and manage team users with fine-grained permissions, controlling access to applications and resources across your organization.
 
-- **Performance Mode**: Enable intelligent caching to reduce server load and minimize response times, optimizing your application's performance.
+- **[Performance Mode](./performance)**: Enable intelligent caching to reduce server load and minimize response times, optimizing your application's performance.
 
-- **Telemetry System**: Gain valuable insights with detailed analytics about your application's usage, version distribution, and user base across platforms.
+- **[Telemetry System](./telemetry)**: Gain valuable insights with detailed analytics about your application's usage, version distribution, and user base across platforms.
 
-- **Required Intermediate Builds**: Enforce specific update paths for breaking changes and critical updates, ensuring safe and controlled application upgrades.
+- **[Required Intermediate Builds](./intermediate_build)**: Enforce specific update paths for breaking changes and critical updates, ensuring safe and controlled application upgrades.
 
 - **Multi-Cloud Storage**: Seamless integration with AWS S3, Garage (S3-compatible), Digital Ocean Spaces, and GCP Cloud Storage for maximum flexibility and reliability. MinIO remains available for backward compatibility but is deprecated for new setups.
 
@@ -41,10 +41,13 @@ One of FaynoSync's key strengths is its flexibility and user control. Users can 
 FaynoSync supports multiple update mechanisms to ensure compatibility with various application frameworks:
 
 - **Manual Updates**: Custom update logic for applications with specific requirements
+- **Velopack**: Cross-platform desktop updates served through Velopack's native feed protocol — no per-language SDK, with delta updates and CDN-by-default delivery
 - **Squirrel Windows**: Native support for Windows applications using Squirrel update mechanism
 - **Squirrel macOS**: Optimized updates for macOS applications using Squirrel
 - **Electron Builder**: Full compatibility with Electron applications using electron-builder
 - **Tauri**: Full compatibility with Tauri applications
+
+See [Updaters Support](./updaters/index.mdx) for details on each mechanism.
 
 ## Getting Started
 

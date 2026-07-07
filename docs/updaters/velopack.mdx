@@ -126,7 +126,7 @@ Point `UPDATE_URL` at the FaynoSync API route instead:
 GET /velopack/{owner}/{app}/{platform}/{arch}/releases.{channel}.json?localVersion=..&id=..
 ```
 
-FaynoSync builds the feed per request, so it can apply per-client logic the static object can't (object storage ignores query parameters). Package (`*.nupkg`) requests to this route are `302`-redirected to the real storage link.
+FaynoSync builds the feed per request, so it can apply per-client logic the static object can't (object storage ignores query parameters). Package (`*.nupkg`) requests to this route are `302`-redirected to the real storage link. See the [Velopack Feed endpoint](../api/info/velopack-feed.mdx) for the full request/response reference.
 
 ```python
 UPDATE_URL = "https://api.example.com/velopack/admin/HelloVelopack/darwin/arm64"
