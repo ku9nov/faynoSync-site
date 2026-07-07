@@ -7,13 +7,9 @@ import { ArrowRight, Cloud, Hash, Zap, Globe, Rocket, Wrench, Laptop, Globe2, Sm
 import { SiJenkins, SiGithubactions, SiGitlab, SiDocker, SiLinux, SiApple, SiElectron, SiArm } from 'react-icons/si'
 import { FaWindows } from 'react-icons/fa'
 import AnimatedBanner from '../AnimatedBanner';
-
-const hexToRgb = (hex: string) => {
-  const normalizedHex = hex.replace('#', '');
-  const value = Number.parseInt(normalizedHex, 16);
-
-  return `${(value >> 16) & 255}, ${(value >> 8) & 255}, ${value & 255}`;
-};
+import UpdatersShowcase from '../UpdatersShowcase';
+import UseCaseCard from '../UseCaseCard';
+import KeyFeaturesBento from '../KeyFeaturesBento';
 
 // Hook for scroll-triggered animations
 const useScrollAnimation = () => {
@@ -741,7 +737,7 @@ const features = [
   {
     icon: <RefreshCw className="h-8 w-8" />,
     title: 'Multi-Updater Support',
-    description: 'Support for various update mechanisms including Squirrel Windows/macOS, Electron Builder, Tauri and custom manual updates.',
+    description: 'Support for various update mechanisms including Velopack, Squirrel Windows/macOS, Electron Builder, Tauri and custom manual updates.',
     color: featureColors[1],
   },
   {
@@ -802,7 +798,7 @@ const formatStars = (count: number) =>
 
 export default function HomePage() {
   const { siteConfig } = useDocusaurusContext()
-  const { visibleSections, visibleCards } = useScrollAnimation()
+  const { visibleSections } = useScrollAnimation()
   const [stars, setStars] = useState<number | null>(null)
 
   useEffect(() => {
@@ -862,6 +858,9 @@ export default function HomePage() {
           </div>
           <HeroUpdateFlow />
         </section>
+
+        {/* Updaters Showcase Carousel */}
+        <UpdatersShowcase />
 
         {/* Introduction Section */}
         <section 
@@ -930,30 +929,7 @@ export default function HomePage() {
           <h2 className="text-4xl font-bold text-center text-white mb-12 section-title-enhanced">
             <span className="gradient-text">Key Features</span>
           </h2>
-          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {features.map((feature, idx) => (
-              <div
-                key={feature.title}
-                className={`enhanced-feature-card sharedCard ${visibleCards.has('features-cards') ? 'staggered-card-visible' : 'staggered-card-hidden'}`}
-                style={{ 
-                  '--card-color': feature.color, 
-                  '--card-rgb': hexToRgb(feature.color),
-                  '--animation-delay': `${idx * 80}ms`,
-                  animationDelay: visibleCards.has('features-cards') ? `${idx * 80}ms` : '0ms'
-                } as React.CSSProperties}
-              >
-                <div className="sharedCardIcon enhanced-icon-container">
-                  <span className="enhanced-icon">{feature.icon}</span>
-                  <div className="icon-glow"></div>
-                </div>
-                <div className="sharedCardContent">
-                  <h3 className="sharedCardTitle enhanced-card-title">{feature.title}</h3>
-                  <p className="sharedCardDescription enhanced-card-description">{feature.description}</p>
-                </div>
-                <div className="card-hover-effect"></div>
-              </div>
-            ))}
-          </div>
+          <KeyFeaturesBento features={features} />
         </section>
 
         {/* Enhanced Use Cases Section */}
@@ -968,16 +944,14 @@ export default function HomePage() {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {useCases.map((useCase, idx) => (
-                <div
+                <UseCaseCard
                   key={useCase.title}
-                  className={`enhanced-use-case-card use-case-slide-${idx % 2 === 0 ? 'left' : 'right'} rounded-xl p-8 backdrop-blur-sm group`}
-                  style={{ '--use-case-color': useCase.color } as React.CSSProperties}
-                >
-                  <div className="enhanced-use-case-icon mb-5 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">{useCase.icon}</div>
-                  <h3 className="text-2xl font-semibold text-white mb-4">{useCase.title}</h3>
-                  <p className="text-gray-200 text-lg transition-colors duration-300 group-hover:text-white">{useCase.description}</p>
-                  <div className="use-case-hover-line"></div>
-                </div>
+                  title={useCase.title}
+                  description={useCase.description}
+                  icon={useCase.icon}
+                  color={useCase.color}
+                  index={idx}
+                />
               ))}
             </div>
           </div>
