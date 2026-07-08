@@ -123,9 +123,17 @@ REPORTS_MAX_BLOBS_PER_GROUP=10
 REPORTS_STORAGE_PREFIX=reports
 REPORTS_RATE_LIMIT_PER_KEY_PER_MINUTE=100
 
+# TUF (The Update Framework) — optional, enables signed metadata
+TUF_ENABLED=true  # or false
+ONLINE_KEY_DIR=/private_keys
+
 # API Configuration
 API_URL=https://faynosync-api.example.com
 ```
+
+:::info
+When `TUF_ENABLED=true`, `ONLINE_KEY_DIR` must point to a directory (inside the container) holding the online signing keys. Mount it into the container in your `docker-compose.yaml` (see below). Leave `TUF_ENABLED=false` if you don't use TUF signing.
+:::
 
 ### 3. Generate Security Keys
 
@@ -157,6 +165,8 @@ services:
       - "9000:9000"
     volumes:
       -  ./.env:/app/.env
+      # Required only when TUF_ENABLED=true — mount the online signing keys
+      -  ./private_keys:/private_keys
     environment:
       GIN_MODE: release
 ```

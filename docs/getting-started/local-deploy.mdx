@@ -46,8 +46,14 @@ REDIS_PASSWORD=
 REDIS_DB=0
 ENABLE_TELEMETRY=true
 
+# TUF (The Update Framework) — optional, enables signed metadata
+TUF_ENABLED=true
+ONLINE_KEY_DIR=/private_keys
+
 VITE_API_URL=http://localhost:8000
 ```
+
+When `TUF_ENABLED=true`, mount the online signing keys into the backend container (add `- ./private_keys:/private_keys` under the `backend` service volumes). Set `TUF_ENABLED=false` to skip TUF signing entirely.
 
 `S3_BUCKET_NAME_CDN` is used for API response caching. You can point it to `S3_BUCKET_NAME` or keep a separate bucket for flexible cache policies.
 
