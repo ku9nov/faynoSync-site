@@ -5,7 +5,7 @@ description: Ship cross-platform desktop auto-updates with Velopack and FaynoSyn
 
 # Velopack Updater
 
-[Velopack](https://velopack.io) is a cross-platform installer and auto-update framework for desktop apps, with a single Rust core exposed to C#, Rust, JavaScript, Python, Go, C++, and more. FaynoSync serves Velopack updates through the **stock Velopack client** — no per-language SDK, no glue code.
+[Velopack](https://velopack.io) is a cross-platform installer and auto-update framework for desktop apps. Its native installer/update engine is written in Rust, with official client libraries for C#, Rust, JavaScript, C++, and Python (Java, Swift, and Go are planned). FaynoSync serves Velopack updates through the **stock Velopack client** — no per-language SDK, no glue code.
 
 ## A native updater, not a translation layer
 
@@ -13,7 +13,7 @@ Every other updater in FaynoSync adapts an existing FaynoSync response into the 
 
 What that means in practice:
 
-- **Zero client-language code.** Velopack drives 5+ languages from one Rust core. Rather than writing (and maintaining) a FaynoSync integration per language, the client uses its built-in `HttpSource` and compares versions itself. No FaynoSync SDK is involved on the client side.
+- **Zero client-language code.** Velopack ships official client libraries for 5 languages (C#, Rust, JS, C++, Python) over a shared native engine. Rather than writing (and maintaining) a FaynoSync integration per language, the client uses its built-in `HttpSource` and compares versions itself. No FaynoSync SDK is involved on the client side.
 - **The feed is a projection, not a stored file.** `releases.{channel}.json` is never hand-edited or persisted as the source of truth. FaynoSync holds versions, artifacts, and the `published` flag in the database and **regenerates** the feed from that state on every relevant change.
 - **Metadata is ingested verbatim.** Package hashes (`SHA1`, `SHA256`) and sizes are taken exactly as `vpk` wrote them into `releases.{channel}.json` — FaynoSync does not recompute them. These are stored separately from FaynoSync's TUF hashes; the two never mix.
 
