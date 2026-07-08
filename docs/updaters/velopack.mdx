@@ -34,11 +34,13 @@ vpk pack --packId HelloVelopack --packVersion 1.0.3 \
          --channel nightly --outputDir releases
 
 # 2. Upload the full package (+ delta, if present) and the releases feed
-faynosync-cli upload --app HelloVelopack --channel nightly \
+faynosync-cli upload --app HelloVelopack --version 1.0.3 --channel nightly \
          --platform darwin --arch arm64 --updater velopack \
+         --file releases/HelloVelopack-nightly-Setup.pkg \
          --file releases/HelloVelopack-1.0.3-nightly-full.nupkg \
          --file releases/HelloVelopack-1.0.3-nightly-delta.nupkg \
-         --file releases/releases.nightly.json
+         --file releases/releases.nightly.json \
+         --publish
 ```
 
 Upload rules enforced by the `velopack` validator:
