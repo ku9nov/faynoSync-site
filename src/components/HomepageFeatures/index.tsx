@@ -3,7 +3,7 @@ import Link from '@docusaurus/Link'
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext'
 import Layout from '@theme/Layout'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { ArrowRight, Cloud, Hash, Zap, Globe, Rocket, Wrench, Laptop, Globe2, Smartphone, Shield, Zap as Lightning, Users, BarChart2, GitMerge, RefreshCw, Star, Download, Upload, Settings, Database, Lock, Clock, TrendingUp, Package, Key, ShieldCheck, Cpu } from 'lucide-react'
+import { ArrowRight, Cloud, Hash, Zap, Globe, Rocket, Wrench, Laptop, Globe2, Smartphone, Shield, Zap as Lightning, Users, BarChart2, GitMerge, RefreshCw, Star, Download, Upload, Settings, Database, Lock, Clock, TrendingUp, Package, Key, ShieldCheck, Cpu, AlertTriangle } from 'lucide-react'
 import { SiJenkins, SiGithubactions, SiGitlab, SiDocker, SiLinux, SiApple, SiElectron, SiArm } from 'react-icons/si'
 import { FaWindows } from 'react-icons/fa'
 import AnimatedBanner from '../AnimatedBanner';
@@ -735,9 +735,9 @@ const features = [
     color: featureColors[0],
   },
   {
-    icon: <RefreshCw className="h-8 w-8" />,
-    title: 'Multi-Updater Support',
-    description: 'Support for various update mechanisms including Velopack, Squirrel Windows/macOS, Electron Builder, Tauri and custom manual updates.',
+    icon: <AlertTriangle className="h-8 w-8" />,
+    title: 'Crash & Failure Reports',
+    description: 'Collect crash, failed-update, and failed-install reports from clients, aggregated into deduplicated groups by version, channel, and platform — with open/resolved/muted triage status.',
     color: featureColors[1],
   },
   {

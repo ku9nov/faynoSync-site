@@ -190,6 +190,8 @@ const sidebars: SidebarsConfig = {
             'api/reports/ingest',
             'api/reports/list-groups',
             'api/reports/list-detail-blobs',
+            'api/reports/update-group',
+            'api/reports/delete-group',
           ],
         },
       ],

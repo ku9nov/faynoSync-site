@@ -45,6 +45,7 @@ There are two distinct auth paths:
 
 - **Ingestion** (`POST /reports/ingest`) is a public client endpoint authenticated by a per-app **report key** (`rpk_` + 64 hex), sent as `Authorization: Bearer rpk_...`. It does **not** require JWT. Report keys are managed through the existing `report_keys` lifecycle (one key per app with `reports` enabled).
 - **Read API** (`GET /reports/groups`, `GET /reports/groups/:groupHash/blobs`) is authenticated with a JWT and gated by `CheckPermission(download, apps)`. Admins see every app under their account; team users only see apps in their `allowed_apps`.
+- **Management API** (`PATCH /reports/groups/:groupHash`, `DELETE /reports/groups/:groupHash`) is also JWT-authenticated but gated by stronger permissions: `edit` for updates and `delete` for deletion. All management endpoints are scoped to the requester's accessible apps.
 
 Report keys are effectively public client credentials shipped inside the client; abuse protection comes from the `REPORTS_ENABLED` gate, the per-app `reports` flag, and rate limits — not from key secrecy.
 
@@ -58,6 +59,22 @@ sha256(application.name + "|" + application.version + "|" + application.channel 
 
 Debug `details`, timestamps, client IP, and device identifiers are **excluded** from the hash, so unique stack traces never fragment a group. Because app names are unique only per `(app_name, owner)`, the grouping identity stored in Mongo is the composite `(app_id, groupHash)`, which keeps tenants fully isolated.
 
+## Lifecycle status
+
+Every group carries a lifecycle `status` used for triage:
+
+- `open` — the default; new groups are created `open`. In list queries, `status=open` also matches pre-existing groups that predate the field (those with no `status`).
+- `resolved` — marked as handled. Resolving records `resolved_at` and `resolved_by` (the requester's username).
+- `muted` — suppressed noise; muted groups stay suppressed even when new events arrive.
+
+Alongside status, groups support two free-form triage fields that are independent of the lifecycle state: `tags` (up to 20, each `^[a-zA-Z0-9._-]{1,64}$`) and a `note` (up to 2000 characters). Sending an empty tags array or empty note clears the respective field.
+
+### Regression auto-reopen
+
+A new event on a `resolved` group automatically flips it back to `open` and clears the resolution markers (`resolved_at` / `resolved_by`), so a recurring failure resurfaces instead of staying hidden. Tags and note are preserved across the reopen. `muted` groups are never auto-reopened.
+
+Status, tags, and note are set through the [Update Report Group](/docs/api/reports/update-group) endpoint, and groups can be permanently removed with [Delete Report Group](/docs/api/reports/delete-group).
+
 ## Privacy boundary
 
 Reports avoid user identity by design. Allowed dimensions are app name, version, channel, platform, arch, event type, reason, an anonymous `X-Device-ID` (used only for rate limits and dedup, never stored in report documents or the hash), and optional technical details in a blob. Stripping secrets and personal data from `details` is the responsibility of the client/SDK.
@@ -67,3 +84,5 @@ Reports avoid user identity by design. Allowed dimensions are app name, version,
 - [Ingest Report](/docs/api/reports/ingest)
 - [List Report Groups](/docs/api/reports/list-groups)
 - [List Group Detail Blobs](/docs/api/reports/list-detail-blobs)
+- [Update Report Group](/docs/api/reports/update-group)
+- [Delete Report Group](/docs/api/reports/delete-group)

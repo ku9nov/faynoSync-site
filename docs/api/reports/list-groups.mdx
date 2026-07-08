@@ -39,6 +39,7 @@ All parameters are optional. `from`/`to` are RFC3339 and filter on `stats.lastSe
 | `arch` | string | Filter by architecture |
 | `type` | string | Filter by event type (e.g. `update_failure`) |
 | `reason` | string | Filter by reason (e.g. `checksum_mismatch`) |
+| `status` | string | Filter by lifecycle status: `open`, `resolved`, or `muted`. `status=open` also matches pre-existing groups that have no status field; `status=all` disables the filter |
 | `from` | string | RFC3339 lower bound on `stats.lastSeen` |
 | `to` | string | RFC3339 upper bound on `stats.lastSeen` |
 | `page` | number | Page number (default `1`) |
@@ -79,8 +80,13 @@ curl -s 'http://localhost:9000/reports/groups?app=test&version=1.4.2&channel=sta
         "details_stored": 17,
         "details_rejected": 3
       },
+      "status": "resolved",
+      "tags": ["ui", "needs-repro"],
+      "note": "tracked in JIRA-123",
+      "resolved_at": "2026-05-20T13:00:00Z",
+      "resolved_by": "admin",
       "created_at": "2026-05-20T10:00:00Z",
-      "updated_at": "2026-05-20T12:00:00Z"
+      "updated_at": "2026-05-20T13:00:00Z"
     }
   ],
   "total": 1,
@@ -119,6 +125,11 @@ curl -s 'http://localhost:9000/reports/groups?app=test&version=1.4.2&channel=sta
 | `stats.last_seen` | string | Most recent time this group was seen |
 | `stats.details_stored` | number | Detail blobs successfully stored |
 | `stats.details_rejected` | number | Detail payloads that failed to store |
+| `status` | string | Lifecycle status: `open`, `resolved`, or `muted` (new groups are created `open`) |
+| `tags` | array | Free-form triage tags (omitted when empty) |
+| `note` | string | Free-form triage note (omitted when empty) |
+| `resolved_at` | string | When the group was resolved (present only while `resolved`) |
+| `resolved_by` | string | Username that resolved the group (present only while `resolved`) |
 | `created_at` | string | Group creation timestamp |
 | `updated_at` | string | Last update timestamp |
 
@@ -127,3 +138,4 @@ curl -s 'http://localhost:9000/reports/groups?app=test&version=1.4.2&channel=sta
 - Results are always sorted by `stats.last_seen` descending.
 - The grouping identity is the composite `(app_id, group_hash)`; `group_hash` alone is not globally unique across owners.
 - To inspect debug payloads for a group, use [List Group Detail Blobs](/docs/api/reports/list-detail-blobs).
+- To change a group's status, tags, or note, use [Update Report Group](/docs/api/reports/update-group); to remove it entirely, use [Delete Report Group](/docs/api/reports/delete-group).

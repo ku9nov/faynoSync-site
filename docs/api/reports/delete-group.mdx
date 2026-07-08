@@ -1,0 +1,73 @@
+---
+title: Delete Report Group
+description: Permanently delete a FaynoSync report group along with its detail blob metadata and the underlying private-bucket storage objects.
+---
+
+# Delete Report Group
+
+Hard-deletes a report group together with its blob metadata and the underlying storage objects. Object deletion is best-effort — if the storage call fails, the group and its metadata are still removed, and the orphaned objects fall back to the storage lifecycle / TTL for cleanup.
+
+This is an authenticated (JWT) route, active only when `REPORTS_ENABLED=true`.
+
+## Endpoint
+
+```
+DELETE /reports/groups/:groupHash
+```
+
+## Authentication
+
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <jwt_token>` |
+
+Gated by `CheckPermission(delete, apps)`:
+
+- **Admins** can delete every group under their account.
+- **Team users** must have the `apps.delete` permission and can only delete groups whose app is in their `allowed_apps`.
+
+The delete is scoped by accessible `app_id`, so a group belonging to another owner (even with an identical hash) is never matched.
+
+## Path Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `groupHash` | string | ✅ | The group's SHA-256 hash; must be exactly 64 hex characters (otherwise `400`) |
+
+## What gets deleted
+
+1. All `report_blobs` metadata documents for the group.
+2. The group's `report_groups` document.
+3. The private-bucket storage objects referenced by those blobs (best-effort; failures fall back to lifecycle/TTL).
+
+## Example Request
+
+```bash
+curl -s -X DELETE 'http://localhost:9000/reports/groups/9c460a0d02a7a80a1456b49d88033100cad27266848feb2a1cdd7480d50efbcc' \
+  --header 'Authorization: Bearer <jwt_token>'
+```
+
+## Response
+
+### Success Response (200 OK)
+
+```json
+{
+  "group_hash": "9c460a0d02a7a80a1456b49d88033100cad27266848feb2a1cdd7480d50efbcc",
+  "deleted": true
+}
+```
+
+### Error Responses
+
+| Status | Condition |
+|--------|-----------|
+| `400` | Invalid group hash |
+| `401` | Missing or invalid JWT |
+| `404` | No matching group in an accessible app |
+| `500` | Internal error while deleting the group or blob metadata |
+
+## Notes
+
+- Deletion is permanent — there is no undo. To suppress a noisy group without losing its history, set its status to `muted` via [Update Report Group](/docs/api/reports/update-group) instead.
+- A failure to delete storage objects is logged but does not fail the request; the blobs expire via the configured lifecycle / TTL.

@@ -1,0 +1,95 @@
+---
+title: Update Report Group
+description: Partially update a FaynoSync report group's lifecycle status, tags, and note for triage — resolve, mute, or reopen aggregated failure groups.
+---
+
+# Update Report Group
+
+Partially updates a report group's triage metadata: its lifecycle `status`, `tags`, and `note`. Any combination of the three fields may be sent, but at least one is required.
+
+This is an authenticated (JWT) route, active only when `REPORTS_ENABLED=true`.
+
+## Endpoint
+
+```
+PATCH /reports/groups/:groupHash
+```
+
+## Authentication
+
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <jwt_token>` |
+| `Content-Type` | `application/json` |
+
+Gated by `CheckPermission(edit, apps)`:
+
+- **Admins** can update every group under their account.
+- **Team users** must have the `apps.edit` permission and can only update groups whose app is in their `allowed_apps`.
+
+The update is scoped by accessible `app_id`, so a group belonging to another owner (even with an identical hash) is never matched.
+
+## Path Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `groupHash` | string | ✅ | The group's SHA-256 hash; must be exactly 64 hex characters (otherwise `400`) |
+
+## Request Body
+
+All fields are optional pointers, but **at least one** must be present.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `status` | string | New lifecycle status: `open`, `resolved`, or `muted` |
+| `tags` | array of strings | Up to 20 tags, each matching `^[a-zA-Z0-9._-]{1,64}$`. An empty array clears all tags |
+| `note` | string | Free-form note, up to 2000 characters. An empty string clears the note |
+
+```json
+{
+  "status": "resolved",
+  "tags": ["ui", "needs-repro"],
+  "note": "tracked in JIRA-123"
+}
+```
+
+### Behavior
+
+- **Resolving** (`status: "resolved"`) records `resolved_at` (current time) and `resolved_by` (the requester's username).
+- Setting any other status (`open` / `muted`) clears `resolved_at` / `resolved_by`.
+- `tags` and `note` are triage metadata independent of `status` — they can be set or cleared without touching the lifecycle state.
+
+## Example Request
+
+```bash
+curl -s -X PATCH 'http://localhost:9000/reports/groups/9c460a0d02a7a80a1456b49d88033100cad27266848feb2a1cdd7480d50efbcc' \
+  --header 'Authorization: Bearer <jwt_token>' \
+  --header 'Content-Type: application/json' \
+  --data '{"status":"resolved","tags":["ui","needs-repro"],"note":"tracked in JIRA-123"}'
+```
+
+## Response
+
+### Success Response (200 OK)
+
+```json
+{
+  "group_hash": "9c460a0d02a7a80a1456b49d88033100cad27266848feb2a1cdd7480d50efbcc",
+  "updated": true
+}
+```
+
+### Error Responses
+
+| Status | Condition |
+|--------|-----------|
+| `400` | Invalid group hash, malformed body, no fields to update, invalid status, invalid tags, or note too long |
+| `401` | Missing or invalid JWT |
+| `404` | No matching group in an accessible app |
+| `500` | Internal error |
+
+## Notes
+
+- A new event on a `resolved` group automatically reopens it (see [regression auto-reopen](/docs/api/reports/reports-introduction#lifecycle-status)); `muted` groups stay suppressed regardless of new events.
+- To list groups filtered by status, use [List Report Groups](/docs/api/reports/list-groups) with the `status` query parameter.
+- To permanently remove a group, use [Delete Report Group](/docs/api/reports/delete-group).
