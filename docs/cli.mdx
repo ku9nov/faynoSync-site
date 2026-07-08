@@ -73,6 +73,8 @@ Global flag:
 - `--channel <value>`
 - `--platform <value>`
 - `--arch <value>`
+- `--updater <value>` — `manual|velopack|squirrel_darwin|squirrel_windows|electron-builder|tauri` (validated locally)
+- `--signature <value>` — Tauri base64 signature
 - `--publish[=true|false]`
 - `--critical[=true|false]`
 - `--intermediate[=true|false]`
@@ -83,6 +85,25 @@ Global flag:
 :::warning Changelog modes are mutually exclusive
 Use only one of `--changelog`, `--changelog-file`, or `--changelog-stdin`. For Markdown with special symbols, prefer `--changelog-file` or `--changelog-stdin`.
 :::
+
+### Uploading for a specific updater
+
+The `--updater` flag selects the [updater type](./updaters/index.mdx) the upload targets, so artifacts land in the correct isolated folder and the server generates the right feed files (`RELEASES`, `*.yml`, `releases.{channel}.json`). The CLI validates only that the value is a known updater type — all other rules are enforced server-side. When omitted, the platform's default updater is used.
+
+The `--signature` flag passes the base64 signature required by the [Tauri updater](./updaters/tauri.mdx). Read it straight from the `.sig` file Tauri produces next to the artifact:
+
+```bash
+faynosync upload \
+  --app myapp \
+  --file ./myapp.app.tar.gz \
+  --version 1.0.0 \
+  --channel stable \
+  --platform darwin \
+  --arch amd64 \
+  --updater tauri \
+  --signature "$(cat ./myapp.app.tar.gz.sig)" \
+  --publish
+```
 
 ## Upload examples
 

@@ -91,6 +91,10 @@ curl -X POST --location 'http://localhost:9000/upload' \
 --form 'data="{\"app_name\":\"myapp\",\"version\":\"0.0.1\",\"channel\":\"stable\",\"publish\":true,\"platform\":\"windows\",\"arch\":\"amd64\",\"updater\":\"squirrel_windows\"}"'
 ```
 
+:::tip
+The [faynoSync CLI](../cli.mdx) exposes this as an `--updater` flag (and `--signature` for [Tauri](./tauri.mdx)), so you don't have to hand-craft the `data` JSON in CI.
+:::
+
 ## Using Updaters in API Calls
 
 For JSON-style updaters (`manual`, `electron-builder`, `tauri`), request a specific format by adding the `updater` parameter to `/checkVersion`:
