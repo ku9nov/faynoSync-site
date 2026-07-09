@@ -32,6 +32,8 @@ One of FaynoSync's key strengths is its flexibility and user control. Users can 
 
 - **[Crash & Failure Reports](./api/reports/reports-introduction)**: Collect crash, failed-update, and failed-install reports from clients, aggregated into deduplicated groups by version, channel, and platform — with open/resolved/muted triage status.
 
+- **[Staged Rollouts](./rollout)**: Ship each version to a controlled percentage of your fleet with deterministic, sticky client-side bucketing, then ramp to 100% — with real adoption tracked on the dashboard against the configured target.
+
 - **[Required Intermediate Builds](./intermediate_build)**: Enforce specific update paths for breaking changes and critical updates, ensuring safe and controlled application upgrades.
 
 - **Multi-Cloud Storage**: Seamless integration with AWS S3, Garage (S3-compatible), Digital Ocean Spaces, and GCP Cloud Storage for maximum flexibility and reliability. MinIO remains available for backward compatibility but is deprecated for new setups.

@@ -1,0 +1,132 @@
+---
+sidebar_position: 10
+title: Staged Rollout
+description: How FaynoSync staged (canary) rollouts work — a server-issued percent and seed, deterministic client-side bucketing in the SDK, and dashboard adoption tracking that needs no extra API.
+---
+# Staged Rollout
+
+FaynoSync ships new versions to a **controlled percentage of your fleet** before everyone gets them — a staged (canary) rollout. The design keeps the server simple: the server only issues a target percentage and a seed, and the **client (SDK) decides** whether a given install is in the rollout. There is no per-device state on the server, so the edge/CDN and Redis caches stay device-independent.
+
+This page explains how the mechanism works, why it is deterministic and sticky, how the intermediate-version flow interacts with it, and how the dashboard measures real adoption **without any additional API** — everything is computed on the client from two endpoints you already have.
+
+## Configuring a rollout
+
+A rollout is a property of a specific published version. Set the `rollout` integer (0–100) in the `data` JSON when you [upload a version](/docs/api/apps/upload) or [update an existing version](/docs/api/apps/update-specific-version-app):
+
+- `rollout: 100` (or unset) — full rollout, everyone eligible gets the update.
+- `rollout: 20` — only ~20% of eligible installs are offered this version.
+
+On first assignment the server generates a stable `rollout_seed` for the version and stores it alongside `rollout_percent`. The seed never changes for that version, which is what makes the rollout **sticky** (see below). To advance a staged rollout you simply raise the percentage on the same version (`20` → `50` → `100`); the seed stays put.
+
+## What the API returns
+
+A client learns its rollout from the **JSON [`/checkVersion`](/docs/api/info/latest) response**, which includes a `rollout` object **only when the offered version's percentage is below 100**:
+
+```json
+{
+  "update_available": true,
+  "critical": false,
+  "update_url_dmg": "https://.../myapp-1.0.2.dmg",
+  "rollout": { "percent": 20, "seed": "badadc23b08e3943" }
+}
+```
+
+If the version is at 100% the `rollout` field is omitted entirely, and the client treats it as a normal full update.
+
+In [edge/CDN mode](/docs/edge) the very same response body is served from a cached manifest, so the `rollout` object travels with it unchanged and the per-device split still happens in the SDK.
+
+## Updater compatibility
+
+Because rollout rides in the **JSON response**, it works for any integration that reads that JSON before handing off to the updater — the default JSON flow, [Tauri](/docs/updaters/tauri), [Squirrel.Mac](/docs/updaters/squirrel-darwin), and [electron-builder](/docs/updaters/electron-builder) via the JS SDK. Updaters that instead consume a native feed format do **not** receive the `rollout` object today:
+
+- **[Squirrel.Windows](/docs/updaters/squirrel-windows)** — polls a `RELEASES` file, which has no field for rollout metadata, so it never sees `rollout`.
+- **[Velopack](/docs/updaters/velopack)** — reads its own feed format that does not carry rollout at the moment; upstream is actively evolving, so this may be added in the near future.
+- **[electron-builder](/docs/updaters/electron-builder)** — the updater itself consumes `latest.yml`, but the JS SDK reads the JSON `/checkVersion` response (with `rollout`), applies the bucketing, and only then hands the updater the `.yml` URL. So rollout works here.
+
+In short, rollout can be applied **anywhere the integration reads the JSON response first and gates the update before handing off** to the native updater. Where it isn't available today is a property of that updater's feed format and how the SDK wires it — not a server limitation.
+
+## How the SDK decides
+
+The SDK combines the install's device ID with the server-issued seed and maps it to a bucket in `[0, 99]`. The install takes the update when its bucket is below the offered percentage. This is the **reference algorithm every SDK must replicate byte-for-byte**:
+
+```text
+bucket = sha256(device_id + ":" + seed) → first 8 bytes, big-endian uint64, % 100
+update if bucket < rollout.percent
+```
+
+The `device_id` is the same value sent in the `X-Device-ID` header used by [telemetry](/docs/telemetry). It must be stable across restarts.
+
+### Why it works
+
+- **Deterministic** — the same `device_id` + `seed` always yields the same bucket, so an install's decision is reproducible and needs no server memory.
+- **Sticky** — because the seed is fixed per version, an install that is in the 20% bucket stays in the bucket when you raise the percentage to 50%. Ramping a rollout only ever **adds** installs, never removes them.
+- **Cache-safe** — the server returns only `percent` + `seed`, identical for every device, so cached `/checkVersion` responses remain valid for all clients. The per-device split happens entirely in the SDK after the (cacheable) response is read.
+
+A small sampling margin of roughly **±2%** is inherent: for a finite fleet the fraction of device IDs that hash below the threshold varies slightly around the configured percentage. It tightens as the fleet grows.
+
+## Interaction with required intermediate versions
+
+If a version is marked as a [required intermediate](/docs/intermediate_build), the server offers **the intermediate first, carrying the intermediate's own rollout percentage**. The rollout of the final version is only revealed once the install is already on the intermediate.
+
+Concretely, for a device on `1.0.0` with intermediate `1.0.1` and latest `1.0.2`:
+
+1. `/checkVersion` from `1.0.0` offers `1.0.1` (with `1.0.1`'s rollout, if any).
+2. Once the device reports `1.0.1`, `/checkVersion` offers `1.0.2` with `1.0.2`'s rollout.
+
+Chained rollouts multiply. If `1.0.1` is at 60% and `1.0.2` at 20%, the steady state is ~40% on `1.0.0`, ~48% on `1.0.1` (`60% × 80%`), and ~12% on `1.0.2` (`60% × 20%`) as a share of the whole fleet. This matters for how adoption is measured — see below.
+
+## Tracking adoption on the dashboard
+
+**No API changes were needed to visualise rollout health.** The dashboard's "Rollout Health" panel is a pure client-side join of two endpoints you already have:
+
+- [`/search?app_name=…`](/docs/api/apps/search) returns each version with its `RolloutPercent` — this is the **configured target**, and identifies which versions are under a staged rollout (`RolloutPercent < 100`).
+- [`/telemetry`](/docs/telemetry) returns `versions.usage[].client_count` (installs currently reporting each version) and `summary.unique_clients` — this is the **observed** side. The underlying counters are written whenever an install reports its version, whether inline via `/checkVersion` or, in edge/CDN mode, via the [`/telemetry/beacon`](/docs/api/info/telemetry_beacon) endpoint — both update the same Redis keys, so adoption is measured the same way regardless of mode.
+
+### The adoption formula
+
+The rollout percentage is defined relative to the **eligible pool at that rung** — the installs that are actually offered the version — not the whole fleet. To make the observed number comparable to the configured target, the dashboard uses a cumulative, eligible-pool ratio:
+
+```text
+adoption(V) = clients(version >= V) / clients(version >= predecessor(V))
+```
+
+where `predecessor(V)` is the highest version below `V` that installs are actually reporting.
+
+- **Numerator** — installs on `V` or newer. "Or newer" matters: an install that already moved past `V` (e.g. to a later version) has still adopted `V`, so it must stay counted.
+- **Denominator** — installs on the predecessor or newer, i.e. the pool eligible to move to `V`.
+
+Worked against the chained example above (`1.0.1` @ 60%, `1.0.2` @ 20%, fleet of 3000):
+
+| Version | Numerator `clients(>= V)` | Denominator `clients(>= predecessor)` | Adoption | Target |
+|---|---|---|---|---|
+| `1.0.1` | 1454 + 357 = 1811 | 1189 + 1454 + 357 = 3000 | **60.4%** | 60% |
+| `1.0.2` | 357 | 1454 + 357 = 1811 | **19.7%** | 20% |
+
+Both land on the configured target within the ±2% margin.
+
+### Why not divide by all unique clients
+
+A naive `clients_exactly_on_V / unique_clients` does **not** line up with the target under chained rollouts, for two reasons:
+
+1. The denominator (whole fleet) is larger than the eligible pool, so `1.0.2` would read ~12% instead of 20%.
+2. "Exactly on `V`" drops installs that moved past `V`, so `1.0.1` would read ~48% instead of 60%.
+
+The cumulative eligible-pool formula corrects both.
+
+### Per-app scoping
+
+`versions.usage` is keyed on the **version string only** and is aggregated across apps in an unfiltered `/telemetry` response. Two apps that share a version string (e.g. both have `1.0.2`) would otherwise borrow each other's counts. The dashboard therefore reads adoption from telemetry **scoped to a single app** (`/telemetry?apps=<app>`), and only shows rollouts for apps that have traffic in the selected period.
+
+## Caveats
+
+- **Trailing metric.** Telemetry buckets are per-day and an install only counts toward a version after it updates and checks in again. Adoption starts noisy and **converges** as eligible installs report; it is a progress signal, not an instantaneous truth. A weekly range smooths the daily reset.
+- **±2% bucketing margin.** Observed will not match the target exactly, especially on small fleets. Do not wire it to alerts at small deltas.
+- **Scope to compare.** To line observed up with a channel- or platform-scoped rollout, apply the matching filter on the dashboard so both `/search` and `/telemetry` are scoped the same way.
+- **Approximate attribution.** FaynoSync stores no per-device rollout assignment (by design — privacy-minimal, cache-safe), so adoption is derived from reported versions, not from a record of which installs were in the bucket.
+
+## Related
+
+- [Telemetry System](/docs/telemetry) — the `/telemetry` data and `X-Device-ID` that adoption is built on.
+- [Required Intermediate Versions](/docs/intermediate_build) — how the intermediate step gates a rollout.
+- [Update a specific version](/docs/api/apps/update-specific-version-app) and [Upload](/docs/api/apps/upload) — where the `rollout` field is set.
+- [`/checkVersion`](/docs/api/info/latest) — the endpoint that issues `rollout` `{percent, seed}`.

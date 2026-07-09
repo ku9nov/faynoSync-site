@@ -688,8 +688,8 @@ const featureColors = [
 const features = [
   {
     icon: <Cloud className="h-8 w-8" />,
-    title: 'Unified Registry',
-    description: 'A centralized registry for all your application types, ensuring consistency across platforms.',
+    title: 'Unified Registry & Staged Rollouts',
+    description: 'A centralized registry for every application type — versions, channels, and platforms stay consistent in one place. The same registry powers staged (canary) rollouts: release each version to a controlled percentage of your fleet with deterministic, sticky bucketing, then ramp to 100% once it looks healthy.',
     color: featureColors[0],
   },
   {
@@ -735,16 +735,16 @@ const features = [
     color: featureColors[0],
   },
   {
-    icon: <AlertTriangle className="h-8 w-8" />,
-    title: 'Crash & Failure Reports',
-    description: 'Collect crash, failed-update, and failed-install reports from clients, aggregated into deduplicated groups by version, channel, and platform — with open/resolved/muted triage status.',
-    color: featureColors[1],
-  },
-  {
     icon: <Globe className="h-8 w-8" />,
     title: 'Multi-Cloud Storage',
     description: 'Seamless integration with AWS S3, MinIO, Digital Ocean Spaces, and GCP Cloud Storage for maximum flexibility and reliability.',
     color: featureColors[3],
+  },
+  {
+    icon: <AlertTriangle className="h-8 w-8" />,
+    title: 'Crash & Failure Reports',
+    description: 'Collect crash, failed-update, and failed-install reports from clients, aggregated into deduplicated groups by version, channel, and platform — with open/resolved/muted triage status.',
+    color: featureColors[1],
   },
 ]
 

@@ -215,6 +215,7 @@ const sidebars: SidebarsConfig = {
     'edge',
     'team_based_auth',
     'telemetry',
+    'rollout',
     'intermediate_build',
     'troubleshooting',
   ],
