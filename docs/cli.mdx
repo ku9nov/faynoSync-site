@@ -1,6 +1,6 @@
 ---
 title: CLI
-description: faynoSync CLI is a command line tool for uploading new application versions to faynoSync in a predictable, CI-friendly way.
+description: faynoSync CLI uploads new application versions to faynoSync in a predictable, CI-friendly way, with a ready-to-use GitHub Action and Jenkins shared library step.
 sidebar_position: 4
 ---
 
@@ -149,3 +149,71 @@ faynosync upload \
 - added ${feature}
 EOF
 ```
+
+## CI / GitHub Actions
+
+The CLI ships as a composite GitHub Action, published on the [GitHub Marketplace](https://github.com/marketplace/actions/faynosync-upload). It downloads the prebuilt CLI binary matching the runner OS/arch, then runs `faynosync upload` — so **no Go toolchain is needed on the runner**.
+
+```yaml
+- name: Upload to faynoSync
+  uses: ku9nov/faynoSync-cli@v1
+  with:
+    app: myapp
+    file: |
+      ./dist/myapp.deb
+      ./dist/myapp.rpm
+    version: 1.2.3
+    channel: stable
+    platform: linux
+    arch: amd64
+    publish: true
+    changelog-file: ./CHANGELOG.md
+  env:
+    FAYNOSYNC_TOKEN: ${{ secrets.FAYNOSYNC_TOKEN }}
+    FAYNOSYNC_URL: ${{ secrets.FAYNOSYNC_URL }}
+    FAYNOSYNC_ACCOUNT: ${{ secrets.FAYNOSYNC_ACCOUNT }}
+```
+
+Each input maps to the matching `upload` flag:
+
+| Input | Maps to | Notes |
+|-------|---------|-------|
+| `app` | `--app` | Required. |
+| `file` | `--file` | One path per line — each becomes a separate `--file`. |
+| `version` | `--version` | |
+| `channel` | `--channel` | |
+| `platform` / `arch` | `--platform` / `--arch` | |
+| `updater` | `--updater` | See [updater types](./updaters/index.mdx). |
+| `signature` | `--signature` | Tauri base64 signature. |
+| `publish` / `critical` / `intermediate` | `--publish` / `--critical` / `--intermediate` | Add the flag when `true`. |
+| `changelog` / `changelog-file` | `--changelog` / `--changelog-file` | Mutually exclusive. |
+| `log-level` | `--log-level` | Default `info`. |
+| `cli-version` | — | Which CLI release to download; defaults to the tag the action is pinned to. |
+
+Auth comes from the environment: `FAYNOSYNC_TOKEN` is required, and `FAYNOSYNC_URL` / `FAYNOSYNC_ACCOUNT` override the `server` / `owner` a config file would supply. Keep all three in `secrets`.
+
+:::tip Pin to a floating major
+Use `@v1` to receive patches automatically, or an exact release like `@v1.0.0` to pin. A full example workflow lives in [`examples/github-actions`](https://github.com/ku9nov/faynoSync-cli/tree/main/examples/github-actions).
+:::
+
+## CI / Jenkins
+
+For Jenkins there is a ready-to-use Shared Library step, [`faynosyncUpload`](https://github.com/ku9nov/faynoSync-cli/tree/main/examples/jenkins), that wraps `faynosync upload`. It writes the changelog to a file (avoiding CI shell-escaping issues), runs the upload under a credentials binding, and marks the build `unstable` if the response does not contain `Upload completed`.
+
+```groovy
+@Library('faynosync-shared') _
+
+faynosyncUpload(
+    app:           'myapp',
+    version:       "1.2.3.${env.BUILD_NUMBER}",
+    channel:       'stable',
+    file:          './dist/myapp',        // String or List of paths
+    platform:      'linux',
+    arch:          'amd64',
+    changelog:     "Branch: ${env.BRANCH_NAME}",
+    credentialsId: 'faynosync-token-myapp',
+    publish:       true,
+)
+```
+
+The step reads the token from a Jenkins *Secret text* credential (via `credentialsId`) and exposes it to the CLI as `FAYNOSYNC_TOKEN`. Setup instructions and the full parameter list are in the [Jenkins example](https://github.com/ku9nov/faynoSync-cli/tree/main/examples/jenkins).
