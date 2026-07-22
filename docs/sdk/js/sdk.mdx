@@ -102,7 +102,7 @@ The request also respects `timeoutMs`: whichever fires first — your signal or 
 | `channel` | `string` | Conditional | Release channel value used by your faynoSync setup. |
 | `platform` | `string` | Conditional | Platform value used by your faynoSync setup. |
 | `arch` | `string` | Conditional | Architecture value used by your faynoSync setup. |
-| `deviceId` | `string` | No | Device identifier. Sent as the `X-Device-ID` header, and triggers a telemetry beacon after a successful edge response. |
+| `deviceId` | `string` | No | Device identifier. Sent as the `X-Device-ID` header, triggers a telemetry beacon after a successful edge response, and is required to participate in [staged rollouts](#staged-rollout). |
 
 The SDK only validates `owner`, `appName`, and `version` as required; omitted fields are sent as empty query values. `channel`, `platform`, and `arch` are not validated client-side, but if the target app in your faynoSync instance defines channels, platforms, or architectures, you must provide the matching values or the check will not resolve to the correct release.
 
@@ -135,6 +135,7 @@ Query parameters are built from the named fields on `CheckOptions`. You pass a t
 | `isIntermediateRequired` | `boolean` | Indicates whether an intermediate update is required. |
 | `possibleRollback` | `boolean` | Indicates rollback metadata from the server response. |
 | `source` | `UpdateSource` | Where the response came from: `'edge'`, `'api'`, or `'unknown'`. |
+| `rollout` | `RolloutInfo` (optional) | Present only when the server offered a staged rollout for the version. See [Staged Rollout](#staged-rollout). |
 
 A `PackageUpdateURL` has two fields:
 
@@ -168,6 +169,52 @@ for (const pkg of resp.packageUrls) {
 | `'edge'` | The response was served from the edge JSON endpoint. |
 | `'api'` | The response was served by the `baseURL` API, after a direct call or fallback. |
 | `'unknown'` | Default before the source is resolved; not expected on a returned response. |
+
+## Staged Rollout
+
+faynoSync can ship a version to a controlled percentage of the fleet first (a staged/canary rollout). The server stays stateless — it only issues a target percentage and a stable seed — and the **SDK decides client-side** whether a given install is included. See [Staged Rollout](../../rollout) for the full design.
+
+When the offered version's rollout is below 100%, `/checkVersion` includes a `rollout` object:
+
+```json
+{
+  "update_available": true,
+  "update_url": "https://downloads.example.com/app",
+  "rollout": { "percent": 20, "seed": "badadc23b08e3943" }
+}
+```
+
+At 100% the field is omitted and the SDK treats the response as a normal full update. The decision is deterministic and sticky, using the reference algorithm shared by every faynoSync SDK:
+
+```text
+bucket = sha256(deviceId + ":" + seed) → first 8 bytes, big-endian uint64, % 100
+included if bucket < rollout.percent
+```
+
+When the install is **not** in the bucket, the SDK forces `updateAvailable` to `false` **and blanks `updateUrl`/`packageUrls`**, so a caller that checks the URLs instead of `updateAvailable` still cannot pull an update the device was not offered. A normal `if (resp.updateAvailable)` gate is all you need; the `rollout` object exposes the decision for logging:
+
+```ts
+const resp = await client.checkForUpdates({ ...opts, deviceId: 'stable-device-id' });
+
+if (resp.rollout) {
+  console.log(resp.rollout.percent, resp.rollout.bucket, resp.rollout.eligible);
+}
+```
+
+### RolloutInfo
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `percent` | `number` | The rollout target percentage the server issued for the version. |
+| `seed` | `string` | Stable per-version seed used to bucket the device. |
+| `bucket` | `number \| null` | Deterministic bucket in `[0, 99]`, or `null` when no `deviceId` was supplied. |
+| `eligible` | `boolean` | Whether the install is inside the rollout. When `false`, the SDK has already gated the response. |
+
+`deviceId` is required to participate: it must be the same stable value used for [telemetry](../../telemetry) (`X-Device-ID`). Without it the bucket cannot be computed, so the install stays out of the rollout (`eligible: false`, `bucket: null`) until a `deviceId` is provided. Raising the percentage on the same version only ever **adds** installs — an install in the 20% bucket stays in when you move to 50%.
+
+A malformed `rollout` object (missing/non-numeric `percent`, or missing/empty `seed`) is ignored and treated as no rollout at all — the full update is served. Rollout works identically in [edge/CDN mode](#edge-fallback-behavior), since the same JSON body is served from the cached manifest and the split happens in the SDK after the (cacheable) response is read.
+
+The `rolloutBucket(deviceId, seed)` helper is exported if you need to compute a bucket yourself.
 
 ## Edge Fallback Behavior
 
