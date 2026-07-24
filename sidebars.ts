@@ -54,6 +54,7 @@ const sidebars: SidebarsConfig = {
         'examples/squirrel',
         'examples/tauri',
         'examples/velopack',
+        'examples/sparkle',
       ],
     },
     {
@@ -204,6 +205,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'updaters/manual',
         'updaters/velopack',
+        'updaters/sparkle',
         'updaters/squirrel-darwin',
         'updaters/squirrel-windows',
         'updaters/electron-builder',

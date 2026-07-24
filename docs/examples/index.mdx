@@ -1,13 +1,13 @@
 ---
-title: Update Example Apps (Electron, Squirrel, Tauri, Velopack)
+title: Update Example Apps (Electron, Squirrel, Tauri, Velopack, Sparkle)
 sidebar_label: Examples
-description: Reference desktop apps that integrate faynoSync updates — Electron, Squirrel, Tauri, and Velopack — showing edge-first update checks with the JavaScript SDK, plus a Velopack app that needs no SDK at all.
+description: Reference desktop apps that integrate faynoSync updates — Electron, Squirrel, Tauri, Velopack, and Sparkle — showing edge-first update checks with the JavaScript SDK, plus Velopack and Sparkle apps that need no SDK at all.
 sidebar_position: 1
 ---
 
 # Example Apps
 
-These are runnable reference applications that wire real desktop update flows to a faynoSync instance. Each one targets a different updater. The Electron, Squirrel, and Tauri apps show how the [JavaScript SDK](../sdk/js/sdk.mdx) fits in — from a simple edge-first update check to full native-feed resolution. The [Velopack](./velopack.mdx) app is the exception: faynoSync speaks Velopack's native feed protocol, so its stock client needs **no SDK**.
+These are runnable reference applications that wire real desktop update flows to a faynoSync instance. Each one targets a different updater. The Electron, Squirrel, and Tauri apps show how the [JavaScript SDK](../sdk/js/sdk.mdx) fits in — from a simple edge-first update check to full native-feed resolution. The [Velopack](./velopack.mdx) and [Sparkle](./sparkle.mdx) apps are the exceptions: faynoSync serves each one its native feed, so their stock clients need **no SDK**.
 
 Every example is a complete, buildable app on GitHub. The snippets in these docs are **trimmed to the update logic only** (SDK calls, feed wiring, edge handling); the repositories contain the full UI, packaging, and CI.
 
@@ -19,10 +19,11 @@ Every example is a complete, buildable app on GitHub. The snippets in these docs
 | [Squirrel](./squirrel.mdx) | Electron native `autoUpdater` (Squirrel.Mac / Squirrel.Windows) | `squirrel_darwin` / `squirrel_windows` | SDK `resolveNativeFeed` resolves the feed edge-first (API fallback), then `setFeedURL`. |
 | [Tauri](./tauri.mdx) | Tauri + `@tauri-apps/plugin-updater` | `tauri` | SDK `checkForUpdates` as an edge-first gate; the native plugin does the signature-verified install. |
 | [Velopack](./velopack.mdx) | Velopack (Python, stock client) | `velopack` | **No SDK** — the stock Velopack `UpdateManager` reads faynoSync's native feed directly. |
+| [Sparkle](./sparkle.mdx) | Sparkle (native macOS AppKit, stock client) | `sparkle` | **No SDK** — the stock Sparkle `SPUStandardUpdaterController` reads faynoSync's materialized appcast directly. |
 
 ## Why the SDK sits in front of the native updater
 
-This applies to the Electron, Squirrel, and Tauri examples. (Velopack is different — see its [own page](./velopack.mdx) — because faynoSync serves it a native feed straight from the CDN, so there is no SDK in front.)
+This applies to the Electron, Squirrel, and Tauri examples. (Velopack and Sparkle are different — see the [Velopack](./velopack.mdx) and [Sparkle](./sparkle.mdx) pages — because faynoSync serves each a native feed straight from the CDN, so there is no SDK in front.)
 
 Native updaters (electron-updater, Squirrel, tauri-plugin-updater) are good at downloading and installing, but they poll the API on every check and don't know about faynoSync's edge (CDN) responses. In those three examples the SDK runs **first**:
 
@@ -33,7 +34,7 @@ Some of the per-example code looks unusual out of context (deriving a feed direc
 
 ## Prerequisites
 
-The three SDK apps read the same configuration (owner, app name, channel, `BASE_URL`, `EDGE_URL`, and an optional report key) from a `.env` file; see each repo's `.env.example`. The [Velopack](./velopack.mdx) app is a Python project configured through environment variables instead (feed base, API base, `TUF_ENABLED`, `ASK_API`, and so on) — see its repo. All of them expect an app configured on your faynoSync instance with the matching channel/platform/arch and the relevant updater enabled on the platform.
+The three SDK apps read the same configuration (owner, app name, channel, `BASE_URL`, `EDGE_URL`, and an optional report key) from a `.env` file; see each repo's `.env.example`. The [Velopack](./velopack.mdx) app is a Python project configured through environment variables instead (feed base, API base, `TUF_ENABLED`, `ASK_API`, and so on), and the [Sparkle](./sparkle.mdx) app is a native macOS project configured through `Info.plist` keys (`SUFeedURL`/`SparkleFeedBaseURL`, `SUPublicEDKey`, `FaynoSync*`) — see each repo. All of them expect an app configured on your faynoSync instance with the matching channel/platform/arch and the relevant updater enabled on the platform.
 
 ## Related reading
 

@@ -38,11 +38,11 @@ The request uses `multipart/form-data` format with the following fields:
 | `platform` | string | ❌ | Platform (e.g., linux, windows) |
 | `arch` | string | ❌ | Architecture (e.g., amd64, arm64) |
 | `changelog` | string | ❌ | Changelog in markdown format |
-| `updater` | string | ❌ | Updater type for artifact isolation (manual, squirrel_darwin, squirrel_windows, electron-builder) |
+| `updater` | string | ❌ | Updater type for artifact isolation (manual, velopack, sparkle, squirrel_darwin, squirrel_windows, electron-builder, tauri) |
 | `signature` | string | ❌ | Cryptographic signature (required for Tauri updater) |
 
 :::info
-The `updater` parameter is useful when updating files for updaters that generate special files (like RELEASES for Squirrel Windows or *.yml for electron-builder). It ensures files are stored in isolated folders specific to that updater.
+The `updater` parameter is useful when updating files for updaters that generate or ingest special files (like RELEASES for Squirrel Windows, *.yml for electron-builder, `releases.{channel}.json` for Velopack, or `appcast.{channel}.xml` for Sparkle). It ensures files are stored in isolated folders specific to that updater. For Sparkle, the edit flow re-ingests the appcast so metadata changes (including adding a platform/arch) carry into the materialized feed.
 :::
 
 ## Example Requests
@@ -134,6 +134,8 @@ When you specify an `updater` parameter, files are organized in isolated folders
 | Updater | Generated Files | Use Case | Special Requirements |
 |---------|-----------------|----------|---------------------|
 | `manual` | None | Standard FaynoSync uploads | None |
+| `velopack` | `releases.{channel}.json` | Velopack cross-platform desktop apps | Requires channel, platform, and arch |
+| `sparkle` | `appcast.{channel}.xml` | Native macOS apps using Sparkle | macOS only; upload the `generate_appcast` appcast + archives |
 | `squirrel_darwin` | None | Squirrel macOS applications | None |
 | `squirrel_windows` | RELEASES | Squirrel Windows applications | None |
 | `electron-builder` | *.yml | Electron applications | None |

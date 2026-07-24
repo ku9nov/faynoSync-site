@@ -31,6 +31,13 @@ const SquirrelLogo = () => (
   </svg>
 )
 
+const SparkleLogo = () => (
+  <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
+    <path d="M24 4c1.6 8.4 6 12.8 14.4 14.4C30 20 25.6 24.4 24 32.8 22.4 24.4 18 20 9.6 18.4 18 16.8 22.4 12.4 24 4Z" stroke="currentColor" strokeWidth="2.4" strokeLinejoin="round" />
+    <path d="M36 30c.7 3.6 2.6 5.5 6.2 6.2-3.6.7-5.5 2.6-6.2 6.2-.7-3.6-2.6-5.5-6.2-6.2 3.6-.7 5.5-2.6 6.2-6.2Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+  </svg>
+)
+
 const ManualLogo = () => (
   <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
     <path d="M30 8a9 9 0 0 0-8.5 12L9 32.5a4 4 0 0 0 5.6 5.6L27 25.5A9 9 0 1 0 30 8Z" stroke="currentColor" strokeWidth="2.4" strokeLinejoin="round" />
@@ -48,6 +55,16 @@ const updaters: Updater[] = [
     color2: '#4d7cff',
     href: '/docs/updaters/velopack',
     logo: <VelopackLogo />,
+  },
+  {
+    key: 'sparkle',
+    name: 'Sparkle',
+    type: 'sparkle',
+    tagline: 'Native macOS auto-updates — faynoSync hosts a materialized appcast, every element preserved verbatim, no SDK.',
+    color: '#3aa0ff',
+    color2: '#0066cc',
+    href: '/docs/updaters/sparkle',
+    logo: <SparkleLogo />,
   },
   {
     key: 'electron',

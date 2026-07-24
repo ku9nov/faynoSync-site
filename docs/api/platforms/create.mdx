@@ -38,7 +38,7 @@ Each updater in the array should have the following structure:
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `type` | string | ✅ | Updater type: `manual`, `squirrel_darwin`, `squirrel_windows`, `electron-builder` |
+| `type` | string | ✅ | Updater type: `manual`, `velopack`, `sparkle`, `squirrel_darwin`, `squirrel_windows`, `electron-builder`, `tauri` |
 | `default` | boolean | ❌ | Whether this updater is the default (only one can be default) |
 
 ### Supported Updater Types
@@ -46,9 +46,12 @@ Each updater in the array should have the following structure:
 | Type | Description |
 |------|-------------|
 | `manual` | Standard FaynoSync update flow (default if none specified) |
+| `velopack` | Velopack cross-platform installer/updater |
+| `sparkle` | Sparkle macOS update framework |
 | `squirrel_darwin` | Squirrel macOS update mechanism |
 | `squirrel_windows` | Squirrel Windows update mechanism |
 | `electron-builder` | Electron Builder update mechanism |
+| `tauri` | Tauri built-in updater |
 
 ## Example Requests
 

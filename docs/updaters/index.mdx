@@ -1,6 +1,6 @@
 ---
 title: Updaters Support
-description: Complete guide to FaynoSync update mechanisms — Velopack, Squirrel, Electron Builder, Tauri, and manual updates.
+description: Complete guide to FaynoSync update mechanisms — Velopack, Sparkle, Squirrel, Electron Builder, Tauri, and manual updates.
 ---
 
 # Updaters Support
@@ -15,6 +15,7 @@ Each updater has its own reference page:
 
 - [Manual](./manual.mdx) — the default FaynoSync flow with custom client update logic.
 - [Velopack](./velopack.mdx) — cross-platform installer/updater; faynoSync speaks its **native** feed protocol, no per-language SDK.
+- [Sparkle (macOS)](./sparkle.mdx) — `sparkle`; faynoSync hosts a materialized appcast, preserving every element verbatim, no SDK.
 - [Squirrel (macOS)](./squirrel-darwin.mdx) — `squirrel_darwin`.
 - [Squirrel (Windows)](./squirrel-windows.mdx) — `squirrel_windows`, generates `RELEASES`.
 - [Electron Builder](./electron-builder.mdx) — `electron-builder`, generates `*.yml`.
@@ -26,6 +27,7 @@ Each updater has its own reference page:
 |--------------|-------------|----------|-----------------|---------------------|
 | `manual` | Standard FaynoSync update flow | Default updater, works with custom update logic | No | None |
 | `velopack` | Velopack cross-platform installer/updater | Desktop apps (C#, Rust, JS, Python, Go, …) using Velopack | Yes (`releases.{channel}.json` feed) | Requires channel, platform, and arch |
+| `sparkle` | Sparkle macOS update framework | Native macOS `.app` bundles using Sparkle | Yes (materialized `appcast.{channel}.xml`) | macOS only; upload the `generate_appcast` appcast + archives |
 | `squirrel_darwin` | Squirrel macOS update mechanism | Applications using Squirrel for macOS updates | No | None |
 | `squirrel_windows` | Squirrel Windows update mechanism | Applications using Squirrel for Windows updates | Yes (`RELEASES`) | None |
 | `electron-builder` | Electron Builder update mechanism | Electron applications using electron-builder | Yes (`*.yml`) | None |
@@ -36,7 +38,7 @@ More updaters will be added as FaynoSync continues to evolve as a universal upda
 :::
 
 :::tip Working examples
-See the [Example Apps](../examples/index.mdx) for runnable desktop integrations: [Electron](../examples/electron.mdx) (`electron-builder`), [Squirrel](../examples/squirrel.mdx) (`squirrel_darwin` / `squirrel_windows`), [Tauri](../examples/tauri.mdx), and [Velopack](../examples/velopack.mdx) (`velopack`, no SDK).
+See the [Example Apps](../examples/index.mdx) for runnable desktop integrations: [Electron](../examples/electron.mdx) (`electron-builder`), [Squirrel](../examples/squirrel.mdx) (`squirrel_darwin` / `squirrel_windows`), [Tauri](../examples/tauri.mdx), [Velopack](../examples/velopack.mdx) (`velopack`, no SDK), and [Sparkle](../examples/sparkle.mdx) (`sparkle`, no SDK).
 :::
 
 ## Platform Configuration
@@ -54,7 +56,7 @@ Updaters are configured at the platform level. Each platform can have multiple u
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `type` | string | ✅ | The updater type (`manual`, `velopack`, `squirrel_darwin`, `squirrel_windows`, `electron-builder`, `tauri`) |
+| `type` | string | ✅ | The updater type (`manual`, `velopack`, `sparkle`, `squirrel_darwin`, `squirrel_windows`, `electron-builder`, `tauri`) |
 | `default` | boolean | ❌ | Whether this updater is the default for the platform (only one can be default) |
 
 ### Example Platform Configuration
@@ -66,6 +68,7 @@ Updaters are configured at the platform level. Each platform can have multiple u
   "updaters": [
     { "type": "manual", "default": true },
     { "type": "velopack" },
+    { "type": "sparkle" },
     { "type": "squirrel_darwin", "default": false },
     { "type": "electron-builder" },
     { "type": "tauri" }
@@ -79,7 +82,7 @@ Only one updater can be set as default per platform. If no updaters are specifie
 
 ## Upload with the `updater` Parameter
 
-Updaters that generate or ingest special files (`RELEASES`, `*.yml`, `releases.{channel}.json`) accept an `updater` parameter in the upload request. This places all uploaded files in an isolated folder specific to that updater type, keeping formats from colliding.
+Updaters that generate or ingest special files (`RELEASES`, `*.yml`, `releases.{channel}.json`, `appcast.{channel}.xml`) accept an `updater` parameter in the upload request. This places all uploaded files in an isolated folder specific to that updater type, keeping formats from colliding.
 
 See each updater's page for its exact upload payload. The general shape:
 
@@ -111,7 +114,7 @@ curl -X GET 'http://localhost:9000/checkVersion?app_name=myapp&version=1.0.0&cha
 ```
 
 :::note
-[`velopack`](./velopack.mdx) and [`squirrel_windows`](./squirrel-windows.mdx) do **not** use `/checkVersion`. They expose dedicated feed endpoints their clients understand natively — see their pages for the exact URLs.
+[`velopack`](./velopack.mdx), [`sparkle`](./sparkle.mdx), and [`squirrel_windows`](./squirrel-windows.mdx) do **not** use `/checkVersion`. They expose feed files their clients fetch natively — see their pages for the exact URLs.
 :::
 
 ### Frontend Dashboard

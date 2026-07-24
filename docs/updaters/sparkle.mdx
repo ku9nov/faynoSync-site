@@ -1,0 +1,110 @@
+---
+title: Sparkle Updater (macOS)
+description: Serve macOS Sparkle auto-updates from FaynoSync — upload a generate_appcast feed and FaynoSync materializes a per-channel appcast, preserving every element verbatim (edSignature, deltas, custom tags) and overlaying only publish, critical, changelog, and pubDate.
+---
+
+# Sparkle Updater (macOS)
+
+[Sparkle](https://sparkle-project.org) is the de-facto auto-update framework for native macOS apps (Objective-C / Swift, linked into an `.app`). It is macOS-only — Windows uses the separate WinSparkle port, and Electron on macOS uses Squirrel.Mac, not Sparkle. FaynoSync serves Sparkle updates through the **stock Sparkle client**: you upload the `generate_appcast` output and FaynoSync hosts the feed. No per-language SDK, no client glue beyond one delegate method.
+
+## A hosted appcast, not a translation layer
+
+Like [Velopack](./velopack.mdx), Sparkle is a native updater: FaynoSync reproduces the exact appcast the stock Sparkle client already knows how to read, rather than adapting a `/checkVersion` response. The difference from Velopack is that Sparkle's feed is **RSS/XML that carries publisher-authored, security-critical fields** (the Ed25519 signature above all), so FaynoSync treats the uploaded appcast as the source of truth and edits it as little as possible.
+
+FaynoSync stores each `<item>` **verbatim** (via `github.com/beevik/etree`, which round-trips unknown elements and namespaces that `encoding/xml` would drop) and, when it materializes the feed, overlays only the four fields it owns. Everything else — `sparkle:edSignature`, `sparkle:version`, `minimumSystemVersion`, the whole `<sparkle:deltas>` subtree, `hardwareRequirements`, `minimumAutoupdateVersion`, `releaseNotesLink`, `maximumSystemVersion`, unknown namespaces — passes through untouched.
+
+## Requirements
+
+- **macOS only.** Configure the `sparkle` updater on a `darwin` platform, with an explicit channel, platform, and arch — FaynoSync materializes one appcast per `(owner, app, platform, arch, channel)` tuple.
+- **Signing stays off the server.** The `sparkle:edSignature` is an Ed25519 signature over the archive **bytes**, produced at build time by Sparkle's `sign_update` / `generate_appcast` and verified client-side against `SUPublicEDKey` in `Info.plist`. The private key never touches FaynoSync — it reads the signature out of the uploaded appcast and re-emits it verbatim.
+- **Upload the whole appcast.** Unlike [Tauri](./tauri.mdx), Sparkle has **no `signature` upload field**. The signature already lives inside the appcast you upload.
+
+Configure the `sparkle` updater on the platform (see [Platform Configuration](./index.mdx#platform-configuration)).
+
+## Packaging and upload
+
+Build and sign your `.app`, then run Sparkle's `generate_appcast` over the archive directory to produce `appcast.xml` with the `edSignature`, `length`, and `sparkle:version` for each archive. Upload that appcast (renamed `appcast.{channel}.xml`) together with the archives it references and any delta files:
+
+```bash
+curl -X POST --location 'http://localhost:9000/upload' \
+--header 'Authorization: Bearer <jwt_token>' \
+--form 'file=@"/path_to_file/appcast.nightly.xml"' \
+--form 'file=@"/path_to_file/MyApp-1.0.3.zip"' \
+--form 'file=@"/path_to_file/MyApp-1.0.3-1.0.2.delta"' \
+--form 'data="{\"app_name\":\"myapp\",\"version\":\"1.0.3\",\"channel\":\"nightly\",\"publish\":true,\"platform\":\"darwin\",\"arch\":\"arm64\",\"updater\":\"sparkle\",\"changelog\":\"### Changelog\\n\\n- Added feature X\\n- Fixed bug Y\"}"'
+```
+
+Upload rules enforced by the `sparkle` validator:
+
+- The appcast (`appcast.{channel}.xml`) plus every archive it references must be present. Accepted archive types are `.zip`, `.dmg`, `.tar.*`, and `.aar`; `.delta` files are optional.
+- **Every supplied archive/delta must have a matching `<enclosure>` in the appcast.** An archive with no appcast entry is rejected rather than stored silently — this catches a stale appcast that predates the uploaded version.
+
+The `sparkle` updater accepts the same fields on the [edit flow](../api/apps/update-specific-version-app.mdx) (`POST /apps/update`), so adding a platform/arch to an existing version carries its sparkle metadata into the materialized feed.
+
+The [faynoSync CLI](../cli.mdx) exposes the same upload as `--updater sparkle` with repeated `--file` flags (no `--signature` — the `edSignature` is already in the appcast):
+
+```bash
+faynosync upload \
+  --app myapp --version 1.0.3 --channel nightly \
+  --platform darwin --arch arm64 --updater sparkle \
+  --file ./appcast.nightly.xml \
+  --file ./MyApp-1.0.3.zip \
+  --file ./MyApp-1.0.3-1.0.2.delta \
+  --publish
+```
+
+## What FaynoSync manages vs. passes through
+
+When FaynoSync materializes the feed it overlays exactly these managed fields onto each stored raw `<item>`:
+
+| Field | Source | Behavior |
+|-------|--------|----------|
+| **publish** | FaynoSync flag | Include the `<item>` when published; omit it entirely when not. |
+| **critical** | FaynoSync flag | `sparkle:criticalUpdate`. An existing tag (including a `sparkle:version` threshold) is kept as-is; a bare tag is added only if absent; the tag is dropped when critical is off. |
+| **changelog** | FaynoSync version changelog | `<description>` (CDATA) — inserted/replaced **only when non-empty**. An empty changelog leaves the uploaded item's own `<description>` / `releaseNotesLink` untouched. |
+| **pubDate** | Version `Updated_at` | Stamped in RFC1123Z, replacing the build tool's date — the release's availability date is FaynoSync-owned. |
+| enclosure `url` | rewritten | Every enclosure URL (full **and** nested deltas) is rewritten to its FaynoSync link by basename. `sparkle:edSignature` and `length` are left untouched, so signatures stay valid. |
+| `sparkle:channel` | dropped | The feed is already per-channel, so this tag is removed. |
+
+Everything not in this table is **pass-through** — taken verbatim from the uploaded appcast. Notably `sparkle:version` (CFBundleVersion) must pass through unchanged; substituting FaynoSync's own version would break Sparkle's client-side version comparison.
+
+## The materialized feed
+
+Sparkle in FaynoSync is **static / materialized**, equivalent to Velopack's [Mode 1 (CDN)](./velopack.mdx#mode-1--cdn-on-by-default). There is no flag to turn it on: whenever a sparkle version changes state (upload, publish/unpublish, critical/changelog edit, version or artifact deletion), FaynoSync regenerates the appcast as a static object in `S3_BUCKET_NAME`:
+
+```
+sparkle/{owner}/{app}/{platform}/{arch}/appcast.{channel}.xml
+```
+
+Archives and deltas are stored next to it under `sparkle/{owner}/{app}/{platform}/{arch}/` with their original filenames. The uploaded appcast lands on this materialized key, so the managed feed overwrites the raw upload (with a skip-if-unchanged check via ETag). Point the app's `SUFeedURL` at that base and the stock Sparkle client fetches the appcast directly:
+
+```
+SUFeedURL → https://cdn.example.com/sparkle/admin/myapp/darwin/arm64/appcast.nightly.xml
+```
+
+Put a CDN in front of the public bucket and update checks never touch the API — Sparkle does version comparison client-side and picks the newest `<item>`.
+
+:::note Not the same as the `cdn` edge cache
+This appcast materialization is inherent to how Sparkle works and is always on for sparkle apps. It is a different mechanism from the per-app [`cdn` edge/S3 response cache](../edge) used by SDK clients — that one caches FaynoSync's own JSON responses in `S3_BUCKET_NAME_CDN`. Sparkle feeds live in `S3_BUCKET_NAME`.
+:::
+
+## Feature mapping
+
+- **publish / critical / changelog** — fully supported through the overlay above.
+- **Rollout (native).** Sparkle's own `sparkle:phasedRolloutInterval` (time-based, client-side) passes through verbatim if `generate_appcast` emitted it. FaynoSync's [deviceId / percent rollout](../rollout) does **not** apply — a single materialized file is served to every client, so it can't diverge per device. See [Rollout — updater compatibility](../rollout#updater-compatibility).
+- **Intermediate builds — not yet.** [Required intermediate builds](../intermediate_build) need a per-client decision on the served item, which a static object can't make. This is deferred to a future dynamic sparkle route (mirroring the [Velopack API mode](./velopack.mdx#mode-2--api-dynamic)).
+
+## Caveats
+
+- **Do not enable whole-feed signing (`SURequireSignedFeed`).** A server-rewritten feed can't carry an EdDSA signature over the entire appcast, because FaynoSync rewrites enclosure URLs and overlays elements. The security boundary is the **per-archive** `sparkle:edSignature`, which stays byte-identical and valid.
+- **`<description>` vs. external release notes.** When a FaynoSync changelog is set, FaynoSync injects a `<description>`, and Sparkle prefers inline `<description>` over `releaseNotesLink`. With an empty changelog it keeps whatever the uploaded item had, so a publisher-provided `releaseNotesLink` still works. To keep an external link, leave the FaynoSync changelog empty.
+- **Re-upload after upgrading.** Feeds are rebuilt from the stored raw `<item>`; any release uploaded before this format existed has no stored raw item and is skipped. Re-upload those versions.
+
+## Related reading
+
+- [Sparkle example app](../examples/sparkle.mdx) — a runnable native macOS AppKit app using the stock Sparkle client, no SDK.
+- [Updaters Support](./index.mdx) — how each updater shapes the FaynoSync response.
+- [Velopack Updater](./velopack.mdx) — the other native, no-SDK updater; the model for the materialized feed.
+- [Squirrel (macOS)](./squirrel-darwin.mdx) — the macOS updater used by Electron apps.
+- [Rollout](../rollout) — why native rollout passes through but FaynoSync rollout doesn't apply.
+- [Required Intermediate Build](../intermediate_build) — the deferred dynamic-route feature.

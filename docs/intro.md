@@ -16,7 +16,7 @@ One of FaynoSync's key strengths is its flexibility and user control. Users can 
 
 - **[Unified Registry](./api/apps/app-introduction)**: FaynoSync serves as a central registry for different types of applications, providing a streamlined, intuitive API that simplifies managing your updates.
 
-- **Multi-Updater Support**: Support for various update mechanisms including Velopack, Squirrel Windows/macOS, Electron Builder, and custom manual updates with artifact isolation for proper file organization.
+- **Multi-Updater Support**: Support for various update mechanisms including Velopack, Sparkle, Squirrel Windows/macOS, Electron Builder, Tauri, and custom manual updates with artifact isolation for proper file organization.
 
 - **Seamless Updates**: Keep your applications always up-to-date with a straightforward and efficient auto-updating process that adapts to your specific update mechanism.
 
@@ -46,6 +46,7 @@ FaynoSync supports multiple update mechanisms to ensure compatibility with vario
 
 - **Manual Updates**: Custom update logic for applications with specific requirements
 - **Velopack**: Cross-platform desktop updates served through Velopack's native feed protocol — no per-language SDK, with delta updates and CDN-by-default delivery
+- **Sparkle**: Native macOS auto-updates — faynoSync hosts a materialized appcast, preserving every element verbatim (signatures, deltas, custom tags) with no SDK
 - **Squirrel Windows**: Native support for Windows applications using Squirrel update mechanism
 - **Squirrel macOS**: Optimized updates for macOS applications using Squirrel
 - **Electron Builder**: Full compatibility with Electron applications using electron-builder

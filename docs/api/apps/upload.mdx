@@ -34,11 +34,11 @@ The request uses `multipart/form-data` format with the following fields:
 | `platform` | string | ❌ | Platform (e.g., linux, windows) |
 | `arch` | string | ❌ | Architecture (e.g., amd64, arm64) |
 | `changelog` | string | ❌ | Changelog in markdown format |
-| `updater` | string | ❌ | Updater type for artifact isolation (manual, squirrel_darwin, squirrel_windows, electron-builder, tauri) |
+| `updater` | string | ❌ | Updater type for artifact isolation (manual, velopack, sparkle, squirrel_darwin, squirrel_windows, electron-builder, tauri) |
 | `signature` | string | ❌ | Cryptographic signature (required for Tauri updater) |
 
 :::info
-The `updater` parameter is useful when uploading files for updaters that generate special files (like RELEASES for Squirrel Windows or *.yml for electron-builder). It ensures files are stored in isolated folders specific to that updater.
+The `updater` parameter is useful when uploading files for updaters that generate or ingest special files (like RELEASES for Squirrel Windows, *.yml for electron-builder, `releases.{channel}.json` for Velopack, or `appcast.{channel}.xml` for Sparkle). It ensures files are stored in isolated folders specific to that updater.
 :::
 
 ## Example Requests
@@ -79,6 +79,18 @@ curl -X POST --location 'http://localhost:9000/upload' \
 --header 'Authorization: Bearer <jwt_token>' \
 --form 'file=@"/path_to_file/myapp.app.tar.gz"' \
 --form 'data="{\"app_name\":\"myapp\",\"version\":\"1.0.0\",\"channel\":\"stable\",\"publish\":true,\"platform\":\"darwin\",\"arch\":\"amd64\",\"updater\":\"tauri\",\"signature\":\"dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUUzIzUGJLcHpQNHdCVEJzTXJjbWFhUUdUVEtaUGRLdGhWdGZJZkF2VmM0TzJGMkdPQUk4V1hzYWJuUUhWbWI2cTFWTkhEZE9lbkVwUERCQmhRPT0K\",\"changelog\":\"### Changelog\\n\\n- Added new feature X\\n- Fixed bug Y\"}"'
+```
+
+### Upload with Updater Parameter (Sparkle, macOS)
+
+Sparkle has no `signature` field — the `edSignature` already lives inside the uploaded appcast. Upload the `generate_appcast` output plus every archive/delta it references:
+
+```bash
+curl -X POST --location 'http://localhost:9000/upload' \
+--header 'Authorization: Bearer <jwt_token>' \
+--form 'file=@"/path_to_file/appcast.stable.xml"' \
+--form 'file=@"/path_to_file/MyApp-1.0.0.zip"' \
+--form 'data="{\"app_name\":\"myapp\",\"version\":\"1.0.0\",\"channel\":\"stable\",\"publish\":true,\"platform\":\"darwin\",\"arch\":\"arm64\",\"updater\":\"sparkle\",\"changelog\":\"### Changelog\\n\\n- Added new feature X\\n- Fixed bug Y\"}"'
 ```
 
 ### Multiple File Upload (Standard)
@@ -134,11 +146,20 @@ When you specify an `updater` parameter, files are organized in isolated folders
 └── latest.yml
 ```
 
+**Sparkle Upload (materialized per platform/arch):**
+```
+/sparkle/admin/myapp/darwin/arm64/
+├── MyApp-1.0.0.zip
+└── appcast.stable.xml
+```
+
 ## Supported Updater Types
 
 | Updater | Generated Files | Use Case | Special Requirements |
 |---------|-----------------|----------|---------------------|
 | `manual` | None | Standard FaynoSync uploads | None |
+| `velopack` | `releases.{channel}.json` | Velopack cross-platform desktop apps | Requires channel, platform, and arch |
+| `sparkle` | `appcast.{channel}.xml` | Native macOS apps using Sparkle | macOS only; upload the `generate_appcast` appcast + archives |
 | `squirrel_darwin` | None | Squirrel macOS applications | None |
 | `squirrel_windows` | RELEASES | Squirrel Windows applications | None |
 | `electron-builder` | *.yml | Electron applications | None |

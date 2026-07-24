@@ -41,6 +41,7 @@ Because rollout rides in the **JSON response**, it works for any integration tha
 
 - **[Squirrel.Windows](/docs/updaters/squirrel-windows)** — polls a `RELEASES` file, which has no field for rollout metadata, so it never sees `rollout`.
 - **[Velopack](/docs/updaters/velopack)** — reads its own feed format that does not carry rollout at the moment; upstream is actively evolving, so this may be added in the near future.
+- **[Sparkle](/docs/updaters/sparkle)** — reads a materialized appcast, one static file served to every client, so faynoSync's deviceId/percent rollout can't diverge per device. Sparkle's own native `sparkle:phasedRolloutInterval` (time-based, client-side) does pass through the feed verbatim.
 - **[electron-builder](/docs/updaters/electron-builder)** — the updater itself consumes `latest.yml`, but the JS SDK reads the JSON `/checkVersion` response (with `rollout`), applies the bucketing, and only then hands the updater the `.yml` URL. So rollout works here.
 
 In short, rollout can be applied **anywhere the integration reads the JSON response first and gates the update before handing off** to the native updater. Where it isn't available today is a property of that updater's feed format and how the SDK wires it — not a server limitation.

@@ -25,7 +25,7 @@ const faqs: FaqItem[] = [
   {
     question: 'Which platforms and frameworks does FaynoSync support?',
     answer:
-      'FaynoSync is platform- and language-agnostic by design — it can manage updates for any application, written in any programming language, on any platform. You flexibly define your own platforms and architectures to match exactly what you ship, so support is not limited to a fixed list. Common setups include desktop apps on Windows, macOS, and Linux with frameworks like Velopack, Electron (electron-updater), Tauri, or Squirrel, and architectures such as AMD64 and ARM64 — but these are examples, not boundaries.',
+      'FaynoSync is platform- and language-agnostic by design — it can manage updates for any application, written in any programming language, on any platform. You flexibly define your own platforms and architectures to match exactly what you ship, so support is not limited to a fixed list. Common setups include desktop apps on Windows, macOS, and Linux with frameworks like Velopack, Sparkle, Electron (electron-updater), Tauri, or Squirrel, and architectures such as AMD64 and ARM64 — but these are examples, not boundaries.',
   },
   {
     question: 'How is FaynoSync different from Squirrel or electron-updater?',

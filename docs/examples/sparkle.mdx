@@ -1,0 +1,101 @@
+---
+title: Sparkle Auto-Update Example (macOS, no SDK)
+sidebar_label: Sparkle
+description: Sparkle auto-update example with faynoSync — a native macOS AppKit app updating through the stock Sparkle client with no SDK, reading a faynoSync-materialized appcast and injecting deviceId/localVersion via the feedParameters delegate.
+sidebar_position: 6
+---
+
+# Sparkle Example (macOS, no SDK)
+
+A minimal native **macOS AppKit** app that auto-updates through the **stock [Sparkle](../updaters/sparkle.mdx) client** — no faynoSync SDK, no per-language glue. Sparkle fetches a faynoSync-materialized appcast, compares versions client-side, and installs the newest signed archive.
+
+**Repository:** [github.com/ku9nov/faynoSync-sparkle-example](https://github.com/ku9nov/faynoSync-sparkle-example)
+
+Like the [Velopack](./velopack.mdx) example — and unlike the [Electron](./electron.mdx), [Squirrel](./squirrel.mdx), and [Tauri](./tauri.mdx) examples that run the JavaScript SDK as an edge-first gate — this app uses **no SDK at all**. faynoSync hosts Sparkle's native appcast, so `SPUStandardUpdaterController` talks to it as it would to any static host. That is the whole point of the [`sparkle` updater](../updaters/sparkle.mdx).
+
+## Integration pattern
+
+1. `SPUStandardUpdaterController` is started with a delegate; Sparkle checks on its schedule (`SUScheduledCheckInterval`) or on demand.
+2. The `feedURLString` delegate composes the appcast URL from config, so one build can target any `owner/app/platform/arch/channel`.
+3. Sparkle downloads the appcast, verifies each archive's `edSignature` against `SUPublicEDKey`, and installs.
+
+## The stock client — zero SDK
+
+The updater is the unmodified Sparkle `SPUStandardUpdaterController`. faynoSync is just the URL the delegate points it at:
+
+```swift
+import Sparkle
+
+final class UpdaterManager: NSObject, SPUUpdaterDelegate {
+    private(set) var controller: SPUStandardUpdaterController!
+
+    override init() {
+        super.init()
+        controller = SPUStandardUpdaterController(
+            startingUpdater: true, updaterDelegate: self, userDriverDelegate: nil)
+    }
+
+    // Compose SUFeedURL from config instead of hardcoding one channel/arch in Info.plist.
+    func feedURLString(for updater: SPUUpdater) -> String? {
+        Config.appcastURL   // {feedBase}/sparkle/{owner}/{app}/{platform}/{arch}/appcast.{channel}.xml
+    }
+}
+```
+
+`Config.appcastURL` builds the exact key faynoSync [materializes](../updaters/sparkle.mdx#the-materialized-feed), reading `owner`, `app`, `channel`, and the feed base from `Info.plist` and detecting `arch` at compile time. See [`Sources/UpdaterManager.swift`](https://github.com/ku9nov/faynoSync-sparkle-example/blob/main/Sources/UpdaterManager.swift) and [`Sources/Config.swift`](https://github.com/ku9nov/faynoSync-sparkle-example/blob/main/Sources/Config.swift).
+
+## Injecting deviceId and localVersion
+
+Sparkle can't set HTTP headers on the appcast fetch, so the app appends faynoSync's canonical parameters (`deviceId`, `localVersion`, and the rest) to `SUFeedURL` as **query parameters** via the `feedParameters` delegate:
+
+```swift
+func feedParameters(for updater: SPUUpdater, sendingSystemProfile: Bool) -> [[String: String]] {
+    func p(_ k: String, _ v: String) -> [String: String] {
+        ["key": k, "value": v, "displayKey": k, "displayValue": v]
+    }
+    return [
+        p("deviceId", DeviceID.current),
+        p("localVersion", Config.version),
+        p("id", Config.appName),
+        p("channel", Config.channel),
+        p("platform", Config.platform),
+        p("arch", Config.arch),
+    ]
+}
+```
+
+Against the **static materialized appcast these parameters are ignored** (object storage doesn't read query strings). They are wired up ahead of the deferred [dynamic sparkle route](../updaters/sparkle.mdx#feature-mapping), which will use them for per-client intermediate/rollout selection. `DeviceID.current` is a UUID persisted under Application Support (see [`Sources/DeviceID.swift`](https://github.com/ku9nov/faynoSync-sparkle-example/blob/main/Sources/DeviceID.swift)).
+
+## Build, sign, publish
+
+The repo drives everything through a `Makefile` over Sparkle's own CLI tools (`generate_keys`, `generate_appcast`, `sign_update`) — the private Ed25519 key is generated into the macOS login Keychain and never leaves the machine:
+
+```bash
+make keys      # generate Ed25519 keys; paste SUPublicEDKey into Resources/Info.plist
+make build     # build + sign + zip the .app into build/dist
+make appcast   # sign archives and (re)generate appcast.{channel}.xml
+```
+
+Then upload the generated appcast plus its archives to faynoSync with `updater: sparkle` — via the [CLI](../cli.mdx) (`--file` repeated per artifact, no `--signature`, since the `edSignature` is already in the appcast):
+
+```bash
+faynosync upload \
+  --app faynosyncSparkleExample --version 1.0.3 --channel nightly \
+  --platform darwin --arch arm64 --updater sparkle \
+  --file build/dist/darwin/arm64/nightly/appcast.nightly.xml \
+  --file build/dist/darwin/arm64/nightly/faynosyncSparkleExample-1.0.3.zip \
+  --publish
+```
+
+faynoSync [materializes](../updaters/sparkle.mdx#the-materialized-feed) the appcast at `sparkle/{owner}/{app}/{platform}/{arch}/appcast.{channel}.xml`, overlaying `publish`, `critical`, `changelog`, and `pubDate` while preserving every `edSignature` byte-for-byte. The app's `SparkleFeedBaseURL` in `Info.plist` points at that public bucket, so the next check picks up the new version.
+
+## Failure reports (optional)
+
+There is no SDK, so the app talks to faynoSync's [reports](../api/reports/ingest) endpoint with plain HTTP. Set `FaynoSyncReportKey` in `Info.plist` and update failures are POSTed to `/reports/ingest` — fire-and-forget, never blocking the update (see [`Sources/Reporter.swift`](https://github.com/ku9nov/faynoSync-sparkle-example/blob/main/Sources/Reporter.swift)).
+
+## Related reading
+
+- [Sparkle Updater](../updaters/sparkle.mdx) — the appcast contract, managed vs. pass-through fields, and the materialized feed.
+- [Velopack Example](./velopack.mdx) — the other no-SDK native updater example.
+- [Rollout](../rollout.mdx) — why native rollout passes through but faynoSync rollout doesn't apply to a materialized feed.
+- [Reports ingest API](../api/reports/ingest) — the endpoint used without an SDK.
