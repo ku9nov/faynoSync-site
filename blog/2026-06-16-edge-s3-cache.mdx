@@ -3,7 +3,7 @@ slug: edge-s3-cache
 title: Scaling Update Checks with Edge + S3 Response Cache
 authors: [ku9nov]
 tags: [faynoSync, edge, performance]
-description: Serve repeated update checks from object storage at the edge instead of hitting the API for every client. faynoSync's SDK-driven, edge-first delivery with S3-backed response manifests offloads the hot read path while the API stays the source of truth.
+description: Serve repeated update checks from S3 at the edge instead of hitting the API — faynoSync edge-first delivery offloads the hot read path at scale.
 ---
 
 # Scaling Update Checks with Edge + S3 Response Cache
@@ -11,6 +11,7 @@ description: Serve repeated update checks from object storage at the edge instea
 Update checks are the noisiest traffic an update server ever sees. Every running copy of your app polls `/checkVersion` on a timer, almost always with the same parameters, and each call validates the app, channel, platform, and architecture before answering. At a few hundred clients that's nothing. At a hundred thousand, it's the same handful of answers recomputed millions of times a day — and the usual fix is database clustering, replication, and heavier ops you'd rather not run for an update server.
 
 [Performance Mode](https://faynosync.com/docs/performance) already takes the first bite out of this with a Redis cache at the API layer. The next step moves the hot *read* path off the origin entirely: serve repeated checks from object storage at the edge, and let the API handle only cache misses and the control plane.
+{/* truncate */}
 
 This post explains how faynoSync's [Edge + S3 response cache](https://faynosync.com/docs/edge) works, how it differs from Performance Mode, and how telemetry stays accurate when checks no longer reach the API.
 

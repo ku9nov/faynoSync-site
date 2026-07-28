@@ -93,7 +93,7 @@ export default function Faq(): JSX.Element {
   return (
     <Layout
       title="FAQ"
-      description="Frequently asked questions about FaynoSync — the self-hosted, open-source auto-updater service for Electron, Tauri, and Squirrel desktop apps, with multi-cloud storage, channels, and secure delivery.">
+      description="Frequently asked questions about FaynoSync — the self-hosted, open-source auto-updater for Electron, Tauri, and Squirrel desktop apps.">
       <Head>
         <script type="application/ld+json">{JSON.stringify(faqSchema)}</script>
         <script type="application/ld+json">

@@ -3,7 +3,7 @@ slug: electron-auto-update
 title: How to Setup Auto Update for Electron App
 authors: [ku9nov]
 tags: [faynoSync, electron, auto-update, development]
-description: A complete guide to adding automatic updates to an Electron app with faynoSync — covering both a custom update flow and native electron-updater integration, plus code signing, critical updates, and troubleshooting.
+description: Add auto updates to your Electron app with faynoSync — custom update flow, native electron-updater integration, code signing, and troubleshooting.
 ---
 
 # How to Setup Auto Update for Electron App 🔄
@@ -11,6 +11,7 @@ description: A complete guide to adding automatic updates to an Electron app wit
 Shipping an Electron app is easy. Keeping every user on the latest version is the hard part. Unlike apps on the App Store or Google Play, a desktop app you distribute yourself has no built-in update channel — so you have to build one.
 
 This guide shows how to add automatic updates to an Electron app using [faynoSync](https://faynosync.com/docs/intro), a self-hosted, open-source update server. We'll cover two approaches:
+{/* truncate */}
 
 - **A custom update flow** — you call faynoSync's `checkVersion` API yourself and control the UX end to end.
 - **Native `electron-updater` integration** — faynoSync speaks the electron-builder protocol, so the standard updater works out of the box.

@@ -195,7 +195,7 @@ const UpdaterCard = ({
             tabIndex={isActive ? 0 : -1}
             onClick={(e) => e.stopPropagation()}
           >
-            View docs
+            {updater.name} docs
             <ChevronRight className={styles.docsArrow} />
           </Link>
         </div>

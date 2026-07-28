@@ -3,7 +3,7 @@ slug: rollout-health-reports
 title: Rollout Health Reports — Catch Failed Updates Before They Spread
 authors: [ku9nov]
 tags: [faynoSync, reports, telemetry]
-description: faynoSync report ingestion lets clients send update, install, and crash failures to a public endpoint that aggregates them into rollout-health groups — cheap to ingest, privacy-conscious, and bounded in storage, without becoming an APM or crash-analytics platform.
+description: Catch failed updates early with faynoSync report ingestion — clients send update, install, and crash failures, aggregated into rollout-health groups.
 ---
 
 # Rollout Health Reports — Catch Failed Updates Before They Spread
@@ -11,6 +11,7 @@ description: faynoSync report ingestion lets clients send update, install, and c
 [Telemetry](https://faynosync.com/blog/telemetry-insights) tells you who's running which version. It doesn't tell you when an update *fails* — when the download checksum doesn't match, the installer hits a full disk, or the app panics on first launch after a release. Those failures are exactly the ones you want to catch in the first hour of a rollout, before they reach the rest of your install base.
 
 faynoSync's **report ingestion** fills that gap. Clients send short operational failure reports to a public endpoint; the server validates, groups, and aggregates them into a rollout-health picture by app, version, channel, platform, and architecture. The design is deliberately narrow: cheap to ingest, stable for aggregation, and bounded in storage — **not** a logging pipeline, an APM, or a Sentry replacement.
+{/* truncate */}
 
 This post covers what reports are, how ingestion works, the privacy boundary, and how to read rollout health from the aggregated groups. Everything here is verified against the [Reports Management docs](https://faynosync.com/docs/api/reports/reports-introduction).
 

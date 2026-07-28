@@ -3,7 +3,7 @@ slug: performance-mode
 title: Performance Mode — Speed Up Your API
 authors: [ku9nov]
 tags: [faynoSync, performance]
-description: Enable Performance Mode in faynoSync to handle thousands of update checks per minute — a Redis-backed cache plus an optional Nginx microcache layer that cut response times and database load.
+description: Enable Performance Mode in faynoSync to handle thousands of update checks per minute — a Redis-backed cache plus an optional Nginx microcache layer.
 ---
 
 # Performance Mode — Speed Up Your API ⚡
@@ -11,6 +11,7 @@ description: Enable Performance Mode in faynoSync to handle thousands of update 
 Update checks are bursty and repetitive. Every running copy of your app polls the same `/checkVersion` endpoint with nearly identical parameters, and each call validates the app, channel, platform, and architecture against MongoDB. At a few hundred clients that's fine. At thousands it's the same handful of database queries, repeated thousands of times a minute.
 
 Performance Mode fixes that with caching. This post explains how it works, how to configure Redis, how cache invalidation keeps results correct, and how to stack an optional Nginx microcache on top for a multi-layer strategy.
+{/* truncate */}
 
 ---
 

@@ -3,7 +3,7 @@ slug: fetch-latest-version
 title: Fetch Latest Version of App — Smart Update Links
 authors: [ku9nov]
 tags: [faynoSync, api]
-description: Build download links that always point to the newest release with faynoSync's /apps/latest endpoint — with copy-paste examples for landing pages, OS auto-detection, CI pipelines, and Docker.
+description: Build download links that always point to the newest release with faynoSync's /apps/latest endpoint — landing pages, OS detection, CI, and Docker.
 ---
 
 # Fetch Latest Version of App — Smart Update Links 🔄
@@ -11,6 +11,7 @@ description: Build download links that always point to the newest release with f
 Ever needed a download link that always points to the latest version of your app — one you can put on a landing page, in a README, or inside a CI pipeline and never touch again? That's exactly what faynoSync's [`/apps/latest`](https://faynosync.com/docs/api/info/fetch-latest-build) endpoint is for.
 
 Instead of hardcoding `myapp-1.2.3.dmg` and updating it on every release, you point users at a stable URL and faynoSync resolves it to the newest matching build. This post walks through the endpoint with copy-paste examples for landing pages, OS auto-detection, shell scripts, and Docker.
+{/* truncate */}
 
 > Looking to check for updates **from inside a running app** (Electron, Tauri, Squirrel)? That's a different endpoint — [`/checkVersion`](https://faynosync.com/docs/api/info/latest). See [How to Setup Auto Update for Electron App](https://faynosync.com/blog/electron-auto-update). `/apps/latest` is for **download links**; `/checkVersion` is for **in-app update checks**.
 

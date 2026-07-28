@@ -3,7 +3,7 @@ slug: private-apps
 title: Private Apps in faynoSync — Keep Your Software Secure
 authors: [ku9nov]
 tags: [faynoSync, security]
-description: Keep internal tools, beta builds, and enterprise software private in faynoSync — store artifacts in a separate private S3 bucket, gate downloads with ENABLE_PRIVATE_APP_DOWNLOADING, and serve them through short-lived signed URLs.
+description: Keep internal tools, beta builds, and enterprise software private in faynoSync — a separate private S3 bucket, gated downloads, and signed URLs.
 ---
 
 # Private Apps in faynoSync — Keep Your Software Secure 🔒
@@ -11,6 +11,7 @@ description: Keep internal tools, beta builds, and enterprise software private i
 When developing software, sometimes you need to keep things private. Whether it's internal tools, beta versions, or enterprise applications — not everything should be publicly accessible. That's why faynoSync comes with built-in support for private applications.
 
 This post covers what private apps are, how to create one, how downloads are gated, and how private apps combine with [team access control](https://faynosync.com/blog/team-based-auth). Every flag and endpoint here is verified against the [Create Application](https://faynosync.com/docs/api/apps/create) and [private download](https://faynosync.com/docs/api/apps/download) docs.
+{/* truncate */}
 
 ---
 

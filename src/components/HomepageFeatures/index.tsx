@@ -815,7 +815,7 @@ export default function HomePage() {
   }, [])
 
   return (
-    <Layout description="FaynoSync is a powerful auto-updater service for desktop and cross-platform applications, delivering effortless updates with multi-cloud distribution, built-in telemetry, and secure, reliable delivery you fully control.">
+    <Layout description="FaynoSync is a self-hosted auto-updater service for desktop and cross-platform apps: multi-cloud distribution, telemetry, and secure delivery you control.">
       <div className="bg-gradient relative overflow-hidden">
         {/* Animated Background Elements */}
         <FloatingParticles />
@@ -829,7 +829,7 @@ export default function HomePage() {
         {/* Enhanced Hero Section */}
         <section className="relative flex flex-col items-center justify-center min-h-[88vh] text-white px-4 py-8" style={{ zIndex: 10 }}>
           <h1 className="text-center mb-6 hero-title">
-            <span className="hero-title-brand">FaynoSync</span>
+            <span className="hero-title-brand">FaynoSync</span>{' '}
             <span className="hero-title-sub">Secure auto-updater service for desktop &amp; cross-platform apps</span>
           </h1>
           <p className="text-xl md:text-2xl text-center mb-8 max-w-3xl fade-in-up">

@@ -141,7 +141,7 @@ export default function Demo(): JSX.Element {
   return (
     <Layout
       title="Demo Dashboard"
-      description="Watch FaynoSync dashboard in action with our interactive demo video. See how to manage applications, track updates, and monitor your auto-updater service in real-time.">
+      description="Watch the FaynoSync dashboard in action — manage applications, track updates, and monitor your auto-updater service in an interactive demo video.">
       <Head>
         <script type="application/ld+json">
           {JSON.stringify(breadcrumbSchema)}

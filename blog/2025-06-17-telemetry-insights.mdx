@@ -3,7 +3,7 @@ slug: telemetry-insights
 title: Telemetry Insights — Understand Your Users Better 📊
 authors: [ku9nov]
 tags: [faynoSync, telemetry, analytics]
-description: Track version adoption, platform distribution, and active users with faynoSync's built-in, privacy-first telemetry — collected via checkVersion and a dedicated beacon endpoint, stored in Redis.
+description: Track version adoption, platform distribution, and active users with faynoSync's privacy-first telemetry — via checkVersion and a beacon endpoint.
 ---
 
 # Telemetry Insights — Understand Your Users Better 📊
@@ -11,6 +11,7 @@ description: Track version adoption, platform distribution, and active users wit
 Once your app is in users' hands, the obvious questions follow: How many people actually run it? Which version are they on? Which platforms should you prioritize? Shipping updates blind is guesswork — faynoSync's built-in telemetry turns those questions into data.
 
 The best part: it's privacy-first and you already have most of the plumbing. Telemetry is collected from the same [`/checkVersion`](https://faynosync.com/docs/api/info/latest) calls your clients already make — you just add one header. This post covers what's tracked, the critical `X-Device-ID` header, how to enable it, the beacon endpoint for SDK/edge flows, and how to read the data.
+{/* truncate */}
 
 ---
 
