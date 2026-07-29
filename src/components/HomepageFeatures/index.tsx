@@ -384,7 +384,7 @@ const HeroUpdateFlow = () => {
                     </div>
                     <div className="premium-server-card" aria-hidden="true">
                       <div className="server-card-head">
-                        <img src="/img/favicon.png" alt="" />
+                        <img src="/img/logo-96.png" alt="" width="26" height="26" />
                         <span>FaynoSync Server</span>
                       </div>
                       <div className="server-card-body">

@@ -48,7 +48,7 @@ export default function Footer(): ReactNode {
     copyright?: string;
     links: FooterColumn[];
   };
-  const logoSrc = useBaseUrl('/img/favicon.png');
+  const logoSrc = useBaseUrl('/img/logo-96.png');
 
   return (
     <footer className="footer footer--dark fyno-footer">
