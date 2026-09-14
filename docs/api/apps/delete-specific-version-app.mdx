@@ -1,18 +1,17 @@
 ---
 title: Delete specific version of application
-description: Delete a specific FaynoSync application version and its related release metadata from the API.
+description: Delete one or several FaynoSync application versions in a single request, including their artifacts and related release metadata.
 ---
 
 # Delete specific version of application
 
-Delete a specific version of an application by its unique identifier.
-
-
+Delete one or several versions of an application by their unique identifiers.
 
 ## Endpoint
 
 ```
 DELETE /apps/delete?id=<id>
+DELETE /apps/delete?id=<id_1>&id=<id_2>&id=<id_3>
 ```
 
 ## Authentication
@@ -25,18 +24,34 @@ DELETE /apps/delete?id=<id>
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `id` | string | ✅ | The unique identifier of the specific version to delete |
+| `id` | string | ✅ | The unique identifier of a version to delete. Repeat the parameter to delete several versions in one request |
 
-## Example Request
+## Bulk deletion rules
+
+- **One application per request.** All ids must belong to the same application, otherwise the request is rejected.
+- **All or nothing.** Nothing is deleted unless every id is a valid, existing version you are allowed to delete.
+- **Limit.** The number of `id` parameters is capped by [`MAX_BULK_DELETE_VERSIONS`](/docs/getting-started/env-overview#performance--features) (default: `10`). The limit is checked against the ids as sent, before repeated ids are dropped.
+- **Duplicates.** Repeated ids are deleted once.
+
+## Example Requests
+
+### Single version
 
 ```bash
-curl --location 'http://localhost:9000/apps/delete?id=653a5e4f51ce5114611f5abb' \
+curl --location --request DELETE 'http://localhost:9000/apps/delete?id=653a5e4f51ce5114611f5abb' \
+--header 'Authorization: Bearer <jwt_token>'
+```
+
+### Several versions
+
+```bash
+curl --location --request DELETE 'http://localhost:9000/apps/delete?id=653a5e4f51ce5114611f5abb&id=653a5e4f51ce5114611f5abc' \
 --header 'Authorization: Bearer <jwt_token>'
 ```
 
 ## Response
 
-### Success Response (200 OK)
+### Success Response (200 OK) — single version
 
 ```json
 {
@@ -44,14 +59,84 @@ curl --location 'http://localhost:9000/apps/delete?id=653a5e4f51ce5114611f5abb' 
 }
 ```
 
+### Success Response (200 OK) — several versions
+
+```json
+{
+  "deleteSpecificAppResult.DeletedCount": 2,
+  "app_name": "bulkapp",
+  "deleted": [
+    { "id": "653a5e4f51ce5114611f5abb", "version": "1.0.3.0", "channel": "" },
+    { "id": "653a5e4f51ce5114611f5abc", "version": "1.0.4.0", "channel": "" }
+  ]
+}
+```
+
+`channel` is an empty string for versions uploaded without a channel.
+
 ### Response Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `deleteSpecificAppResult.DeletedCount` | number | Number of versions successfully deleted (should be 1 if successful) |
+| `deleteSpecificAppResult.DeletedCount` | number | Number of versions deleted |
+| `app_name` | string | Application the versions belonged to (only when several ids were sent) |
+| `deleted` | array | Deleted versions with `id`, `version` and `channel` (only when several ids were sent) |
+| `orphaned_links` | array | Artifact links that could not be removed from storage. The versions are already deleted; only present when storage cleanup partially failed |
+
+### Error Responses
+
+A request with a single `id` keeps the original error format. The responses below apply when several ids are sent.
+
+**400 Bad Request** — too many ids:
+
+```json
+{
+  "error": "too many versions requested",
+  "limit": 10,
+  "requested": 12
+}
+```
+
+**400 Bad Request** — malformed id:
+
+```json
+{
+  "error": "invalid version id",
+  "id": "not-an-object-id",
+  "details": "the provided hex string is not a valid ObjectID"
+}
+```
+
+**400 Bad Request** — versions from different applications:
+
+```json
+{
+  "error": "all versions must belong to the same application",
+  "apps": ["myapp", "otherapp"]
+}
+```
+
+**403 Forbidden** — some versions belong to another owner (`not_found` is included only if some ids also do not exist):
+
+```json
+{
+  "error": "you don't have permission to delete these items",
+  "forbidden": ["653a5e4f51ce5114611f5abb"],
+  "not_found": ["653a5e4f51ce5114611f5abd"]
+}
+```
+
+**404 Not Found** — some versions do not exist:
+
+```json
+{
+  "error": "some of the requested versions do not exist",
+  "not_found": ["653a5e4f51ce5114611f5abd"]
+}
+```
 
 ## Notes
 
-- This operation permanently deletes the specific version and all its associated artifacts
+- This operation permanently deletes the specified versions and all their associated artifacts
 - The deletion is irreversible - deleted versions cannot be recovered
-- Only the specified version is deleted, other versions of the same application remain unaffected
+- Only the specified versions are deleted, other versions of the same application remain unaffected

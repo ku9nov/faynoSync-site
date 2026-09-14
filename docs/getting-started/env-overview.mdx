@@ -18,7 +18,7 @@ To configure `FaynoSync`, you need to set the following environment variables. T
 | **Storage** | `S3_*`, `GCS_*`, `MINIO_*` (deprecated) |
 | **Database** | `MONGODB_URL`, `MONGODB_URL_TESTS` |
 | **Security** | `API_KEY`, `JWT_SECRET` |
-| **Features** | `PERFORMANCE_MODE`, `ENABLE_TELEMETRY` |
+| **Features** | `PERFORMANCE_MODE`, `ENABLE_TELEMETRY`, `MAX_BULK_DELETE_VERSIONS` |
 | **TUF** | `TUF_ENABLED`, `ONLINE_KEY_DIR` |
 | **Reports** | `REPORTS_ENABLED`, `REPORTS_*` |
 | **Redis** | `REDIS_*` |
@@ -143,6 +143,15 @@ This setting enables performance optimizations within the application when set t
 This setting enables statistics when set to true.
 
 **Example:** `ENABLE_TELEMETRY=true`
+
+</details>
+
+<details>
+<summary><strong>MAX_BULK_DELETE_VERSIONS</strong></summary>
+
+Maximum number of version ids accepted by one [`DELETE /apps/delete`](/docs/api/apps/delete-specific-version-app) request. Defaults to `10` when unset or not a positive number.
+
+**Example:** `MAX_BULK_DELETE_VERSIONS=10`
 
 </details>
 
@@ -479,6 +488,7 @@ SLACK_BOT_TOKEN=xoxb-*
 SLACK_CHANNEL=test-channel
 SLACK_NOTIFICATION_TTL=24h
 ENABLE_TELEMETRY=true
+MAX_BULK_DELETE_VERSIONS=10
 
 # =============================================================================
 # TUF (The Update Framework)
