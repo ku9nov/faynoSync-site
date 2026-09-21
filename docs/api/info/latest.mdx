@@ -29,6 +29,22 @@ GET /checkVersion?app_name=<app_name>&version=<version>&owner=admin
 If no `updater` parameter is specified, the API will use the default updater configured for the platform.
 :::
 
+## Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| `X-Download-Token` | `fnd_…` [download token](../apps/download-tokens-regenerate) of the app and channel | Private apps in `strict` mode |
+| `Authorization` | `Bearer <jwt_token>` of the owning admin, or of a team user with the `download` permission and access to the app and channel | Alternative to `X-Download-Token` |
+| `X-Device-ID` | Device identifier | ❌ |
+
+Public apps and private apps in `unlisted` mode need no credential. For a private app in `strict` mode, a request without a valid credential gets exactly the same answer as an app that does not exist, `400 Bad Request`:
+
+```json
+{
+  "error": "app_name not found in apps_meta collection"
+}
+```
+
 ## Example Requests
 
 ### Standard Request (Uses Platform Default Updater)
@@ -121,3 +137,4 @@ releaseDate: '2024-01-15T10:00:00.000Z'
 - **Critical Updates**: Critical updates should be prioritized and applied as soon as possible
 - **Intermediate Versions**: Intermediate versions may be required for major version jumps or breaking changes
 - **Download URLs**: URLs are provided in the format expected by each updater type
+- **Private Apps**: Download URLs of a private app point to [`/download`](../apps/download), which applies the same `download_mode` check. Responses of private apps are never cached in Redis or published to the CDN

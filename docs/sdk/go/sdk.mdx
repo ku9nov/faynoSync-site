@@ -100,6 +100,9 @@ Notes:
 | `Platform` | string | Yes | Platform value used by your faynoSync setup. |
 | `Arch` | string | Yes | Architecture value used by your faynoSync setup. |
 | `DeviceID` | string | No | Device identifier sent as `X-Device-ID` header when provided. Required to participate in [staged rollouts](#staged-rollout). |
+| `DownloadToken` | string | No | [Download token](../../api/apps/download-tokens-regenerate) of a private app in `strict` mode, sent as the `X-Download-Token` header. Requires SDK v0.4.0 or later. |
+
+For a `strict` private app, a check without `DownloadToken` gets the same answer as an app that does not exist. When `DownloadToken` is set, the SDK skips `EdgeURL` and asks the API directly, because private apps are never published to the edge. If your application downloads the artifact itself, send the same header to [`/download`](../../api/apps/download) and use `faynosync.StripDownloadTokenOnRedirect` as the `http.Client`'s `CheckRedirect`, so the token is not forwarded to the storage host.
 
 ### Request Mapping
 

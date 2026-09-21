@@ -103,6 +103,9 @@ The request also respects `timeoutMs`: whichever fires first — your signal or 
 | `platform` | `string` | Conditional | Platform value used by your faynoSync setup. |
 | `arch` | `string` | Conditional | Architecture value used by your faynoSync setup. |
 | `deviceId` | `string` | No | Device identifier. Sent as the `X-Device-ID` header, triggers a telemetry beacon after a successful edge response, and is required to participate in [staged rollouts](#staged-rollout). |
+| `downloadToken` | `string` | No | [Download token](../../api/apps/download-tokens-regenerate) of a private app in `strict` mode, sent as the `X-Download-Token` header. Requires SDK 0.7.0 or later. |
+
+For a `strict` private app, a check without `downloadToken` gets the same answer as an app that does not exist. When `downloadToken` is set, the SDK skips `edgeURL` and asks the API directly, because private apps are never published to the edge. If your application downloads the artifact itself, send the same header (exported as `DOWNLOAD_TOKEN_HEADER`) to [`/download`](../../api/apps/download), request it with `redirect: 'manual'`, and fetch the `Location` URL without the header, so the token is not forwarded to the storage host.
 
 The SDK only validates `owner`, `appName`, and `version` as required; omitted fields are sent as empty query values. `channel`, `platform`, and `arch` are not validated client-side, but if the target app in your faynoSync instance defines channels, platforms, or architectures, you must provide the matching values or the check will not resolve to the correct release.
 

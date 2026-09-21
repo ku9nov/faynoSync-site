@@ -41,6 +41,8 @@ Dynamic API behavior is unchanged. Edge mode adds a parallel, cache-friendly rea
 
 Edge response caching is **per application**, via the `cdn` flag when you create or update an app (see [Create Application](./api/apps/create) and [Update application](./api/apps/update-app)).
 
+Private apps cannot enable `cdn`: manifests are public objects and would expose a private app's versions and links. The API rejects the combination with `400`.
+
 Supporting infrastructure:
 
 - A **public** object storage bucket for response manifests (metadata only—binaries stay on the existing artifact flow). Configure `S3_BUCKET_NAME_CDN` as described in [Environment Variables Overview](./getting-started/env-overview).
@@ -88,7 +90,7 @@ Cached objects use standard cache headers (for example, `Cache-Control: public, 
 
 ### Publish, unpublish, and cache invalidation
 
-When you publish or unpublish **any** version for an app, faynoSync **deletes response manifests** for that application’s scope on object storage. The next checks for affected dimensions are MISSes; the SDK falls back to `/checkVersion`, repopulates S3, and subsequent traffic HITs again.
+When you publish or unpublish **any** version for an app, faynoSync **deletes response manifests** for that application’s scope on object storage. The next checks for affected dimensions are MISSes; the SDK falls back to `/checkVersion`, the API repopulates S3, and subsequent traffic HITs again. The manifest is written in the background after the API has answered, so a request arriving within the next fraction of a second may still MISS.
 
 You do not need a separate warm-up job for every new channel or architecture combination—rare keys fill naturally through the fallback path the first time something asks for them.
 

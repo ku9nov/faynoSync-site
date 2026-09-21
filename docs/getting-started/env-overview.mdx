@@ -42,7 +42,9 @@ Public URL to this API.
 <details>
 <summary><strong>ENABLE_PRIVATE_APP_DOWNLOADING</strong></summary>
 
-If enabled, then apps located in private S3 can be downloaded using the public API; if disabled, then download links require authentication.
+Deprecated. Access to private apps is now set per app with `download_mode` (see [create app](../api/apps/create) and [download](../api/apps/download)). This variable only chooses the default mode: `true` gives new private apps `unlisted` (anyone with the link can download), `false` gives them `strict` (a [download token](../api/apps/download-tokens-regenerate) or a JWT with access is required, on update checks as well as downloads).
+
+On upgrade to v2.3.0, existing private apps get their `download_mode` from this value once. With `false`, their clients must start sending `X-Download-Token`, or the apps must be switched to `unlisted` through [update app](../api/apps/update-app).
 
 **Example:** `ENABLE_PRIVATE_APP_DOWNLOADING=false`
 

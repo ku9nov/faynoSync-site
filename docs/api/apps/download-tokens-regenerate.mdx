@@ -1,0 +1,76 @@
+---
+title: Regenerate download token
+description: Create or rotate a FaynoSync download token (fnd_) that lets clients of a strict private app check for updates and download artifacts of one channel.
+---
+
+# Regenerate download token
+
+Creates the download token of a private app and channel on the first call, and rotates it on every following call. The previous value stops working immediately.
+
+Clients of a [private app](./create) in `strict` mode send this token in the `X-Download-Token` header on [update checks](../info/latest) and on [`/download`](./download).
+
+## Endpoint
+
+```
+POST /download-tokens/regenerate
+```
+
+## Authentication
+
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <jwt_token>` |
+
+Requires permission to edit apps. A team user also needs access to the app and to the channel.
+
+## Request Body
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `app_id` | string | ✅ | ID of the private app |
+| `channel_id` | string | ❌ | ID of the channel the token is scoped to. Omit it only for an app that has no channels |
+
+## Example Request
+
+```bash
+curl -X POST --location 'http://localhost:9000/download-tokens/regenerate' \
+--header 'Authorization: Bearer <jwt_token>' \
+--header 'Content-Type: application/json' \
+--data '{"app_id": "66ae13fe5b663c058367f893", "channel_id": "66fea051c57c81dff9a0f38d"}'
+```
+
+## Response
+
+### Success Response (200 OK)
+
+```json
+{
+  "app_id": "66ae13fe5b663c058367f893",
+  "channel_id": "66fea051c57c81dff9a0f38d",
+  "token": "fnd_3f9c2a7e0b..."
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `app_id` | string | App the token is scoped to |
+| `channel_id` | string | Channel the token is scoped to |
+| `token` | string | The token value. It is returned only once |
+
+### Error Responses
+
+| Status | When |
+|--------|------|
+| `400` | Invalid body or IDs, or the app is public |
+| `403` | The requester has no access to the app or channel |
+| `404` | The app or channel does not exist |
+
+## Notes
+
+- Only a hash of the token is stored, so a lost token cannot be recovered — regenerate it and ship the new value
+- One token exists per app and channel; regenerating replaces it
+- Deleting the app or the channel deletes its tokens
+- The token lets a client read versions and download artifacts of its channel; treat it as a secret embedded in the build
+- List existing tokens with [`GET /download-tokens/list`](./download-tokens-list)

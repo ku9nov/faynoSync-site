@@ -88,6 +88,8 @@ const sidebars: SidebarsConfig = {
             'api/apps/delete-specific-version-app',
             'api/apps/delete-specific-artifact',
             'api/apps/download',
+            'api/apps/download-tokens-regenerate',
+            'api/apps/download-tokens-list',
           ],
         },
         {

@@ -1,0 +1,71 @@
+---
+title: List download tokens
+description: List FaynoSync download tokens of private apps by app and channel, without exposing token values.
+---
+
+# List download tokens
+
+Returns the download tokens of the apps the requester may edit. Token values are never returned — only a non-secret prefix to identify them.
+
+## Endpoint
+
+```
+GET /download-tokens/list
+```
+
+## Authentication
+
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <jwt_token>` |
+
+Requires permission to edit apps. A team user sees only tokens of the apps in their allowed list.
+
+## Example Request
+
+```bash
+curl --location 'http://localhost:9000/download-tokens/list' \
+--header 'Authorization: Bearer <jwt_token>'
+```
+
+## Response
+
+### Success Response (200 OK)
+
+```json
+{
+  "download_tokens": [
+    {
+      "id": "68cc0a1e9b5f2d0f4c1a7b21",
+      "app_id": "66ae13fe5b663c058367f893",
+      "app_name": "secondapp",
+      "channel_id": "66fea051c57c81dff9a0f38d",
+      "channel_name": "stable",
+      "token_prefix": "fnd_3f9c2a7e",
+      "updated_at": "2026-09-18T14:39:16.233Z"
+    }
+  ]
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `download_tokens` | array | Token objects, most recently updated first |
+
+#### Token Object Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Token identifier |
+| `app_id` | string | App the token is scoped to |
+| `app_name` | string | Name of that app |
+| `channel_id` | string | Channel the token is scoped to |
+| `channel_name` | string | Name of that channel; omitted for a token without a channel |
+| `token_prefix` | string | Non-secret prefix for identification |
+| `updated_at` | string | When the token was created or last rotated |
+
+## Notes
+
+- Create or rotate a token with [`POST /download-tokens/regenerate`](./download-tokens-regenerate)

@@ -24,6 +24,21 @@ GET /apps/latest?app_name=<app_name>&channel=stable&platform=linux&arch=amd64&ow
 | `package` | string | ❌ | The package type (e.g., deb, rpm, dmg) |
 | `owner` | string | ✅ | Name of your admin user |
 
+## Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| `X-Download-Token` | `fnd_…` [download token](../apps/download-tokens-regenerate) of the app and channel | Private apps in `strict` mode |
+| `Authorization` | `Bearer <jwt_token>` of the owning admin, or of a team user with the `download` permission and access to the app and channel | Alternative to `X-Download-Token` |
+
+Public apps and private apps in `unlisted` mode need no credential. For a private app in `strict` mode, a request without a valid credential gets exactly the same answer as an app that does not exist, `500 Internal Server Error`:
+
+```json
+{
+  "error": "app_name not found in apps_meta collection"
+}
+```
+
 ## Important Behavior
 
 ### 1. Channel Parameter
@@ -118,3 +133,4 @@ Returns all available builds under that channel:
 - Use specific parameters to narrow down results and get direct download URLs
 - The `owner` parameter is required for proper access control
 - Package types are automatically detected based on available files
+- Responses of private apps are never cached in Redis
