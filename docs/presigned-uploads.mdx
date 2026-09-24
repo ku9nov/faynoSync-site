@@ -138,7 +138,7 @@ A presigned URL points at the **storage API endpoint**, not at faynoSync. The ma
 
 With `POST /upload` faynoSync hashes the file itself, so the SHA-256/SHA-512 stored for an artifact always describe the stored bytes. With presigned uploads the hashes come from the uploader, and storage only confirms the MD5. The SHA-256 and SHA-512 are therefore marked **unverified** and checked against the stored bytes right before they are signed:
 
-- [`POST /tuf/v1/artifacts/publish`](/docs/api/tuf/publish) verifies every unverified artifact of the version before adding it to TUF targets. On Garage and AWS it reads the SHA-256 that storage computed; on DigitalOcean Spaces and GCS it streams the object once through faynoSync and hashes it (no temporary file, constant memory).
+- [`POST /tuf/v1/artifacts/publish`](/docs/api/tuf/publish) verifies every unverified artifact of the version before adding it to TUF targets. On Garage and AWS it reads the SHA-256 that storage computed; on DigitalOcean Spaces and GCS it streams the object once through faynoSync and hashes it (no temporary file; memory use does not grow with file size).
 - If any artifact does not match, **nothing in the version is signed**, and the [task](/docs/api/tuf/check_tasks) fails with the list of mismatching objects.
 - Once an artifact passes, it is marked verified, so a repeated publish does not re-read it.
 - An artifact uploaded **without** `sha256`/`sha512` has no hashes to sign, so TUF publish skips it and TUF clients cannot download it. That is the uploader's choice; for TUF apps, always send `sha256` (and `sha512`).
