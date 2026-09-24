@@ -410,6 +410,14 @@ For using Google Cloud Storage as your object storage solution:
 | `S3_BUCKET_NAME` | The name of your GCS bucket for public storage. | `S3_BUCKET_NAME=your-public-gcs-bucket` |
 | `S3_BUCKET_NAME_CDN` | Bucket used for API response caching. You can reuse `S3_BUCKET_NAME` or use a dedicated bucket for flexible cache settings. | `S3_BUCKET_NAME_CDN=your-public-gcs-bucket` |
 
+### Presigned Uploads
+
+Applies to every storage driver that supports [presigned uploads](/docs/presigned-uploads) (AWS S3, DigitalOcean Spaces, Garage, GCS).
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `PRESIGNED_UPLOAD_URL_TTL` | Lifetime of the presigned PUT URLs returned by [Upload Init](/docs/api/apps/upload-init), as a Go duration. Default `30m`, maximum `168h` (7 days, the signed URL limit of S3-compatible storage, applied to every driver). An invalid or out-of-range value falls back to `30m`. The pending upload record lives 90 minutes longer than the URLs. | `PRESIGNED_UPLOAD_URL_TTL=2h` |
+
 ---
 
 ## ⚙️ Setting Up Environment Variables

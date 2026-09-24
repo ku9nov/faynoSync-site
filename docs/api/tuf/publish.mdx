@@ -51,7 +51,7 @@ curl --location 'http://localhost:9000/tuf/v1/artifacts/publish' \
 
 ## Response
 
-### Publishing Started (200 OK)
+### Publishing Started (202 Accepted)
 
 When there are artifacts to sign, publishing is started in the background:
 
@@ -70,9 +70,9 @@ When there are artifacts to sign, publishing is started in the background:
 }
 ```
 
-### All Artifacts Already Signed (200 OK)
+### Nothing to Sign (200 OK)
 
-When all artifacts for this version are already signed with TUF metadata:
+When every signable artifact of this version is already signed with TUF metadata:
 
 ```json
 {
@@ -81,7 +81,7 @@ When all artifacts for this version are already signed with TUF metadata:
     "artifacts": [],
     "version": "0.0.0.5"
   },
-  "message": "All artifacts are already signed"
+  "message": "Nothing to sign: all signable artifacts are already signed"
 }
 ```
 
@@ -94,7 +94,7 @@ When all artifacts for this version are already signed with TUF metadata:
 | `data.last_update` | string | ISO8601 timestamp when publishing was started (only when publishing started) |
 | `data.task_id` | string | UUID of the background task; use [Check Task](/docs/api/tuf/check_tasks) to verify completion (only when publishing started) |
 | `data.version` | string | Version from the request |
-| `message` | string | `"Artifact(s) publishing started"` or `"All artifacts are already signed"` |
+| `message` | string | `"Artifact(s) publishing started"` or `"Nothing to sign: all signable artifacts are already signed"` |
 
 ## Notes
 
@@ -103,3 +103,5 @@ When all artifacts for this version are already signed with TUF metadata:
 - TUF-enabled clients will only trust and download artifacts that have been signed via this route. Publishing a version through the standard FaynoSync API alone is not enough for TUF clients.
 - You may sign artifacts **before** making the version publicly available (publish) in FaynoSync.
 - When `task_id` is present, poll [Check Task](/docs/api/tuf/check_tasks) until the task completes to ensure metadata has been fully published.
+- Updater feed files (`releases.{channel}.json`, `appcast*.xml`, `RELEASES`, `*.yml`) are not TUF targets and are never signed.
+- Artifacts uploaded through [presigned uploads](/docs/presigned-uploads) carry hashes supplied by the uploader. Before signing, publish verifies them against the stored bytes — reading the SHA-256 computed by storage on Garage and AWS S3, or streaming the object once on DigitalOcean Spaces and GCS. If any artifact does not match, no artifact of the version is signed and the task fails with the list of mismatching objects. See [TUF: hashes are verified before signing](/docs/presigned-uploads#tuf-hashes-are-verified-before-signing).

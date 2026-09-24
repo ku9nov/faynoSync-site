@@ -1,0 +1,254 @@
+---
+title: Presigned Uploads
+description: Upload large application builds directly to S3, DigitalOcean Spaces, Garage or GCS with presigned URLs — no reverse proxy body limits, a plain curl flow for CI, and TUF-safe hash verification.
+---
+
+# Presigned Uploads
+
+With a regular [`POST /upload`](/docs/api/apps/upload) every file passes through faynoSync and the reverse proxy in front of it. Sometimes the proxy gets in the way of large uploads — body size limits or timeouts end the request before faynoSync is done. If that is your case, use presigned uploads instead.
+
+Presigned uploads remove faynoSync from the data path. The uploader asks faynoSync for short-lived **presigned PUT URLs**, sends the bytes **directly to object storage**, and then tells faynoSync to finish the version. Only two small JSON/form requests go through the API; the artifacts never do.
+
+The flow needs nothing beyond `curl`, `jq` and `openssl`, so it drops into any CI system without installing a dedicated client.
+
+## How it works
+
+```
+1. uploader            computes md5 of each file (plus sha256/sha512 for TUF apps)
+2. uploader -> API     POST /upload/init    version metadata + file manifest (+ feed files inline)
+   API                 validates everything, returns one presigned PUT URL per file
+3. uploader -> storage PUT each file directly, with the headers returned by init
+   storage             rejects the upload if the bytes do not match the signed MD5
+4. uploader -> API     POST /upload/complete {upload_id}
+   API                 checks size and MD5 reported by storage, moves the files
+                       to their final keys, creates the version
+```
+
+Everything that can reject an upload — authentication, [CI/CD token](/docs/api/tokens/tokens-introduction) scope, unknown app, channel, platform or architecture, [updater](/docs/updaters) file rules, [private app](/docs/api/apps/create) restrictions, an artifact that already exists for this version — is checked in **init**, before a single byte is transferred. You never upload 500 MB only to be told the version already exists.
+
+`complete` takes **only the `upload_id`**. The version metadata, file names and hashes are the ones recorded at init, so they cannot be changed between the two calls. The result is exactly what `POST /upload` would have produced: same storage layout, same links, same cache invalidation and updater feed regeneration, same Slack notification, same response.
+
+## Feed files are sent inline
+
+Updater feed files are small, and faynoSync needs their **content** to validate the upload (for example, Sparkle checks that every archive has a matching `<enclosure>` in the appcast). They are therefore attached to the `init` request as regular `file` form parts, and faynoSync stores them itself. All other files go through presigned URLs.
+
+| Updater | Feed files (sent inline to init) |
+|---------|----------------------------------|
+| [`velopack`](/docs/updaters/velopack) | `releases.{channel}.json` |
+| [`sparkle`](/docs/updaters/sparkle) | `appcast*.xml` |
+| [`squirrel_windows`](/docs/updaters/squirrel-windows) | `RELEASES` |
+| [`electron-builder`](/docs/updaters/electron-builder) | `*.yml`, `*.yaml` |
+| `manual`, [`tauri`](/docs/updaters/tauri), [`squirrel_darwin`](/docs/updaters/squirrel-darwin), no updater | none |
+
+A feed file listed in the presigned manifest, or a non-feed file attached inline, is rejected with `400`. Each inline feed file may be at most 10 MiB.
+
+## Complete example with curl
+
+The script below uploads a Velopack release: the `-full.nupkg` and the installer go directly to storage, `releases.stable.json` goes inline. For an app without an updater, drop the `updater` field and the inline `-F file=@...` part.
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+API="https://faynosync.example.com"
+TOKEN="$FAYNOSYNC_TOKEN"
+FILES=(MyApp-1.4.0-full.nupkg MyApp-win-Setup.exe)
+FEED=releases.stable.json
+
+digest() { openssl "$1" -r "$2" | cut -d' ' -f1; }
+
+manifest=$(for f in "${FILES[@]}"; do
+  jq -nc --arg n "$(basename "$f")" \
+    --arg md5 "$(digest md5 "$f")" \
+    --arg sha256 "$(digest sha256 "$f")" \
+    --arg sha512 "$(digest sha512 "$f")" \
+    --argjson length "$(wc -c < "$f" | tr -d ' ')" \
+    '{name:$n, md5:$md5, sha256:$sha256, sha512:$sha512, length:$length}'
+done | jq -sc .)
+
+data='{"app_name":"myapp","version":"1.4.0","channel":"stable","platform":"windows","arch":"amd64","updater":"velopack","publish":true,"changelog":"### Changelog\n\n- New feature"}'
+
+# 1. init: validation happens here, before any transfer
+init=$(curl -sS --fail-with-body -X POST "$API/upload/init" \
+  -H "Authorization: Bearer $TOKEN" \
+  --form-string "data=$data" \
+  --form-string "files=$manifest" \
+  -F "file=@$FEED")
+upload_id=$(jq -r .upload_id <<<"$init")
+
+# 2. PUT every file directly to storage with the headers returned by init
+for f in "${FILES[@]}"; do
+  name=$(basename "$f")
+  url=$(jq -r --arg n "$name" '.files[] | select(.name==$n) | .url' <<<"$init")
+  headers=()
+  while IFS= read -r h; do headers+=(-H "$h"); done < <(
+    jq -r --arg n "$name" '.files[] | select(.name==$n) | .headers | to_entries[] | "\(.key): \(.value)"' <<<"$init")
+  curl -sS --fail-with-body -X PUT "${headers[@]}" --upload-file "$f" "$url" > /dev/null
+done
+
+# 3. complete: verifies what storage received and creates the version
+curl -sS --fail-with-body -X POST "$API/upload/complete" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"upload_id\":\"$upload_id\"}"
+```
+
+Notes on the script:
+
+- Only `md5` is required in the manifest. `sha256`, `sha512` and `length` are optional — see [Upload Init](/docs/api/apps/upload-init#files-manifest). The script sends all of them, which is what a [TUF](/docs/api/tuf/publish)-enabled app needs.
+- Hash each file **once** and derive all digests from the same bytes. The three `openssl` calls above read the same unchanged file; do not rebuild or re-sign an artifact between hashing and uploading.
+- Send the returned headers **verbatim**. They are part of the signature; a missing `Content-MD5` or a different `Content-Length` makes storage reject the PUT.
+- The PUTs are independent and can run in parallel. Storage checks the URL expiry when a PUT **starts**, so a long transfer may finish after `expires_at`, but a file whose PUT starts later is rejected with `403`. If sequential uploads of large files over a slow link take longer than 30 minutes in total, run the PUTs in parallel or raise [`PRESIGNED_UPLOAD_URL_TTL`](/docs/getting-started/env-overview#presigned-uploads).
+- Use the same `data` JSON as for [`POST /upload`](/docs/api/apps/upload); every field it accepts works here too.
+
+Field-level reference: [Upload Init](/docs/api/apps/upload-init) and [Upload Complete](/docs/api/apps/upload-complete).
+
+## Multiple platforms in one version
+
+One `init` uploads files for one platform and architecture, exactly like `POST /upload`. To ship a version for several platforms, run one `init`/`complete` per platform and architecture with the same `version` and `channel`. The first `complete` creates the version; the others add their artifacts to it. The jobs can run in parallel — concurrent completes of the same version end up in a single version, and no artifact is lost.
+
+- `publish`, `critical`, `changelog`, `rollout` and `intermediate` are taken from the upload that creates the version. Later uploads only add artifacts. A common pattern is to upload every platform with `"publish": false` and then publish once with [`POST /apps/update`](/docs/api/apps/update-specific-version-app), which takes no files.
+- The channel of a version cannot be changed. Adding artifacts to an existing version with a different `channel` is rejected by `init` with `409`.
+
+## Storage provider differences
+
+faynoSync never trusts the numbers the uploader sends. What storage can confirm on its own differs between providers, so the verification is placed where each provider can support it. These results were measured against live buckets.
+
+| Provider | Tampered PUT | Wrong length | SHA-256 by storage | TUF verification cost |
+|----------|--------------|--------------|--------------------|-----------------------|
+| Garage | `400 InvalidDigest` | `403` | yes, on copy | none |
+| AWS S3 | `400 BadDigest` | `403` | yes, on copy | none |
+| DigitalOcean Spaces | `400 BadDigest` | `403` | no | one object read |
+| Google Cloud Storage | `400 BadDigest` | pinned by MD5 | no | one object read |
+
+- **Tampered PUT** — the uploaded bytes do not match the MD5 signed into the URL; storage refuses the upload.
+- **Wrong length** — applies when `length` was declared: it is signed as `Content-Length`, and a different body size fails the signature check.
+- **SHA-256 by storage** — whether storage computes the SHA-256 itself during the server-side copy in `complete`. DigitalOcean Spaces accepts the request but silently ignores it.
+- **TUF verification cost** — what [TUF publish](#tuf-hashes-are-verified-before-signing) pays to check uploader-supplied hashes: nothing when storage has the SHA-256, otherwise one internal read of the object through faynoSync.
+
+MinIO does not support presigned uploads in faynoSync; both endpoints return `501 Not Implemented` and you keep using [`POST /upload`](/docs/api/apps/upload).
+
+On GCS, presigned URLs are signed with `GCS_SERVICE_ACCOUNT_EMAIL` and `GCS_PRIVATE_KEY` (see [environment variables](/docs/getting-started/env-overview)), the same credentials used for private downloads.
+
+### The upload endpoint must be reachable
+
+A presigned URL points at the **storage API endpoint**, not at faynoSync. The machine that runs the PUT must be able to reach it: for AWS and DigitalOcean that is the public regional endpoint; for a self-hosted Garage it is the S3 API address from `S3_API_ENDPOINT`, which is often an internal address in local setups.
+
+## TUF: hashes are verified before signing
+
+With `POST /upload` faynoSync hashes the file itself, so the SHA-256/SHA-512 stored for an artifact always describe the stored bytes. With presigned uploads the hashes come from the uploader, and storage only confirms the MD5. The SHA-256 and SHA-512 are therefore marked **unverified** and checked against the stored bytes right before they are signed:
+
+- [`POST /tuf/v1/artifacts/publish`](/docs/api/tuf/publish) verifies every unverified artifact of the version before adding it to TUF targets. On Garage and AWS it reads the SHA-256 that storage computed; on DigitalOcean Spaces and GCS it streams the object once through faynoSync and hashes it (no temporary file, constant memory).
+- If any artifact does not match, **nothing in the version is signed**, and the [task](/docs/api/tuf/check_tasks) fails with the list of mismatching objects.
+- Once an artifact passes, it is marked verified, so a repeated publish does not re-read it.
+- An artifact uploaded **without** `sha256`/`sha512` has no hashes to sign, so TUF publish skips it and TUF clients cannot download it. That is the uploader's choice; for TUF apps, always send `sha256` (and `sha512`).
+- Feed files sent inline, and everything uploaded with `POST /upload`, are hashed by faynoSync and are never re-verified.
+
+Apps that do not use TUF never read these hashes and pay nothing for them.
+
+## Staging, retries and cleanup
+
+Presigned URLs never point at a final artifact key. Files land under a staging prefix, `pending/<upload_id>/`, and `complete` copies them to their final location server side — the bytes do not pass through faynoSync. A leaked or reused URL therefore cannot overwrite a published artifact that TUF metadata already references.
+
+| Item | Lifetime |
+|------|----------|
+| Presigned PUT URL | 30 minutes by default, set with [`PRESIGNED_UPLOAD_URL_TTL`](/docs/getting-started/env-overview#presigned-uploads) (`expires_at` in the init response) |
+| Pending upload record | URL lifetime + 90 minutes (2 hours by default), then deleted automatically |
+| Staged objects | deleted by `complete`; abandoned ones stay until your lifecycle rule removes them |
+
+If `complete` returns `422` because a file is missing or does not match, the upload stays open: re-run the PUT (while its URL is valid) and call `complete` again. Once `complete` succeeds, the same `upload_id` returns `404`, so a retried CI step can never create the version twice.
+
+### Clean up abandoned uploads with a lifecycle rule
+
+faynoSync deletes staged objects when `complete` succeeds. It cannot delete what it never hears about again: an upload that was initialized and never completed, a `complete` that kept failing until the pending record expired, or a cleanup that failed after a successful `complete` (logged as `failed to delete staged objects`). Feed files are written to `pending/` already during `init`, so even an upload that never sent a single PUT can leave objects behind.
+
+Nothing inside faynoSync removes these objects. Configure a storage **lifecycle rule** that expires the `pending/` prefix in **both** buckets, `S3_BUCKET_NAME` and `S3_BUCKET_NAME_PRIVATE`. One day is a safe age with the default settings: a pending upload lives 2 hours, so the rule can never remove an upload that can still be completed. If you raise `PRESIGNED_UPLOAD_URL_TTL`, keep the rule age above that value plus 90 minutes, rounded up to whole days. Providers apply lifecycle rules asynchronously, so expect objects to disappear some time after they turn one day old, not at an exact moment.
+
+:::warning Existing lifecycle rules are replaced
+Every command below **replaces** the bucket's whole lifecycle configuration. Read the current configuration first, and if the bucket already has rules, add the `pending/` rule to them instead of applying it on its own.
+:::
+
+#### AWS S3 and Garage
+
+Both accept the same rule through the S3 API. Garage requires the prefix inside `Filter` (the deprecated top-level `Prefix` in a rule is not supported), which also works on AWS. Save the rule as `pending-lifecycle.json`:
+
+```json
+{
+  "Rules": [
+    {
+      "ID": "expire-faynosync-pending-uploads",
+      "Filter": { "Prefix": "pending/" },
+      "Status": "Enabled",
+      "Expiration": { "Days": 1 }
+    }
+  ]
+}
+```
+
+AWS S3:
+
+```bash
+aws s3api get-bucket-lifecycle-configuration --bucket your-public-bucket
+aws s3api put-bucket-lifecycle-configuration --bucket your-public-bucket \
+  --lifecycle-configuration file://pending-lifecycle.json
+```
+
+Garage: the same commands with `--endpoint-url` pointing at the Garage S3 API (the `S3_API_ENDPOINT` of your instance) and a key that owns the bucket:
+
+```bash
+aws s3api get-bucket-lifecycle-configuration --endpoint-url "$S3_API_ENDPOINT" --bucket your-public-bucket
+aws s3api put-bucket-lifecycle-configuration --endpoint-url "$S3_API_ENDPOINT" --bucket your-public-bucket \
+  --lifecycle-configuration file://pending-lifecycle.json
+```
+
+Repeat for the private bucket.
+
+#### DigitalOcean Spaces
+
+With [s3cmd](https://s3tools.org/s3cmd) configured for your Spaces region:
+
+```bash
+s3cmd getlifecycle s3://your-public-space
+s3cmd expire --expiry-days=1 --expiry-prefix=pending/ s3://your-public-space
+```
+
+Repeat for the private Space.
+
+#### Google Cloud Storage
+
+GCS matches the prefix with the `matchesPrefix` condition. Save the rule as `pending-lifecycle.json`:
+
+```json
+{
+  "rule": [
+    {
+      "action": { "type": "Delete" },
+      "condition": { "age": 1, "matchesPrefix": ["pending/"] }
+    }
+  ]
+}
+```
+
+```bash
+gsutil lifecycle get gs://your-public-bucket
+gcloud storage buckets update gs://your-public-bucket --lifecycle-file=pending-lifecycle.json
+```
+
+Repeat for the private bucket.
+
+## Private apps
+
+Presigned uploads work for [private apps](/docs/api/apps/create). Files are staged and stored in the private bucket, and artifact links point to [`/download`](/docs/api/apps/download) exactly as with a regular upload. The same updater restrictions apply: `velopack`, `sparkle`, `electron-builder` and `squirrel_windows` are rejected for private apps. If an app is switched between private and public while an upload is open, `complete` returns `409` and the upload has to be started again.
+
+## Security notes
+
+- A presigned URL is a bearer credential for a single staging key until it expires. Do not print it in CI logs (avoid `curl -v` on the PUT step).
+- Storage accepts only bytes that match the MD5 in the signature, and `complete` re-reads size and MD5 from storage before anything is created. The artifact length is always the size reported by storage.
+- Only the user who called `init` can call `complete` for that `upload_id`, and a CI/CD token must still have access to the app.
+- Hashes supplied by the uploader are never signed into TUF targets without being checked against the stored bytes.
+
+## Limits
+
+- One file per PUT, up to 5 GiB.
+- Inline feed files up to 10 MiB each.
+- Presigned uploads create versions or add artifacts through `init`/`complete`, the counterpart of [`POST /upload`](/docs/api/apps/upload). [`POST /apps/update`](/docs/api/apps/update-specific-version-app) still takes files as multipart only.

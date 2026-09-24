@@ -65,6 +65,8 @@ When a resource is created by a team user who has the Create permission for that
 
 - Team users can **only access resources they’ve been explicitly granted access to**.
 
+- Uploads ([`POST /upload`](./api/apps/upload), [Upload Init](./api/apps/upload-init), [Upload Complete](./api/apps/upload-complete)) need the Upload permission, and the app, channel, platform and architecture of the upload must all be in the team user's allowed lists. Otherwise the request returns `403` before any file is stored. Before v2.4.0 `POST /upload` did not check these lists.
+
 - Team users cannot see or manage resources from other administrators.
 
 - **Administrators can view and manage all resources created by their team users**.
@@ -107,6 +109,11 @@ To prevent collisions from duplicated resource names across different administra
     <tr>
       <td>Delete resources</td>
       <td>✅ (only own admin’s)</td>
+      <td>✅</td>
+    </tr>
+    <tr>
+      <td>Upload artifacts</td>
+      <td>✅ (with Upload permission, into allowed apps, channels, platforms and architectures only)</td>
       <td>✅</td>
     </tr>
     <tr>

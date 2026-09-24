@@ -1,0 +1,95 @@
+---
+title: Upload Complete (Presigned)
+description: Finish a FaynoSync presigned upload — verify the files received by object storage against the init manifest and create the application version.
+---
+
+# Upload Complete (Presigned)
+
+Finishes a [presigned upload](/docs/presigned-uploads) started with [Upload Init](./upload-init). faynoSync reads size and MD5 of every uploaded file from object storage, compares them with the manifest recorded at init, moves the files from the staging prefix to their final keys (server-side copy) and creates the version exactly as [`POST /upload`](./upload) does.
+
+The request carries only the `upload_id`: version metadata, file names and hashes are taken from init and cannot be changed here.
+
+## Endpoint
+
+```
+POST /upload/complete
+```
+
+## Authentication
+
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <jwt_token>` |
+
+Must be the same user that called init. A [CI/CD token](/docs/api/tokens/tokens-introduction) must still have access to the app.
+
+## Request Body
+
+```json
+{
+  "upload_id": "f0a2a06eb2ab9e945eefe8e287ac41d9"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `upload_id` | string | ✅ | The `upload_id` returned by [Upload Init](./upload-init) |
+
+## Example Request
+
+```bash
+curl -X POST --location 'http://localhost:9000/upload/complete' \
+--header 'Authorization: Bearer <jwt_token>' \
+--header 'Content-Type: application/json' \
+--data '{"upload_id":"f0a2a06eb2ab9e945eefe8e287ac41d9"}'
+```
+
+## Response
+
+### Success Response (200 OK)
+
+Same as [`POST /upload`](./upload):
+
+```json
+{
+  "uploadResult.Uploaded": "6ab3af0558c1b6f28063faef"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `uploadResult.Uploaded` | string | The unique identifier (ID) of the uploaded version |
+
+### Files Do Not Match (422 Unprocessable Entity)
+
+```json
+{
+  "error": "uploaded files do not match the upload manifest",
+  "files": [
+    "MyApp-1.4.0-full.nupkg: not uploaded",
+    "MyApp-win-Setup.exe: stored 1048575 bytes, declared 1048576"
+  ]
+}
+```
+
+The upload stays open after a `422`: re-run the failed PUTs while their URLs are valid and call complete again. It also stays open after a `403`, or after an error that happened before any artifact was recorded, so the same `upload_id` can be completed once the cause is fixed.
+
+### Error Responses
+
+| Status | When |
+|--------|------|
+| `400` | Missing or malformed `upload_id` |
+| `401` | Missing or invalid token |
+| `403` | The CI/CD token has no access to the app, or the app, channel, platform or architecture is no longer in the [team user's](/docs/team_based_auth) allowed lists. Access is checked again at complete, before any file is moved |
+| `404` | Unknown `upload_id`, an upload started by another user, an upload whose pending record expired (URL lifetime + 90 minutes, 2 hours by default), or one that was already completed |
+| `409` | The app was switched between private and public after init, or an artifact with the same app, version, platform, architecture and extension was uploaded after init — start a new upload |
+| `422` | A file was not uploaded, or its size or MD5 in storage differs from the manifest |
+| `501` | The configured storage driver does not support presigned uploads |
+
+## Notes
+
+- Complete is single-use: after a successful call the same `upload_id` returns `404`, so a retried CI step cannot create the version twice.
+- Staged objects under `pending/<upload_id>/` are deleted after a successful complete.
+- The artifact length is the size reported by storage, whether or not `length` was declared at init.
+- SHA-256 and SHA-512 from the manifest are stored as **unverified**. [TUF publish](/docs/api/tuf/publish) checks them against the stored bytes before signing; apps without TUF do not use them. See [TUF: hashes are verified before signing](/docs/presigned-uploads#tuf-hashes-are-verified-before-signing).
+- Updater feeds (Velopack, Sparkle) are regenerated and caches are invalidated the same way as after [`POST /upload`](./upload).

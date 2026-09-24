@@ -24,6 +24,12 @@ To enable TUF support on your FaynoSync instance, set:
 
 Public metadata files are stored on S3 and are **publicly accessible**. They are signed with the private keys above; clients use these signed metadata files to verify that an update is trusted and that the build they download is the one intended by the publisher.
 
+### Metadata caching
+
+`timestamp.json` is the only metadata file that faynoSync overwrites under a fixed name, and it is the first file a TUF client fetches. faynoSync writes it with `Cache-Control: public, max-age=60, must-revalidate`, so clients and any CDN in front of the bucket see a new publish within about a minute. Versioned files (`N.root.json`, `N.snapshot.json`, `N.targets.json` and delegated roles) never change once written and keep the storage default, which lets them be cached for as long as the provider allows.
+
+Caching cannot weaken verification: a client never accepts a timestamp older than the one it already trusts, and signatures and expiration are checked on every file. A cached `timestamp.json` only delays when clients notice a new release. If you put a CDN in front of the metadata, do not cache `timestamp.json` longer than its `Cache-Control` allows.
+
 ## Client-side configuration
 
 TUF verification happens on the **client application**. Your app must be configured to consume TUF metadata and verify updates before applying them. Refer to the [TUF documentation](https://theupdateframework.io/) and the go-tuf client usage to learn how to configure your application for secure update verification.

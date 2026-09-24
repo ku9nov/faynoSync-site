@@ -1,0 +1,135 @@
+---
+title: Upload Init (Presigned)
+description: Start a presigned upload in FaynoSync — validate version metadata and a file manifest, then get presigned PUT URLs to upload artifacts directly to S3-compatible storage or GCS.
+---
+
+# Upload Init (Presigned)
+
+Starts a [presigned upload](/docs/presigned-uploads). faynoSync validates the version metadata and the file manifest, stores the inline feed files, and returns one presigned PUT URL per file. The uploader then sends each file directly to object storage and finishes with [Upload Complete](./upload-complete).
+
+All checks of a regular [`POST /upload`](./upload) run here, before any file is transferred.
+
+## Endpoint
+
+```
+POST /upload/init
+```
+
+## Authentication
+
+| Header | Value |
+|--------|-------|
+| `Authorization` | `Bearer <jwt_token>` |
+
+A [CI/CD token](/docs/api/tokens/tokens-introduction) works as well and must have access to the app.
+
+## Request Body
+
+`multipart/form-data` (or `application/x-www-form-urlencoded` when there are no inline feed files):
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `data` | string (JSON) | ✅ | Version metadata — the same JSON as the `data` field of [`POST /upload`](./upload): `app_name`, `version`, `channel`, `publish`, `critical`, `platform`, `arch`, `changelog`, `updater`, `signature`, `rollout`, ... |
+| `files` | string (JSON) | ✅ | Manifest of the files that will be uploaded through presigned URLs (see below) |
+| `file` | file | ❌ | Updater feed files only (`releases.{channel}.json`, `appcast*.xml`, `RELEASES`, `*.yml`), sent inline. Max 10 MiB each |
+
+### `files` manifest
+
+A JSON array with one entry per file:
+
+```json
+[
+  {
+    "name": "MyApp-1.4.0-full.nupkg",
+    "md5": "fed304a43b43b889ac1b948e073928d0",
+    "sha256": "d73428d4e21289de53fa964274ed1dc0e39a4f58e3825fc69617c9d3dee366d7",
+    "sha512": "5a1b...(128 hex characters)",
+    "length": 52428800
+  }
+]
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | ✅ | File name without any path. Must be unique within the upload |
+| `md5` | string | ✅ | Hex MD5 of the file (32 characters). Signed into the PUT URL; storage rejects bytes that do not match |
+| `sha256` | string | ✅ for TUF apps | Hex SHA-256 (64 characters). Verified against the stored bytes before [TUF signing](/docs/api/tuf/publish) |
+| `sha512` | string | ✅ for TUF apps | Hex SHA-512 (128 characters). Signed into TUF targets together with `sha256` |
+| `length` | integer | ❌ | Size in bytes, up to 5 GiB. When set, it is signed as `Content-Length`. The stored length always comes from object storage |
+
+:::info Required for TUF apps
+`sha256` and `sha512` are not checked by init, because only [TUF publish](/docs/api/tuf/publish) uses them. For an app with TUF enabled they are effectively required: an artifact uploaded without them cannot be signed, and TUF clients will not be able to download it. For apps without TUF they can be omitted.
+:::
+
+Digests are case-insensitive. Compute them from the same bytes you upload.
+
+## Example Request
+
+```bash
+curl -X POST --location 'http://localhost:9000/upload/init' \
+--header 'Authorization: Bearer <jwt_token>' \
+--form-string 'data={"app_name":"myapp","version":"1.4.0","channel":"stable","publish":true,"platform":"windows","arch":"amd64","updater":"velopack"}' \
+--form-string 'files=[{"name":"MyApp-1.4.0-full.nupkg","md5":"<md5>","sha256":"<sha256>","sha512":"<sha512>","length":52428800}]' \
+--form 'file=@"/path_to_file/releases.stable.json"'
+```
+
+Use `--form-string` for `data` and `files` so that `curl` does not interpret `@` or `<` inside the JSON. A complete script (hashing, init, PUT, complete) is on the [Presigned Uploads](/docs/presigned-uploads#complete-example-with-curl) page.
+
+## Response
+
+### Success Response (200 OK)
+
+```json
+{
+  "upload_id": "f0a2a06eb2ab9e945eefe8e287ac41d9",
+  "expires_at": "2026-09-23T14:20:44.857939+03:00",
+  "files": [
+    {
+      "name": "MyApp-1.4.0-full.nupkg",
+      "method": "PUT",
+      "url": "https://my-bucket.s3.eu-central-1.amazonaws.com/pending/f0a2a06eb2ab9e945eefe8e287ac41d9/1?X-Amz-Algorithm=...",
+      "headers": {
+        "Content-Length": "52428800",
+        "Content-Md5": "cqfhk/D1vmKz3g30/HpOiQ=="
+      }
+    }
+  ]
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `upload_id` | string | Identifier to pass to [Upload Complete](./upload-complete) |
+| `expires_at` | string | When the presigned URLs expire (30 minutes after init by default, see [`PRESIGNED_UPLOAD_URL_TTL`](/docs/getting-started/env-overview#presigned-uploads)) |
+| `files[].name` | string | File name from the manifest |
+| `files[].method` | string | Always `PUT` |
+| `files[].url` | string | Presigned URL pointing directly at object storage |
+| `files[].headers` | object | Headers that **must** be sent with the PUT exactly as returned. They are part of the signature. `Content-Length` is present only when `length` was declared |
+
+Inline feed files are stored by faynoSync during init and are not listed in `files`.
+
+Upload each file with:
+
+```bash
+curl -X PUT -H 'Content-Length: <...>' -H 'Content-Md5: <...>' --upload-file MyApp-1.4.0-full.nupkg '<url>'
+```
+
+### Error Responses
+
+| Status | When |
+|--------|------|
+| `400` | Invalid `data` or `files`; a file name with a path; duplicate names; a missing `md5`; a digest that is not hex of the right length; `length` above 5 GiB or negative; a feed file in the manifest or a non-feed file inline; updater file rules not met; an updater that private apps do not support; two files that would share an extension or storage key |
+| `401` | Missing or invalid token |
+| `403` | The CI/CD token has no access to the app, or the app, channel, platform or architecture is not in the [team user's](/docs/team_based_auth) allowed lists |
+| `404` | The app does not exist |
+| `409` | An artifact with this app, version, platform, architecture and extension already exists, or the version already exists in another channel (the channel of a version cannot be changed) |
+| `501` | The configured storage driver does not support presigned uploads (MinIO). Use [`POST /upload`](./upload) |
+
+## Notes
+
+- Presigned URLs point at the storage API endpoint, which must be reachable from the machine doing the PUT.
+- Treat the URLs as credentials: they allow writing one staging object until they expire. Do not log them.
+- Files are staged under `pending/<upload_id>/` and moved to their final keys by [Upload Complete](./upload-complete). Configure a [lifecycle rule](/docs/presigned-uploads#clean-up-abandoned-uploads-with-a-lifecycle-rule) for abandoned uploads.
+- Storage-specific behavior is described in [Storage provider differences](/docs/presigned-uploads#storage-provider-differences).

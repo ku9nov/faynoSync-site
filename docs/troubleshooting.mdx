@@ -1,7 +1,7 @@
 ---
 sidebar_position: 7
 title: Troubleshooting
-description: Common FaynoSync issues and solutions including CORS configuration and error handling
+description: Common FaynoSync issues and solutions, including CORS configuration, stale updater feeds and TUF metadata after publish, and error handling
 ---
 # Troubleshooting
 
@@ -24,3 +24,23 @@ ALLOWED_CORS="http://localhost:5173,chrome-extension://fhdpldnibaocgjobfdkikidck
 ```
 
 This allows requests from both the development environment and the Chrome extension, ensuring functionality while keeping security in check.
+
+## Updater Feed or TUF Metadata Shows the Old Version After Publish
+
+### Problem
+
+Right after you publish or unpublish a version, a public URL still returns the previous content: a Velopack `releases.{channel}.json`, a Sparkle `appcast.{channel}.xml`, an [edge](/docs/edge) response manifest, or TUF `timestamp.json`. The API and the database already show the new state.
+
+### Cause
+
+These files are regenerated on every publish, but they are served with `Cache-Control: public, max-age=60, must-revalidate`. Anything between the client and the bucket may serve its cached copy until that minute runs out. On Google Cloud Storage this happens even without a CDN: GCS serves public objects from Google's own cache.
+
+### Solution
+
+Wait up to 60 seconds; no action is needed. To confirm that faynoSync wrote the new file, request it with a unique query string, which bypasses the cache on GCS:
+
+```bash
+curl -s "https://storage.googleapis.com/your-public-bucket/velopack/admin/MyApp/windows/amd64/releases.stable.json?nocache=$(date +%s)"
+```
+
+If the fresh copy is correct, the delay is caching. If it is still old, check the server logs for the publish.

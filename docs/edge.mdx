@@ -92,6 +92,8 @@ Cached objects use standard cache headers (for example, `Cache-Control: public, 
 
 When you publish or unpublish **any** version for an app, faynoSync **deletes response manifests** for that application’s scope on object storage. The next checks for affected dimensions are MISSes; the SDK falls back to `/checkVersion`, the API repopulates S3, and subsequent traffic HITs again. The manifest is written in the background after the API has answered, so a request arriving within the next fraction of a second may still MISS.
 
+Deleting a manifest removes it from the bucket, not from caches in front of it. A CDN, or Google Cloud Storage's built-in cache for public objects, can keep serving a deleted or overwritten manifest until its `max-age` (60 seconds) runs out. Plan for up to a minute between a publish and every client seeing it.
+
 You do not need a separate warm-up job for every new channel or architecture combination—rare keys fill naturally through the fallback path the first time something asks for them.
 
 ### Updater-specific behavior
