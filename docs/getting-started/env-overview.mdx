@@ -142,7 +142,7 @@ This setting enables performance optimizations within the application when set t
 <details>
 <summary><strong>ENABLE_TELEMETRY</strong></summary>
 
-This setting enables statistics when set to true.
+This setting enables statistics when set to true. When `false`, `/checkVersion` records no client telemetry and `/telemetry/beacon` returns `403`.
 
 **Example:** `ENABLE_TELEMETRY=true`
 
@@ -179,12 +179,12 @@ Directory path where online signing keys are stored. These keys are used for onl
 
 ### Reports Configuration
 
-Report ingestion is disabled by default. When enabled, it exposes a public `POST /reports/ingest` endpoint (authenticated by per-app report keys) and the JWT-protected read API. Enabling reports also requires Redis (used for rate limits), and detail blobs are stored in the private bucket (`S3_BUCKET_NAME_PRIVATE`) using the existing `STORAGE_DRIVER` / `S3_*` configuration. See [Reports Management](/docs/api/reports/reports-introduction) for the full API.
+Report ingestion is disabled by default. When enabled, it exposes a public `POST /reports/ingest` endpoint (authenticated by per-app report keys) and the JWT-protected read API. Rate limits are kept in Redis, and detail blobs are stored in the private bucket (`S3_BUCKET_NAME_PRIVATE`) using the existing `STORAGE_DRIVER` / `S3_*` configuration. See [Reports Management](/docs/api/reports/reports-introduction) for the full API.
 
 <details>
 <summary><strong>REPORTS_ENABLED</strong></summary>
 
-Set to `true` to enable the report ingestion endpoint and the reports read API. When `false`, none of the report routes are registered. Enabling reports forces a Redis connection.
+Set to `true` to enable the report ingestion endpoint and the reports read API. When `false`, none of the report routes are registered.
 
 **Default:** `false`
 **Example:** `REPORTS_ENABLED=true`
@@ -262,6 +262,8 @@ Per-report-key rate limit for ingestion, in requests per minute. Hitting any rat
 </details>
 
 ### Redis Configuration
+
+Redis is required. The API connects on startup, regardless of which features are enabled, and exits if Redis is unreachable.
 
 <details>
 <summary><strong>REDIS_HOST</strong></summary>
@@ -342,6 +344,8 @@ Slack notifications reuse a single mutable message per app version across artifa
 ---
 
 ## 🗄️ Storage Configuration
+
+The storage client is created once per process and reused. Storage credentials (`S3_ACCESS_KEY` / `S3_SECRET_KEY`, `GCS_CREDENTIALS_FILE`) and `STORAGE_DRIVER` are read at that point, so restart faynoSync after rotating a key. On GCS, the bucket's uniform bucket-level access setting is also read once per bucket; restart after changing it.
 
 ### MinIO (Deprecated)
 

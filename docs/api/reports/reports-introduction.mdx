@@ -36,7 +36,7 @@ REPORTS_RATE_LIMIT_PER_KEY_PER_MINUTE=100
 
 Notes:
 
-- Enabling reports also forces a Redis connection, since rate limits depend on Redis.
+- Rate limits are kept in Redis, which every faynoSync instance requires.
 - Detail blobs reuse the existing `STORAGE_DRIVER` / `S3_*` configuration but are written to the **private** bucket (`S3_BUCKET_NAME_PRIVATE`) and are only retrievable through short-lived presigned URLs.
 
 ## Authentication model

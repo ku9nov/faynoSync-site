@@ -7,7 +7,7 @@ description: Comprehensive guide to FaynoSync telemetry system for analytics and
 
 The telemetry system in FaynoSync provides detailed analytics and insights about your application's usage, helping you understand your user base and make informed decisions about updates and maintenance.
 
-You can enable statistics by defining the variable `ENABLE_TELEMETRY=true` in the `.env` file.
+You can enable statistics by defining the variable `ENABLE_TELEMETRY=true` in the `.env` file. When it is `false`, faynoSync records no client telemetry: `/checkVersion` does not count requests and `/telemetry/beacon` returns `403`.
 
 ## Overview
 

@@ -29,9 +29,9 @@ Install Docker Engine and Docker Compose:
 - [Docker Engine Installation](https://docs.docker.com/engine/install/)
 - [Docker Compose Installation](https://docs.docker.com/compose/install/linux/#install-the-plugin-manually)
 
-### 3. Redis (Optional)
+### 3. Redis
 
-Install Redis if you plan to use performance mode and collect telemetry from clients for statistics display:
+Redis is required. faynoSync stores response cache (performance mode), telemetry counters, TUF task and signing state, rate limits and Slack notification state in it. The API exits on startup if Redis is unreachable.
 - [Redis Installation Guide](https://redis.io/docs/latest/operate/oss_and_stack/install/archive/install-redis/)
 
 ### 4. Web Server (Nginx)
@@ -100,7 +100,7 @@ PERFORMANCE_MODE=true  # or false
 ENABLE_TELEMETRY=true  # or false
 MAX_BULK_DELETE_VERSIONS=10  # ids per DELETE /apps/delete request
 
-# Redis Configuration (if using performance mode or telemetry)
+# Redis Configuration (required)
 REDIS_HOST=localhost
 REDIS_PORT=6379
 REDIS_PASSWORD=your_redis_password
@@ -114,7 +114,7 @@ SLACK_ENABLE=true  # or false
 SLACK_BOT_TOKEN=xoxb-your-slack-bot-token
 SLACK_CHANNEL=faynosync-releases
 
-# Reports (optional, requires Redis; blobs stored in S3_BUCKET_NAME_PRIVATE)
+# Reports (optional; blobs stored in S3_BUCKET_NAME_PRIVATE)
 REPORTS_ENABLED=false  # or true
 REPORTS_MAX_BODY_BYTES=262144
 REPORTS_MAX_DETAILS_COMPRESSED_BYTES=131072

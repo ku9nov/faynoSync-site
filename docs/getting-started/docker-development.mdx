@@ -45,7 +45,7 @@ Rebuilding the Docker images each time can be time-consuming, making this approa
 
 ## Running Tests
 
-Once the services are running, you can execute the test suite with the following command (please wait until the `s3-service` successfully creates the bucket):
+Once the services are running, you can execute the test suite with the following command (wait until Garage finishes its bootstrap: `docker compose logs s3` shows `Garage bootstrap completed successfully.`):
 
 ```bash
 docker exec -it faynoSync_backend "/usr/bin/faynoSync_tests"
