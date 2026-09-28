@@ -50,6 +50,26 @@ http://localhost:9000/login
 |-------|------|-------------|
 | `token` | string | JWT token for authenticating subsequent API requests |
 
+### Error Responses
+
+| Status | Body | When |
+|--------|------|------|
+| `400` | `{"error": "invalid request body"}` | The body is not valid JSON |
+| `401` | `{"error": "invalid username or password"}` | Unknown username or wrong password |
+| `429` | `{"error": "too many attempts, try again later"}` | Rate limit exceeded, see below |
+| `503` | `{"error": "service temporarily unavailable"}` | Redis is unavailable, so the rate limit cannot be checked |
+
+## Rate Limiting
+
+Login attempts are limited in fixed one-minute windows:
+
+- **10 attempts per minute per client IP**
+- **5 attempts per minute per username**, counted whether or not the username exists. A successful login resets the counter for that username.
+
+When a limit is exceeded, the API responds with `429 Too Many Requests` and a `Retry-After` header holding the number of seconds until the current window ends. The response is the same for both limits and does not reveal whether the username exists.
+
+The client IP is taken from `X-Forwarded-For` only when the request comes from a proxy listed in [`TRUSTED_PROXIES`](/docs/getting-started/env-overview).
+
 ## Notes
 
 - The JWT token should be included in the `Authorization` header as `Bearer <token>`

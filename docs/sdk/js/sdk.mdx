@@ -235,7 +235,7 @@ Example (`updater` is `manual` for the SDK's own check):
 GET /responses/admin/test/nightly/darwin/arm64/manual/0.0.0.5.json
 ```
 
-In the edge path, `-` in the version is normalized to `.` (so `2.0.0-4` resolves to `2.0.0.4.json`), matching the Base API behavior.
+In the edge path, `-` in the version is normalized to `.` (so `2.0.0-4` resolves to `2.0.0.4.json`), matching the Base API behavior. Empty `channel`, `platform` and `arch` are left out of the path, and the updater segment is dropped when `platform` is empty, matching the object key the server writes.
 
 ### Fallback Decision Matrix
 

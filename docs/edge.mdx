@@ -10,6 +10,10 @@ faynoSync can serve repeated version checks from object storage at the edge inst
 
 This page describes how that data plane works, how it relates to [Performance Mode](./performance) and [Telemetry](./telemetry), and why an [official SDK](./sdk/intro) is part of the story.
 
+:::tip Recommended for production
+For any internet-facing instance, enable edge mode for public apps: set `S3_BUCKET_NAME_CDN`, turn on `cdn` for each public app, and set `EdgeURL` in the SDK. Steady-state update checks then never reach the API. See [Production Deployment](./getting-started/production-deploy#recommended-serve-update-checks-from-the-edge) for the checklist.
+:::
+
 ## Why this exists
 
 Even a well-tuned API eventually faces limits: connection churn, validation work, and database pressure scale with every client check. Pushing that load into clustering, replication, and heavier ops is not always what you want for an update server.
@@ -46,7 +50,7 @@ Private apps cannot enable `cdn`: manifests are public objects and would expose 
 Supporting infrastructure:
 
 - A **public** object storage bucket for response manifests (metadata only—binaries stay on the existing artifact flow). Configure `S3_BUCKET_NAME_CDN` as described in [Environment Variables Overview](./getting-started/env-overview).
-- An **official faynoSync SDK** configured with `BaseURL` (API origin) and optionally `EdgeURL` (edge/CDN base). Edge-first orchestration, fallback, cache fill, and telemetry integration are built for SDK clients—not for ad-hoc `/checkVersion` callers alone. See the [Go SDK](./sdk/go/sdk) and [SDK overview](./sdk/intro).
+- An **official faynoSync SDK** configured with `BaseURL` (API origin) and optionally `EdgeURL` (edge/CDN base). Edge-first orchestration, fallback, cache fill, and telemetry integration are built for SDK clients—not for ad-hoc `/checkVersion` callers alone. See the [Go SDK](./sdk/go/sdk), [JavaScript SDK](./sdk/js/sdk) and [SDK overview](./sdk/intro).
 
 Edge caching is **independent** from `PERFORMANCE_MODE`. Performance Mode uses Redis at the API layer; edge mode stores full JSON responses in object storage. You can run one, the other, or both.
 
@@ -62,7 +66,7 @@ If `EdgeURL` is set, SDK checks edge/S3 first
               ↓
             API returns normal response
               ↓
-            SDK persists response to S3 cache path
+            API writes the response to the S3 cache path in the background
               ↓
             Future checks → edge/S3 HIT
 ```
@@ -70,7 +74,7 @@ If `EdgeURL` is set, SDK checks edge/S3 first
 When `EdgeURL` is set, the SDK asks the edge path first.
 
 - **HIT** — A manifest object exists for the request dimensions. The SDK returns the cached JSON body to the application.
-- **MISS** — No manifest (or not valid). The SDK calls `/checkVersion` on `BaseURL`, returns that response, and **persists** it to the S3 cache path so later checks become HITs.
+- **MISS** — No manifest (or not valid). The SDK calls `/checkVersion` on `BaseURL` and returns that response. The API writes the same response to `S3_BUCKET_NAME_CDN` in the background, so later checks become HITs. Clients never need write access to the bucket.
 
 The API remains the source of truth. Edge storage is a derived, disposable cache of responses the API already knows how to produce.
 
@@ -81,8 +85,10 @@ Each cached file is the **full faynoSync JSON response** for that client context
 Objects are stored at:
 
 ```text
-/responses/{owner}/{app_name}/{channel}/{platform}/{arch}/{client_version}.json
+/responses/{owner}/{app_name}/{channel}/{platform}/{arch}/{updater}/{client_version}.json
 ```
+
+Empty dimensions are left out of the path. The official SDKs check with `updater=manual`, so their manifests live under `.../{arch}/manual/{client_version}.json`.
 
 There is intentionally **no `latest.json` on the CDN**. Version comparison stays on the server (or in precomputed per–client-version manifests). A single “latest” object at the edge would push comparison logic to clients and break faynoSync’s model of server-side update decisions.
 
@@ -90,7 +96,7 @@ Cached objects use standard cache headers (for example, `Cache-Control: public, 
 
 ### Publish, unpublish, and cache invalidation
 
-When you publish or unpublish **any** version for an app, faynoSync **deletes response manifests** for that application’s scope on object storage. The next checks for affected dimensions are MISSes; the SDK falls back to `/checkVersion`, the API repopulates S3, and subsequent traffic HITs again. The manifest is written in the background after the API has answered, so a request arriving within the next fraction of a second may still MISS.
+When you upload, publish, unpublish or delete **any** version for an app, faynoSync **deletes response manifests** for that application’s scope on object storage. A manifest write that was already in flight when the invalidation started is dropped, so a stale response cannot reappear after the sweep. The next checks for affected dimensions are MISSes; the SDK falls back to `/checkVersion`, the API repopulates S3, and subsequent traffic HITs again. The manifest is written in the background after the API has answered, so a request arriving within the next fraction of a second may still MISS.
 
 Deleting a manifest removes it from the bucket, not from caches in front of it. A CDN, or Google Cloud Storage's built-in cache for public objects, can keep serving a deleted or overwritten manifest until its `max-age` (60 seconds) runs out. Plan for up to a minute between a publish and every client seeing it.
 
@@ -100,7 +106,7 @@ You do not need a separate warm-up job for every new channel or architecture com
 
 For default JSON update checks, the cached body is the ordinary faynoSync response. “No update” responses are cached under the same key rules as “update available” responses.
 
-Updater-specific contracts (for example Electron Builder, Tauri, or Squirrel on Windows) still receive the payloads the API already produces; only the **lookup path** changes from “always origin” to “edge first, origin on MISS.” The future [JavaScript SDK](./sdk/js/sdk) maps cached JSON to updater-facing HTTP semantics (such as `204 No Content` or redirect-style responses) where those integrations require it.
+Updater-specific contracts (for example Electron Builder, Tauri, or Squirrel on Windows) still receive the payloads the API already produces; only the **lookup path** changes from “always origin” to “edge first, origin on MISS.” The [JavaScript SDK](./sdk/js/sdk) maps cached JSON to updater-facing HTTP semantics (such as `204 No Content` or redirect-style responses) where those integrations require it.
 
 ## Performance Mode vs edge cache
 
@@ -189,7 +195,9 @@ Under this setup, the beacon path handled roughly **3×** more requests per seco
 ## Related documentation
 
 - [SDK overview](./sdk/intro) — Why SDKs exist and how edge fits the product model  
+- [Production Deployment](./getting-started/production-deploy) — Recommended edge setup for internet-facing instances  
 - [Go SDK](./sdk/go/sdk) — `EdgeURL`, fallback matrix, and `Source` semantics  
+- [JavaScript SDK](./sdk/js/sdk) — `edgeURL`, fallback, and updater feed mapping  
 - [Telemetry beacon API](./api/info/telemetry_beacon) — Endpoint contract for edge-aware clients  
 - [Performance Mode](./performance) — Redis caching on the origin API  
 - [Telemetry System](./telemetry) — Analytics, `ENABLE_TELEMETRY`, and dashboards  

@@ -17,7 +17,7 @@ To configure `FaynoSync`, you need to set the following environment variables. T
 | **Core** | `API_URL`, `STORAGE_DRIVER`, `PORT` |
 | **Storage** | `S3_*`, `GCS_*`, `MINIO_*` (deprecated) |
 | **Database** | `MONGODB_URL`, `MONGODB_URL_TESTS` |
-| **Security** | `API_KEY`, `JWT_SECRET` |
+| **Security** | `API_KEY`, `JWT_SECRET`, `TRUSTED_PROXIES` |
 | **Features** | `PERFORMANCE_MODE`, `ENABLE_TELEMETRY`, `MAX_BULK_DELETE_VERSIONS` |
 | **TUF** | `TUF_ENABLED`, `ONLINE_KEY_DIR` |
 | **Reports** | `REPORTS_ENABLED`, `REPORTS_*` |
@@ -113,6 +113,8 @@ This key is used for authentication during sign-up and other API interactions.
 
 Generate this key using `openssl rand -base64 16`.
 
+If `API_KEY` is empty, the `/signup` endpoint is disabled.
+
 **Example:** `API_KEY=generated_api_key`
 
 </details>
@@ -125,6 +127,31 @@ A secret key used for signing and verifying JWT (JSON Web Tokens) used by the ap
 Generate this key using `openssl rand -base64 32`.
 
 **Example:** `JWT_SECRET=your_jwt_secret`
+
+</details>
+
+<details>
+<summary><strong>TRUSTED_PROXIES</strong></summary>
+
+Comma-separated list of IPs or CIDRs of reverse proxies and load balancers allowed to pass the client IP in `X-Forwarded-For` / `X-Real-IP`. The client IP is used by the per-IP rate limits on [`/login`](/docs/api/auth/login) and [`/signup`](/docs/api/auth/signup).
+
+When unset, every proxy is trusted, so any client can spoof its IP with an `X-Forwarded-For` header and bypass the per-IP limits (the per-username login limit still applies).
+
+List every proxy the request passes through, as faynoSync sees it. The client IP is the rightmost `X-Forwarded-For` entry that is not a trusted proxy.
+
+| Deployment | Value |
+|------------|-------|
+| API exposed directly, no proxy | `127.0.0.1` (any address no client connects from) |
+| nginx on the same host | `127.0.0.1,::1` |
+| Proxy in another Docker container | the Docker network subnet, e.g. `172.18.0.0/16` (container IPs change on recreate) |
+| Cloud load balancer (e.g. AWS ALB) | the VPC or load balancer subnet CIDR |
+| CDN → proxy → API | the proxy subnet plus the CDN's published IP ranges |
+
+If a proxy is missing from the list, every request appears to come from that proxy, all clients share one rate-limit bucket, and legitimate users get `429`. Check the client IP in the server access log after a login to verify the value. A proxy in front of faynoSync may also drop `X-Forwarded-For` it receives from an untrusted upstream (Traefik does this unless `forwardedHeaders.trustedIPs` is set), so the whole chain must forward the header.
+
+An invalid value, including a trailing comma, stops the server on startup.
+
+**Example:** `TRUSTED_PROXIES=10.0.0.0/8,172.16.0.0/12`
 
 </details>
 

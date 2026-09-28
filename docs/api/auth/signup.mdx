@@ -51,9 +51,29 @@ http://localhost:9000/signup
 |-------|------|-------------|
 | `result` | string | Confirmation message indicating successful user creation |
 
+### Error Responses
+
+| Status | Body | When |
+|--------|------|------|
+| `400` | `{"error": "invalid request body"}` | The body is not valid JSON |
+| `401` | `{"error": "wrong api key"}` | `api_key` does not match the server's `API_KEY` |
+| `401` | `{"error": "user already exists"}` | An admin with this username already exists |
+| `429` | `{"error": "too many attempts, try again later"}` | Rate limit exceeded, see below |
+| `503` | `{"error": "service temporarily unavailable"}` | Redis is unavailable, so the rate limit cannot be checked |
+
+## Rate Limiting
+
+Signup requests are limited in fixed one-hour windows:
+
+- **5 requests per hour per client IP**
+- **20 requests per hour in total** across all clients
+
+When a limit is exceeded, the API responds with `429 Too Many Requests` and a `Retry-After` header holding the number of seconds until the current window ends.
+
 ## Notes
 
 - The `api_key` must match the value configured in your server's `.env` file
+- If `API_KEY` is not set on the server, `/signup` is disabled and returns `404`
 - Usernames must be unique within the system
 - Passwords should follow security best practices (minimum length, complexity, etc.)
 - After successful registration, use the `/login` endpoint to obtain a JWT token

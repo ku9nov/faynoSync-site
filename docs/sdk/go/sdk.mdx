@@ -11,7 +11,7 @@ Production-oriented Go SDK for checking application updates with faynoSync.
 This package is a small typed transport and developer experience layer. It does not implement update installation, platform normalization, metadata verification, caching, or business rules.
 
 :::info Edge delivery requires an SDK
-Edge response caching and the edge-first fallback flow are designed to work correctly when clients use an official faynoSync SDK (this Go SDK or a future JS SDK). Raw `/checkVersion` calls do not provide the same edge orchestration, `Source` semantics, or SDK-optimized telemetry paths. See the [SDK overview](../intro) for context.
+Edge response caching and the edge-first fallback flow are designed to work correctly when clients use an official faynoSync SDK (this Go SDK or the [JS SDK](../js/sdk)). Raw `/checkVersion` calls do not provide the same edge orchestration, `Source` semantics, or SDK-optimized telemetry paths. See the [SDK overview](../intro) for context.
 :::
 
 ## Installation
@@ -109,7 +109,7 @@ For a `strict` private app, a check without `DownloadToken` gets the same answer
 Base API endpoint:
 
 ```text
-GET /checkVersion?app_name=test&version=0.0.0.5&channel=nightly&platform=darwin&arch=arm64&owner=admin
+GET /checkVersion?app_name=test&version=0.0.0.5&channel=nightly&platform=darwin&arch=arm64&owner=admin&updater=manual
 X-Device-ID: optional-device-id
 ```
 
@@ -211,14 +211,16 @@ Edge delivery only works as intended when update checks go through an official f
 When `EdgeURL` is configured, the SDK first requests:
 
 ```text
-GET /responses/{owner}/{app_name}/{channel}/{platform}/{arch}/{version}.json
+GET /responses/{owner}/{app_name}/{channel}/{platform}/{arch}/manual/{version}.json
 ```
 
-Example:
+Example (`manual` is the updater the SDK checks with):
 
 ```text
-GET /responses/admin/test/nightly/darwin/arm64/0.0.0.5.json
+GET /responses/admin/test/nightly/darwin/arm64/manual/0.0.0.5.json
 ```
+
+Empty `Channel`, `Platform` and `Arch` are left out of the path, the `manual` segment is dropped when `Platform` is empty, and `-` in the version becomes `.`, matching the object key the server writes.
 
 ### Fallback Decision Matrix
 
