@@ -222,6 +222,89 @@ curl -L 'http://localhost:9000/apps/latest?app_name=SpaceExplorer&channel=nightl
 
 ---
 
+## It works for native updater apps too
+
+`/apps/latest` isn't limited to plain `.deb`/`.dmg` uploads. Apps that use a native updater — Velopack, Squirrel, Sparkle, electron-builder, Tauri — show up in the same response, keyed by file type.
+
+For example, a [Velopack](https://faynosync.com/docs/updaters/velopack) app on macOS returns, among other files, its release feed and its installer (response trimmed):
+
+```bash
+curl 'http://localhost:9000/apps/latest?app_name=HelloVelopack&channel=nightly&platform=darwin&arch=arm64&owner=admin'
+```
+
+```json
+{
+  "nightly": {
+    "darwin": {
+      "arm64": {
+        "json": { "url": ".../velopack/admin/HelloVelopack/darwin/arm64/releases.nightly.json" },
+        "pkg":  { "url": ".../velopack/admin/HelloVelopack/darwin/arm64/installers/HelloVelopack-nightly-Setup-1.0.4-darwin-arm64.pkg" }
+      }
+    }
+  }
+}
+```
+
+Add `package=pkg` and you get a `302` redirect straight to the installer of the newest version — exactly what a "Download for macOS" button needs. From there, the app keeps itself up to date through its own updater. The full Velopack flow is in [Self-Hosted Velopack Update Server: Deltas, Rollbacks, CI](https://faynosync.com/blog/self-hosted-velopack-update-server).
+
+---
+
+## Download links for private apps
+
+Everything above assumes a public app. If your app is [private](https://faynosync.com/blog/private-apps), it depends on its download mode:
+
+| Download mode | What `/apps/latest` needs |
+|---|---|
+| Public app | Nothing |
+| Private, `unlisted` | Nothing — the link works for anyone who has it |
+| Private, `strict` | An `X-Download-Token` header with the app's `fnd_…` [download token](https://faynosync.com/docs/api/apps/download-tokens-regenerate), or a JWT of the owning admin or a team user with the `download` permission |
+
+Two consequences worth knowing:
+
+- **A `strict` app can't be a plain `<a href>` link.** Browsers don't send custom headers on a link click. Use `unlisted` for public download pages, or download from a script or backend that adds the header:
+
+  ```bash
+  curl -L -H "X-Download-Token: $FAYNOSYNC_DOWNLOAD_TOKEN" \
+    'https://updates.yourdomain.com/apps/latest?app_name=SpaceExplorer&channel=stable&platform=linux&arch=amd64&package=deb&owner=admin' \
+    -o spaceexplorer.deb
+  ```
+
+- **A missing token looks like a missing app.** Without a valid credential, a `strict` app answers exactly like an app that doesn't exist, so nobody can probe which private apps you have. Responses of private apps are also never cached in Redis.
+
+---
+
+## `/apps/latest` vs `/checkVersion`
+
+Both deal with "the newest version", but they answer different questions:
+
+| | `/apps/latest` | `/checkVersion` |
+|---|---|---|
+| Question | "Where do I download the newest build?" | "Is there an update for *my* version?" |
+| Caller | Website, README, script, CI | The running app |
+| Needs the client's version | No | Yes |
+| Knows about critical and intermediate versions | No | Yes |
+| Typical answer | Redirect to the file, or a list of files | `update_available`, changelog, update URLs |
+
+Rule of thumb: `/apps/latest` for **first installs**, `/checkVersion` (or a native updater feed) for **updates** after that. Details: [Fetch Latest Version of App](https://faynosync.com/docs/api/info/fetch-latest-build) and [Check Version](https://faynosync.com/docs/api/info/latest).
+
+---
+
+## Troubleshooting
+
+**`{"error":"Parameters 'app_name' and 'channel' are required"}`**
+The app has channels, so `channel` is mandatory. Add it to the query.
+
+**`{"error":"app_name not found in apps_meta collection"}`**
+Either the app name or `owner` is wrong, or the app is private in `strict` mode and the request came without a valid credential.
+
+**You get JSON instead of a download.**
+Your filters still match more than one file — for example both `.deb` and `.rpm`, or a feed plus an installer. Add `package` (and `platform` / `arch`) until exactly one file matches.
+
+**The link points to an old version.**
+`/apps/latest` only looks at **published** versions. Check that the newest version is published in the dashboard.
+
+---
+
 ## What's Next? 🚀
 
 - Serving thousands of download checks per minute? See [Performance Mode — Speed Up Your API](https://faynosync.com/blog/performance-mode).

@@ -54,6 +54,19 @@ FaynoSync supports multiple update mechanisms to ensure compatibility with vario
 
 See [Updaters Support](./updaters/index.mdx) for details on each mechanism.
 
+## Tutorials
+
+Step-by-step guides from the blog:
+
+- [How to Setup Auto Update for Electron App](https://faynosync.com/blog/electron-auto-update) — auto-updates for Electron apps with electron-builder.
+- [Self-Hosted Velopack Update Server: Deltas, Rollbacks, CI](https://faynosync.com/blog/self-hosted-velopack-update-server) — Velopack feeds, delta updates, rollback, and CLI uploads.
+- [Local Development with faynoSync — Choose Your Path](https://faynosync.com/blog/local-development) — run faynoSync locally with Docker or from source.
+- [Private Apps in faynoSync — Keep Your Software Secure](https://faynosync.com/blog/private-apps) — restrict downloads of your builds.
+- [Team-Based Authorization in faynoSync — Manage Your Team Like a Pro](https://faynosync.com/blog/team-based-auth) — give team members scoped access.
+- [Telemetry Insights — Understand Your Users Better](https://faynosync.com/blog/telemetry-insights) — see which versions your users actually run.
+- [Performance Mode — Speed Up Your API](https://faynosync.com/blog/performance-mode) — speed up the API with Redis caching.
+- [Fetch Latest Version of App — Smart Update Links](https://faynosync.com/blog/fetch-latest-version) — permanent download links to the latest build.
+
 ## Getting Started
 
 This documentation is designed to help you get started with FaynoSync smoothly and enjoyably. Whether you're setting up your first application or configuring complex multi-platform deployments, our comprehensive guides will walk you through every step.

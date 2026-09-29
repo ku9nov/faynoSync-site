@@ -22,7 +22,7 @@ Performance Mode is a Redis-backed caching layer for the API that:
 - 📉 Lowers database load
 - 💾 Optimizes resource usage
 
-When enabled, faynoSync caches the result of `/checkVersion` in Redis and serves repeat requests straight from memory instead of re-querying MongoDB. See the [Performance Mode docs](https://faynosync.com/docs/performance) for the reference.
+When enabled, faynoSync caches the answers of its two hottest read endpoints in Redis and serves repeat requests straight from memory instead of re-querying MongoDB. See the [Performance Mode docs](https://faynosync.com/docs/performance) for the reference.
 
 ---
 
@@ -54,7 +54,20 @@ client ──────▶   │  GET /checkVersion           │
 3. **Next request** — the same query is now a cache hit.
 
 ### What gets cached?
-Performance Mode is currently implemented for the **`/checkVersion`** endpoint — by far the most frequently called one, since every client polls it for updates.
+
+| Endpoint | Who calls it | Cached |
+|---|---|---|
+| [`/checkVersion`](https://faynosync.com/docs/api/info/latest) | Every running copy of your app, on every update check | Yes |
+| [`/apps/latest`](https://faynosync.com/docs/api/info/fetch-latest-build) | Download buttons, install scripts, CI | Yes |
+| Anything for a [private app](https://faynosync.com/blog/private-apps) | Clients with a download token | **Never** |
+
+Private apps are skipped on purpose: their answers depend on who is asking, so a shared cache entry could leak them to someone without access.
+
+Every cached entry lives for **24 hours** at most, and is usually cleared much earlier by the invalidation rules below.
+
+:::note Updated in September 2026
+This post originally said Performance Mode covers only `/checkVersion`. It now caches `/apps/latest` as well, and cache invalidation covers more than new uploads. The sections below reflect the current behavior.
+:::
 
 ---
 
@@ -88,7 +101,9 @@ REDIS_DB=0
 | `REDIS_PASSWORD` | _(empty)_ | Leave empty if Redis has no auth |
 | `REDIS_DB` | `0` | Redis database number |
 
-That's it — once `PERFORMANCE_MODE=true` and Redis is reachable, the API starts caching automatically. Full reference in the [environment overview](https://faynosync.com/docs/getting-started/env-overview).
+That's it — once `PERFORMANCE_MODE=true` and Redis is reachable, the API starts caching automatically.
+
+Note that Redis isn't an extra dependency you add for this feature: faynoSync already requires Redis and won't start without it. `PERFORMANCE_MODE` only decides whether responses get cached there. With the mode on, [`/health`](https://faynosync.com/docs/api/info/health) also pings Redis and reports `unhealthy` when it's unreachable — handy for load balancer health checks. Full reference in the [environment overview](https://faynosync.com/docs/getting-started/env-overview).
 
 ---
 
@@ -96,9 +111,15 @@ That's it — once `PERFORMANCE_MODE=true` and Redis is reachable, the API start
 
 A cache is only useful if it never serves stale "latest version" info. faynoSync handles this for you:
 
-> When you upload a new application with `publish` set to `true`, the Redis keys for that app are removed. The next `/checkVersion` request repopulates the cache with fresh data.
+The cache of an app's channel is cleared whenever something in that channel changes what clients should see:
 
-So the moment you publish a release, the old cached answer for that app is gone — the next client to check gets the new version, and everyone after them gets it from cache again. No manual flushing, no risk of pinning users to an old build.
+- a version is **uploaded** with a `publish` value (through `/upload` or [presigned uploads](https://faynosync.com/docs/presigned-uploads)),
+- a version is **updated** with a `publish` value — publishing, unpublishing, or editing it in the dashboard,
+- a version is **deleted**.
+
+The next request after that goes to MongoDB, gets the fresh answer, and caches it again. So the moment you publish a release — or pull a broken one — the old cached answer is gone. No manual flushing, no risk of pinning users to an old build.
+
+Invalidation is scoped to the **channel**. Publishing to `beta` doesn't throw away the warm cache for `stable`.
 
 ---
 
@@ -136,6 +157,23 @@ This gives you a **two-layer strategy**: Nginx absorbs identical requests for ~6
 
 The full Nginx block (with rate limiting and proxy headers) is in the [Performance Mode docs](https://faynosync.com/docs/performance).
 
+### Two things to keep in mind with Nginx caching
+
+**1. Nginx doesn't know when you publish.** faynoSync clears its Redis cache the moment a release changes, but it can't reach into Nginx. With `proxy_cache_valid 200 60s`, clients can keep getting the previous answer for up to 60 seconds after you publish — or after you unpublish a broken version. For most apps a minute is fine. If you need rollbacks to take effect faster, lower the value to a few seconds: even a short microcache still absorbs the burst.
+
+**2. Don't share cached answers of private apps.** Clients of a private app in `strict` mode send an `X-Download-Token` header, and the cache key above doesn't include it. Without extra rules, Nginx could store a private answer and hand it to a request without a token. Skip the Nginx cache for any request that carries credentials:
+
+```nginx
+location = /checkVersion {
+    # ... everything from above ...
+
+    proxy_cache_bypass $http_x_download_token $http_authorization;
+    proxy_no_cache     $http_x_download_token $http_authorization;
+}
+```
+
+faynoSync itself never caches private apps in Redis, so this only matters for the Nginx layer.
+
 ---
 
 ## Measuring the difference 🧪
@@ -172,9 +210,19 @@ In production with real users, the recommendation is simple: turn it on.
 
 ---
 
-## Related: Edge caching
+## Performance Mode vs Nginx vs Edge caching
 
-Performance Mode is **not** the same as Edge caching. Performance Mode caches at the API layer in Redis; edge mode stores full JSON responses in object storage closer to users. They're independent — you can run one, the other, or both. If you're scaling globally, read [Edge caching](https://faynosync.com/docs/edge).
+faynoSync gives you three independent cache layers. You can use one, two, or all three:
+
+| | Performance Mode | Nginx microcache | [Edge + S3 cache](https://faynosync.com/docs/edge) |
+|---|---|---|---|
+| Where | Redis, inside the API | Your reverse proxy | Object storage / CDN |
+| What it saves | MongoDB queries | Requests reaching the API | Requests reaching your server at all |
+| Freshness after publish | Immediate (invalidated) | Up to `proxy_cache_valid` | Invalidated by faynoSync |
+| Clients | Any | Any | Official SDKs with `EdgeURL` |
+| Setup | One env variable | Nginx config | Bucket + SDK config |
+
+A good path for most teams: turn on Performance Mode first, add the Nginx microcache when a single API instance gets busy, and move to edge caching when you have a large or global install base. The why and how of that last step is in [Scaling Update Checks with Edge + S3 Response Cache](https://faynosync.com/blog/edge-s3-cache).
 
 ---
 

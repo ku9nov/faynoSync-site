@@ -131,8 +131,9 @@ echo "Total execution time: $total_time seconds"
 
 :::tip
 Note on Functionality
-The Performance Mode is currently implemented only for the `checkVersion` request.
-In the case of uploading a new application with `publish` set to `true`, the Redis keys for that application will be removed, and it will be cached the next time the `checkVersion` request is made.
+Performance Mode caches the responses of [`/checkVersion`](./api/info/latest) and [`/apps/latest`](./api/info/fetch-latest-build). Responses of private apps are never cached.
+Cached entries expire after 24 hours. Before that, the cache of an app's channel is cleared whenever a version in that channel is uploaded or updated with an explicit `publish` value, or deleted — the next request caches the fresh answer.
+With Performance Mode enabled, [`/health`](./api/info/health) also pings Redis and reports `unhealthy` if it is unreachable.
 :::
 
 ## Conclusion
@@ -140,3 +141,8 @@ In the case of uploading a new application with `publish` set to `true`, the Red
 Performance Mode is a vital tool for enhancing the speed and efficiency of our API. By caching the results of requests, we can reduce database load and provide faster data access for our users. It is recommended to activate Performance Mode in environments expecting high API load.
 
 For maximum performance, consider implementing both Redis caching (Performance Mode) and Nginx caching for a multi-layer caching strategy that provides optimal response times and resource utilization.
+
+## Related reading
+
+- [Performance Mode — Speed Up Your API](https://faynosync.com/blog/performance-mode)
+- [Scaling Update Checks with Edge + S3 Response Cache](https://faynosync.com/blog/edge-s3-cache)

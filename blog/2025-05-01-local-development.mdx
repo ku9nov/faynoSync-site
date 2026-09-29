@@ -3,47 +3,163 @@ slug: local-development
 title: Local Development with faynoSync — Choose Your Path
 authors: [ku9nov]
 tags: [faynoSync, development]
-description: Set up a local FaynoSync development environment two ways — a traditional MongoDB and Go setup, or a Docker-based workflow. Pick the path that fits.
+description: Run the faynoSync update server locally — a one-command Docker Compose stack (API, MongoDB, Redis, Garage, dashboard) or Go from source with containerized dependencies.
 ---
 
 # Local Development with faynoSync — Choose Your Path 🛠️
 
-Getting started with faynoSync development? Great! You have two main options for setting up your local environment. Whether you prefer a traditional local setup or the convenience of Docker, we've got you covered.
+Want to try a self-hosted update server before putting it anywhere near production? Or hack on faynoSync itself? Either way, you start with a local setup — and with faynoSync that takes a few minutes, not an afternoon.
+
+There are two ways to run it locally: **everything in Docker**, or **the Go API from source** with only the dependencies in containers. This post shows both, explains what each service in the stack does, and covers the first steps once it's running.
 
 {/* truncate */}
 
+:::note Updated in September 2026
+This post originally recommended **MinIO** for local storage. MinIO is now deprecated in faynoSync and kept only for backward compatibility. New local setups use **Garage** (S3-compatible) through the `aws` storage driver, and **Redis** is now a required service. The steps below reflect the current setup.
+:::
+
 ---
 
-## Option 1: Traditional Local Development 🖥️
+## What runs in the local stack
 
-Perfect for developers who want full control over their environment and need to make frequent code changes.
+Whichever option you pick, faynoSync needs the same pieces:
+
+| Service | Local port | What it does |
+|---|---|---|
+| faynoSync API | `9000` | The update server itself: uploads, update checks, feeds, telemetry |
+| Admin dashboard | `3000` | Web UI for apps, channels, platforms, versions, tokens, TUF |
+| MongoDB | `27017` | Stores apps, versions, channels, platforms, users |
+| Redis | `6379` | Required — the API connects on startup and exits if Redis is unreachable. Also used by [Performance Mode](https://faynosync.com/docs/performance), rate limits and telemetry counters |
+| Garage | `3900` (S3 API), `3902` (web) | S3-compatible storage for your build artifacts and generated feeds |
+| Garage web UI | `3909` | Browse buckets and objects |
+
+Garage plays the role that AWS S3 (or another S3-compatible provider) plays in production. faynoSync talks to it through the same `aws` driver it uses for real S3, so your local setup behaves like production instead of like a special case.
+
+---
+
+## Option 1: Docker Development 🐳
+
+Best for: trying faynoSync, testing the API, building an integration against it, or running the test suite without installing Go.
 
 ### What You'll Need:
 
-- **MongoDB** 🗄️
-  - Stores all your application data, versions, and metadata
-  - [Installation Guide](https://www.mongodb.com/docs/manual/administration/install-community/)
+- **Docker** 🐳 — [Installation Guide](https://docs.docker.com/engine/install/)
+- **Docker Compose** 🎵 — [Installation Guide](https://docs.docker.com/compose/install/)
 
-- **Golang** 🐹
-  - The heart of faynoSync
-  - [Installation Guide](https://go.dev/doc/install)
+### Start the stack
 
-- **MinIO** 📦
-  - Your local S3-compatible storage
-  - [Installation Guide](https://min.io/docs/minio/linux/operations/install-deploy-manage/deploy-minio-single-node-single-drive.html)
+```bash
+git clone https://github.com/ku9nov/faynoSync.git
+cd faynoSync
+docker compose up --build
+```
 
-### Setting Up:
+This builds the API image and starts the API, MongoDB, Redis, Garage and the dashboard. Local configuration comes from `docker-compose/envs/backend.env`, and Garage's credentials and buckets are imported automatically during container bootstrap.
 
-1. Install all required services
-2. Create your `.env` file with necessary configurations
-3. Run faynoSync:
-   ```bash
-   # First run (with migrations)
-   go run faynoSync.go migrate up
-   
-   # Subsequent runs
-   go run faynoSync.go
-   ```
+When the stack is healthy, apply the database migrations from a second terminal:
+
+```bash
+docker compose exec -T backend /usr/bin/faynoSync migrate up
+```
+
+Check that the API is up:
+
+```bash
+curl http://localhost:9000/health
+```
+
+```json
+{"status":"healthy"}
+```
+
+The dashboard is now at `http://localhost:3000`.
+
+### Run the tests
+
+Wait until Garage finishes its bootstrap — `docker compose logs s3` shows `Garage bootstrap completed successfully.` — then run the test suite inside the backend container:
+
+```bash
+docker exec -it faynoSync_backend "/usr/bin/faynoSync_tests"
+```
+
+### Benefits:
+- 🚀 One command to a working stack
+- 🧩 Nothing installed on your machine except Docker
+- 🔄 Same setup on every machine
+- 🧪 Easy to run the full test suite
+
+The trade-off: rebuilding the image after every code change is slow. If you're changing faynoSync's code, Option 2 is more comfortable.
+
+---
+
+## Option 2: Go from source, dependencies in Docker 🖥️
+
+Best for: contributing to faynoSync, debugging the API, or anything where you want a fast edit-and-run loop.
+
+### What You'll Need:
+
+- **Golang** 🐹 — [Installation Guide](https://go.dev/doc/install)
+- **Docker** and **Docker Compose** — for MongoDB, Redis and Garage
+
+### Start only the dependencies
+
+```bash
+docker compose -f docker-compose.yaml -f docker-compose.development.yaml up
+```
+
+The `docker-compose.development.yaml` override scales the `backend` and `frontend` services to `0` replicas. MongoDB, Redis and Garage stay in containers; the API (and optionally the dashboard) run from source.
+
+### Configure the environment
+
+Create a `.env` file in the repo root. For local Garage, the storage part looks like this:
+
+```bash
+STORAGE_DRIVER=aws
+S3_API_ENDPOINT=http://127.0.0.1:3900
+S3_FORCE_PATH_STYLE=true
+S3_DISABLE_OBJECT_ACL=true
+S3_REGION=garage
+S3_BUCKET_NAME=cb-faynosync-s3-public
+S3_BUCKET_NAME_PRIVATE=cb-faynosync-s3-private
+S3_ENDPOINT=http://cb-faynosync-s3-public.web.garage.localhost:3902
+S3_ENDPOINT_PRIVATE=http://cb-faynosync-s3-private.web.garage.localhost:3902
+S3_ACCESS_KEY=your_garage_access_key
+S3_SECRET_KEY=your_garage_secret_key
+```
+
+Plus the core settings:
+
+```bash
+API_URL=http://localhost:9000
+PORT=9000
+MONGODB_URL=mongodb://root:password@127.0.0.1/faynosync_db?authSource=admin
+REDIS_HOST=localhost
+REDIS_PORT=6379
+API_KEY=your_signup_key
+JWT_SECRET=your_jwt_secret
+```
+
+The [faynoSync README](https://github.com/ku9nov/faynoSync/blob/main/README.md) has the ready-to-use values that match the Docker Compose Garage setup, and the [Environment Variables Overview](https://faynosync.com/docs/getting-started/env-overview) explains every variable.
+
+### Run faynoSync
+
+```bash
+# First run and after schema changes
+go run faynoSync.go migrate up
+
+# Start the server
+go run faynoSync.go
+```
+
+Roll back migrations with `go run faynoSync.go migrate down`.
+
+### Run the tests
+
+```bash
+go test
+```
+
+The tests run against the real MongoDB and Redis from your containers — nothing is mocked — so a green run means your local environment is really wired up correctly.
 
 ### Benefits:
 - ⚡ Fast development cycle
@@ -51,104 +167,74 @@ Perfect for developers who want full control over their environment and need to 
 - 🧪 Easy debugging
 - 🔄 Quick code changes
 
-### Testing Your Setup:
-Want to make sure everything is working correctly? Just run:
-```bash
-go test
-```
-This will verify that all components are properly configured and your local environment is ready for development.
+### Dashboard from source (optional)
 
----
-
-## Option 2: Docker Development 🐳
-
-Ideal for quick setup and testing, or when you want to avoid installing dependencies locally.
-
-### What You'll Need:
-
-- **Docker** 🐳
-  - [Installation Guide](https://docs.docker.com/engine/install/)
-- **Docker Compose** 🎵
-  - [Installation Guide](https://docs.docker.com/compose/install/)
-
-### Two Ways to Use Docker:
-
-#### 1. Full Container Setup
-```bash
-docker compose up --build
-```
-Perfect for:
-- 🚀 Quick testing
-- 🧪 Initial setup
-- 🔄 Testing API functionality
-
-#### 2. Hybrid Approach
-```bash
-docker compose -f docker-compose.yaml -f docker-compose.development.yaml up
-```
-This starts only the dependencies (MongoDB and MinIO) while you run faynoSync locally.
-
-### Benefits:
-- 🚀 Quick setup
-- 🧩 Isolated environment
-- 🔄 Consistent across machines
-- 🧪 Easy testing
-
-### Testing Your Setup:
-After running `docker compose up --build`, wait until the s3-service successfully creates the bucket, then run:
-```bash
-docker exec -it faynoSync_backend "/usr/bin/faynoSync_tests"
-```
-This will run the test suite inside the container to verify everything is working correctly.
-
----
-
-## Environment Configuration ⚙️
-
-Both approaches need proper environment configuration. Here are the key variables you'll need:
+The Docker stack already runs the dashboard, so you only need this if you're changing the dashboard itself:
 
 ```bash
-# Storage Configuration
-STORAGE_DRIVER=minio
-S3_ACCESS_KEY=your_access_key
-S3_SECRET_KEY=your_secret_key
-S3_BUCKET_NAME=your_bucket
-
-# Database Configuration
-MONGODB_URL=mongodb://root:password@127.0.0.1/faynosync_db
-
-# API Configuration
-API_URL=http://localhost:9000
-PORT=9000
+git clone https://github.com/ku9nov/faynoSync-dashboard.git
+cd faynoSync-dashboard
+cp .env.example .env   # VITE_API_URL=http://localhost:9000
+yarn install
+yarn dev
 ```
-
-For a complete list of environment variables, check out our [Environment Configuration Guide](https://faynosync.com/docs/getting-started/env-overview).
 
 ---
 
 ## Which Option Should You Choose? 🤔
 
-### Choose Local Development if you:
-- 🔧 Need to modify the code frequently
-- 🐛 Want to debug easily
-- ⚡ Need fast development cycles
-- 💻 Prefer direct control over your environment
+| | Option 1: Docker | Option 2: Go from source |
+|---|---|---|
+| Setup time | Minutes | A bit longer (Go + `.env`) |
+| Installed locally | Docker only | Docker + Go |
+| Code change → running | Rebuild the image | Restart `go run` |
+| Debugging the API | Logs only | Full debugger access |
+| Best for | Trying faynoSync, building integrations, CI-like test runs | Contributing, debugging, daily development |
 
-### Choose Docker if you:
-- 🚀 Want quick setup
-- 🧪 Need to test the API
-- 💻 Work on multiple machines
-- 🧩 Prefer isolated environments
+If you're evaluating faynoSync as an update server for your app, start with Option 1. You can switch to Option 2 later — MongoDB, Redis and Garage are the same containers either way.
+
+---
+
+## First steps once it's running
+
+A fresh server is empty. To see an actual update check work:
+
+1. **Register an admin.** Open `http://localhost:3000` and sign up. The registration asks for the signup key — that's the `API_KEY` from your environment (`docker-compose/envs/backend.env` in the Docker setup). If `API_KEY` is empty, signup is disabled.
+2. **Create the basics.** An application, a channel (for example `stable`), a platform and an architecture.
+3. **Upload two versions.** From the dashboard, or from the terminal with the [faynoSync CLI](https://faynosync.com/docs/cli) — the same command later runs in CI.
+4. **Check for an update**, the same way your app will:
+
+```bash
+curl "http://localhost:9000/checkVersion?app_name=myapp&version=0.0.1&owner=admin"
+```
+
+If you'd rather follow a complete example end to end — build a real desktop app, upload it, install it, ship a delta update and roll it back — the [self-hosted Velopack update server tutorial](https://faynosync.com/blog/self-hosted-velopack-update-server) runs entirely on this local setup. For Electron apps, see [How to Setup Auto Update for Electron App](https://faynosync.com/blog/electron-auto-update).
+
+---
+
+## Troubleshooting
+
+**The API exits right after start.**
+Most often Redis isn't reachable. Redis is required, and the API exits if it can't connect. Check that the `cache` container is up and `REDIS_HOST` / `REDIS_PORT` match.
+
+**Uploads fail right after `docker compose up`.**
+Garage may still be bootstrapping. Wait for `Garage bootstrap completed successfully.` in `docker compose logs s3`.
+
+**Sign up returns an error.**
+The signup key must match `API_KEY` on the server. With an empty `API_KEY`, the `/signup` endpoint is disabled on purpose.
+
+**A port is already in use.**
+Another service is already listening on one of `9000`, `3000`, `27017`, `6379`, `3900`, `3902` or `3909`. Stop it or change the port mapping in `docker-compose/services/`.
 
 ---
 
 ## What's Next? 🚀
 
-In our next posts, we'll explore:
-- How to properly use `Fetch latest version of app` request
-- Performance optimization tips
+Once the local server works, these are good next reads:
 
-Stay tuned for more faynoSync tips and tricks! 💚
+- [Fetch Latest Version of App — Smart Update Links](https://faynosync.com/blog/fetch-latest-version) — permanent "download latest" links for your website.
+- [Performance Mode — Speed Up Your API](https://faynosync.com/blog/performance-mode) — Redis caching for update checks.
+- [Telemetry Insights — Understand Your Users Better](https://faynosync.com/blog/telemetry-insights) — see which versions your users actually run.
 
 ---
 
@@ -168,7 +254,17 @@ Stay tuned for more faynoSync tips and tricks! 💚
 
 ---
 
+## Related reading
+
+- [Local Development Setup docs](https://faynosync.com/docs/getting-started/local-development)
+- [Docker Development docs](https://faynosync.com/docs/getting-started/docker-development)
+- [Environment Variables Overview](https://faynosync.com/docs/getting-started/env-overview)
+- [Self-Hosted Velopack Update Server: Deltas, Rollbacks, CI](https://faynosync.com/blog/self-hosted-velopack-update-server)
+- [How to Setup Auto Update for Electron App](https://faynosync.com/blog/electron-auto-update)
+
+---
+
 If you find this project helpful, please consider **subscribing**, **leaving a comment**, or giving it a **star**, create **Issue** or **feature request** on GitHub.  
 Your support keeps the project alive and growing 💚
 
---- 
+---
