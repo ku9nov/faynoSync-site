@@ -1,0 +1,449 @@
+---
+slug: self-hosted-velopack-update-server
+title: "Self-Hosted Velopack Update Server: Deltas, Rollbacks, CI"
+authors: [ku9nov]
+tags: [faynoSync, velopack, auto-update]
+description: "Run your own Velopack update server with faynoSync: upload with the CLI, ship delta updates, roll back in one click, and enforce intermediate versions."
+---
+
+# Self-Hosted Velopack Update Server: Deltas, Rollbacks, CI
+
+[Velopack](https://velopack.io) is one of the nicest ways to add auto-updates to a desktop app. You pack your app with `vpk`, and the Velopack client inside your app takes care of downloading and installing new versions. It supports delta updates, works on Windows, macOS and Linux, and has client libraries for C#, Rust, JavaScript, C++ and Python.
+
+But there's one question every team hits sooner or later: **where do the updates actually live?** Velopack needs a place to host the release feed and packages. You can throw them into a bucket or GitHub Releases, but then publishing, rolling back and "which version is live on which channel" become manual chores.
+
+This post shows how to use [faynoSync](https://faynosync.com/docs/intro) as a **self-hosted Velopack update server**. No custom SDK, no glue code — the stock Velopack client talks to faynoSync as if it were a plain file host. We'll go through the whole flow with a ready-made example app, and everything below was run end to end on a local faynoSync before writing it down.
+{/* truncate */}
+
+---
+
+## What you get
+
+Before we start, here's what faynoSync adds on top of "just put files in a bucket":
+
+| | Plain bucket / GitHub Releases | faynoSync |
+|---|---|---|
+| Release feed (`releases.{channel}.json`) | You upload and keep it in sync by hand | Rebuilt automatically from the database on every change |
+| Rollback a bad version | Edit the feed by hand | Uncheck **Publish** in the dashboard |
+| Channels, platforms, architectures | Folder naming conventions | First-class, one feed per combination |
+| Delta updates | Works, if the feed is right | Works, and broken delta chains are dropped automatically |
+| Force users through a required version | Not possible, clients always jump to the latest | [Intermediate builds](https://faynosync.com/docs/intermediate_build), when the feed comes from the API |
+| Install a *specific* old version | Dig through old files | Version-pinned installer kept for every release |
+| CI uploads | Custom scripts | [faynoSync CLI](https://faynosync.com/docs/cli), GitHub Action, Jenkins step |
+| Signature verification | — | Optional [TUF](https://faynosync.com/docs/api/tuf/tuf-introduction) on top of Velopack's own checks |
+
+The client side stays 100% stock Velopack. If you ever want to move away, your app just points to a different URL.
+
+---
+
+## The example app
+
+To keep things simple, we'll use a tiny Python app that already has everything wired up:
+
+**[github.com/ku9nov/faynoSync-velopack-p3-example](https://github.com/ku9nov/faynoSync-velopack-p3-example)**
+
+It's a few small files:
+
+- `app.py` — starts, checks for updates using the stock Velopack `UpdateManager`, downloads and applies them.
+- `app_version.py` — one line with the app version. You bump it to release a new version.
+- `build.sh` — builds the app with PyInstaller and packs it with `vpk` into the `releases/` folder.
+- `USAGE.md` — the same walkthrough plus the optional extras (TUF, telemetry, reports).
+
+It's a **terminal app**: no window, it just prints what it's doing — which version it runs, which feed it reads, what update it found. That makes it easy to see every step of the update flow. You'll run it from the terminal the whole time.
+
+Python is used here only because it's short and easy to read. The faynoSync side is exactly the same for a C#, Rust, JavaScript or C++ Velopack app — faynoSync never sees your code, only the files `vpk` produces.
+
+The walkthrough below uses macOS on Apple Silicon (`darwin` / `arm64`). On Windows or Linux the steps are the same; only the platform, architecture and installer file names change.
+
+### What you need installed
+
+- **Docker** — to run faynoSync locally.
+- **Python 3** — to build the example app.
+- **Velopack CLI (`vpk`)** — to pack the app.
+
+---
+
+## Step 1. Run faynoSync
+
+The fastest way is Docker Compose:
+
+```bash
+git clone https://github.com/ku9nov/faynoSync.git
+cd faynoSync
+docker compose up --build
+```
+
+When everything is up, run the database migrations in a second terminal:
+
+```bash
+docker compose exec -T backend /usr/bin/faynoSync migrate up
+```
+
+You'll get two things:
+
+- **API** on `http://localhost:9000` — this is what the CLI uploads to.
+- **Dashboard** on `http://localhost:3000` — this is where you'll click around.
+
+Local storage is S3-compatible, so the release feed and packages are served straight from a public bucket, the same way a CDN would serve them in production. For the details, see [Local Development Setup](https://faynosync.com/docs/getting-started/local-development) and [Production Deployment](https://faynosync.com/docs/getting-started/production-deploy).
+
+---
+
+## Step 2. Prepare the app in the dashboard
+
+Open `http://localhost:3000` and **register**. The form asks for a `secretKey` — for a local setup use the development default `UHp3aKb40fwpoKZluZByWQ`. Then log in and create four things:
+
+1. **Application** — click **Create app**, name it `HelloVelopack`. The name matters: it becomes part of the feed URL, and the example app looks for exactly this name.
+2. **Channel** — `nightly`. This must match the channel `vpk` bakes into the package (`build.sh` uses `nightly` by default).
+3. **Platform** — `darwin` (or `windows` / `linux`). In the **Updaters** section, add **velopack**. This tells faynoSync to speak Velopack's feed format for this platform.
+4. **Architecture** — `arm64` or `amd64`, whichever matches your machine.
+
+Why three separate things instead of one "channel"? Velopack squeezes everything into its channel name, while faynoSync keeps channel, platform and architecture as separate axes. That way `nightly` on macOS arm64 and `nightly` on Windows x64 each get their own feed and never mix. The [Velopack updater docs](https://faynosync.com/docs/updaters/velopack) explain this in more detail.
+
+---
+
+## Step 3. Create an upload token
+
+You don't want to use your dashboard password in scripts or CI. Instead, create a token that can only upload to this one app:
+
+1. Click the gear icon and open **Settings**.
+2. Go to **CI/CD Tokens**.
+3. Give the token a name, for example `GitHub Actions - HelloVelopack`, and pick an expiration.
+4. Click **Select allowed apps** and choose `HelloVelopack`.
+5. Click **Create token**.
+
+The token is shown **only once** — copy it right away. If you lose it, just revoke it and create a new one. The API behind this page is described in [Create Token](https://faynosync.com/docs/api/tokens/create).
+
+---
+
+## Step 4. Install the faynoSync CLI
+
+Download the binary for your system from the [faynoSync CLI releases page](https://github.com/ku9nov/faynoSync-cli/releases). There are builds for macOS, Linux and Windows, both amd64 and arm64. On an Apple Silicon Mac:
+
+```bash
+curl -L -o faynosync https://github.com/ku9nov/faynoSync-cli/releases/latest/download/faynosync-cli-darwin-arm64
+chmod +x faynosync
+sudo mkdir -p /usr/local/bin && sudo mv faynosync /usr/local/bin/
+faynosync version
+```
+
+Now tell the CLI where your server is. Run `faynosync init` and answer the prompts:
+
+```text
+Enter value for server [https://example.com]: http://localhost:9000
+Enter value for owner [example]: admin
+Enter value for edge []:
+Enter value for tuf (true/false) [false]:
+```
+
+`owner` is the username you registered with. Leave `edge` and `tuf` empty — we don't need them here.
+
+Finally, give the CLI your token. It's read only from an environment variable and never saved to a file:
+
+```bash
+export FAYNOSYNC_TOKEN=fns_your_token_here
+```
+
+In CI you can skip `init` completely: set `FAYNOSYNC_TOKEN`, `FAYNOSYNC_URL` and `FAYNOSYNC_ACCOUNT` as secrets instead. Everything else is in the [CLI docs](https://faynosync.com/docs/cli).
+
+---
+
+## Step 5. Build and publish version 1.0.0
+
+Clone the example, set up Python once, and build:
+
+```bash
+git clone https://github.com/ku9nov/faynoSync-velopack-p3-example.git
+cd faynoSync-velopack-p3-example
+
+python3 -m venv .venv
+.venv/bin/pip install velopack tuf securesystemslib cryptography pyinstaller
+
+./build.sh
+```
+
+After a few seconds the `releases/` folder contains several files. You need only three of them:
+
+- `releases.nightly.json` — the feed `vpk` generated. faynoSync reads the hashes, sizes and versions from it exactly as `vpk` wrote them.
+- `HelloVelopack-1.0.0-nightly-full.nupkg` — the full package.
+- `HelloVelopack-nightly-Setup.pkg` — the installer (on Windows this is `Setup.exe`).
+
+Upload them:
+
+```bash
+faynosync upload \
+  --app HelloVelopack \
+  --version 1.0.0 \
+  --channel nightly \
+  --platform darwin \
+  --arch arm64 \
+  --updater velopack \
+  --file releases/releases.nightly.json \
+  --file releases/HelloVelopack-1.0.0-nightly-full.nupkg \
+  --file releases/HelloVelopack-nightly-Setup.pkg \
+  --publish \
+  --changelog "First release"
+```
+
+If everything is fine, you'll see:
+
+```text
+INFO  Upload completed
+    app          HelloVelopack
+    files        3
+    uploaded_id  6abb6fa9ee89ef5881c59fa4
+    version      1.0.0
+```
+
+A few things happened on the server side:
+
+- faynoSync checked that you uploaded at least one `*-full.nupkg` and exactly one `releases.{channel}.json` — the two things Velopack can't work without.
+- It generated a fresh feed and put it next to the packages at `velopack/admin/HelloVelopack/darwin/arm64/releases.nightly.json`.
+- It saved a **version-pinned copy of the installer** under `installers/`, named like `HelloVelopack-nightly-Setup-1.0.0-darwin-arm64.pkg`. The plain `Setup.pkg` always installs the latest version, while the pinned one is handy when QA needs to install exactly 1.0.0.
+
+---
+
+## Step 6. Install the app (and get past macOS Gatekeeper)
+
+Download the pinned installer and install it. With the local faynoSync setup, the public bucket lives at `cb-faynosync-s3-public.web.garage.localhost:3902`:
+
+```bash
+curl -o ~/Downloads/HelloVelopack-1.0.0.pkg \
+  http://cb-faynosync-s3-public.web.garage.localhost:3902/velopack/admin/HelloVelopack/darwin/arm64/installers/HelloVelopack-nightly-Setup-1.0.0-darwin-arm64.pkg
+
+sudo installer -pkg ~/Downloads/HelloVelopack-1.0.0.pkg -target /
+```
+
+**Why the terminal and not a double-click?** The example installer isn't signed with an Apple Developer certificate. If you double-click it, macOS Gatekeeper refuses to open it because it can't verify the developer. Installing with `sudo installer` from the terminal gets around that.
+
+If you downloaded the installer (or the faynoSync CLI) with a **browser**, macOS also marks the file as "downloaded from the internet". Remove that mark before installing or running it:
+
+```bash
+xattr -d com.apple.quarantine ~/Downloads/HelloVelopack-1.0.0.pkg
+```
+
+Files downloaded with `curl`, like in the commands above, don't get that mark, so you can skip this.
+
+For a real app you'd sign and notarize instead: `vpk pack` has `--signAppIdentity`, `--signInstallIdentity` and `--notaryProfile` for that, and then users can simply double-click the installer.
+
+Now run the app. Remember, it's a terminal app, so start it from the terminal to see what it does:
+
+```bash
+/Applications/HelloVelopack.app/Contents/MacOS/HelloVelopack
+```
+
+```text
+[INFO] Hello from hello-velopack v1.0.0  (darwin/arm64)
+[INFO] Checking updates: admin/HelloVelopack  platform=darwin arch=arm64
+[INFO] Feed URL: http://cb-faynosync-s3-public.web.garage.localhost:3902/velopack/admin/HelloVelopack/darwin/arm64/releases.nightly.json
+[INFO] Already on the latest version (1.0.0).
+```
+
+You may also see a line like `Couldn't write out staging userId.` and a warning from Python's `urllib3` about LibreSSL — both are harmless and don't affect updates.
+
+---
+
+## Step 7. Ship an update
+
+Open `app_version.py`, change `1.0.0` to `1.0.1`, and build again:
+
+```bash
+./build.sh
+```
+
+Because 1.0.0 is still in the `releases/` folder, `vpk` now also creates a **delta package** — only the difference between the two versions. Upload four files this time:
+
+```bash
+faynosync upload \
+  --app HelloVelopack \
+  --version 1.0.1 \
+  --channel nightly \
+  --platform darwin \
+  --arch arm64 \
+  --updater velopack \
+  --file releases/releases.nightly.json \
+  --file releases/HelloVelopack-1.0.1-nightly-full.nupkg \
+  --file releases/HelloVelopack-1.0.1-nightly-delta.nupkg \
+  --file releases/HelloVelopack-nightly-Setup.pkg \
+  --publish \
+  --changelog "Second release"
+```
+
+Run the installed app again:
+
+```bash
+/Applications/HelloVelopack.app/Contents/MacOS/HelloVelopack
+```
+
+```text
+[INFO] Hello from hello-velopack v1.0.0  (darwin/arm64)
+[INFO] Update available: 1.0.0 -> 1.0.1  (upgrade) via FULL (13114793 bytes)
+[INFO] Downloading...
+[INFO] Downloaded. Applying and exiting; re-run to launch 1.0.1.
+```
+
+It found 1.0.1, downloaded it, applied it and exited. Velopack's own updater prints a few more lines while it replaces the app — that's normal. Run the same command once more and the app greets you as `v1.0.1`.
+
+Two things you might notice on macOS:
+
+- **The first update comes down as FULL.** That's expected for the first update after a fresh install. In our run it was about 13 MB.
+- **macOS may ask for your password once.** The `.pkg` installer puts the app into `/Applications` as root, so the first time Velopack replaces the app bundle, it asks for permission. Later updates in our run went through without asking.
+
+Now change the version to `1.0.2`, run `./build.sh`, and upload with the same command — just replace `1.0.1` with `1.0.2` everywhere. Run the app again:
+
+```text
+[INFO] Hello from hello-velopack v1.0.1  (darwin/arm64)
+[INFO] Update available: 1.0.1 -> 1.0.2  (upgrade) via DELTA (1 package(s), 197422 bytes)
+[INFO] Downloading...
+[INFO] Downloaded. Applying and exiting; re-run to launch 1.0.2.
+```
+
+This time it's a **DELTA**: about 197 KB instead of 13 MB. For real apps with big bundles and lots of users, this is where you save most of the bandwidth.
+
+---
+
+## Step 8. Roll back a bad release
+
+Say 1.0.2 turns out to be broken. With a plain bucket, you'd have to edit the feed by hand and hope you got it right. With faynoSync:
+
+1. Open `HelloVelopack` in the dashboard.
+2. Edit version **1.0.2** and uncheck **Publish**.
+3. Save.
+
+That's it. faynoSync rebuilds the feed without 1.0.2. Its full and delta packages disappear from the feed together, so clients never see half a version. Run the app:
+
+```text
+[INFO] Hello from hello-velopack v1.0.2  (darwin/arm64)
+[INFO] Update available: 1.0.2 -> 1.0.1  (DOWNGRADE (revoked?)) via FULL (13114793 bytes)
+[INFO] Downloading...
+[INFO] Downloaded. Applying and exiting; re-run to launch 1.0.1.
+```
+
+The app noticed that 1.0.1 is now the latest and went back to it. The example allows this because it enables `AllowVersionDowngrade` in the Velopack update options — check `app.py` if you want the same in your app.
+
+Fixed the bug? Publish a new version and everyone moves forward again.
+
+---
+
+## Step 9. Make users stop at a required version
+
+Here's a situation every desktop team runs into sooner or later. Version 1.0.2 migrates the local database to a new format, and 1.0.3 expects that new format. A user who is still on 1.0.1 must not jump straight to 1.0.3 — they need to go through 1.0.2 first.
+
+Velopack alone can't do this. Its client always goes for the highest version in the feed, and a static feed file is the same for everyone, so there's no way to say "you, on 1.0.1, stop at 1.0.2 first".
+
+faynoSync calls this an **intermediate build**, and it works with the stock Velopack client too. There's one condition: **the app has to read its feed from the faynoSync API, not from the static bucket.**
+
+Why? Every time the stock client checks for updates, it already tells the server which version it's running (`localVersion` in the request). The API reads that and builds the feed just for this client: if there's a required version between the client's version and the latest, the feed simply ends at that required version. A static file in a bucket ignores all of this and always shows the full list.
+
+Here's how we tried it, with 1.0.1 installed:
+
+1. In the dashboard, edit version **1.0.2**, check **Intermediate**, and make sure **Publish** is checked too. From CI you can do the same at upload time by adding `--intermediate` to `faynosync upload`.
+2. Set the version to `1.0.3`, run `./build.sh`, and upload it like the earlier versions.
+3. Run the app with `ASK_API=true`. This switch in the example makes the app read the feed from the API instead of the bucket (the logic is in `app.py`):
+
+```bash
+ASK_API=true /Applications/HelloVelopack.app/Contents/MacOS/HelloVelopack
+```
+
+First run — the app on 1.0.1 is offered **1.0.2**, not 1.0.3. Note the feed URL now points to the API:
+
+```text
+[INFO] Hello from hello-velopack v1.0.1  (darwin/arm64)
+[INFO] Feed URL: http://localhost:9000/velopack/admin/HelloVelopack/darwin/arm64/releases.nightly.json
+[INFO] Update available: 1.0.1 -> 1.0.2  (upgrade) via DELTA (1 package(s), 197422 bytes)
+[INFO] Downloading...
+[INFO] Downloaded. Applying and exiting; re-run to launch 1.0.2.
+```
+
+Second run with the same command — now on 1.0.2, it continues to 1.0.3:
+
+```text
+[INFO] Hello from hello-velopack v1.0.2  (darwin/arm64)
+[INFO] Update available: 1.0.2 -> 1.0.3  (upgrade) via DELTA (1 package(s), 179988 bytes)
+[INFO] Downloading...
+[INFO] Downloaded. Applying and exiting; re-run to launch 1.0.3.
+```
+
+A third run reports `Already on the latest version (1.0.3)`.
+
+You can see the difference yourself by asking the API for the feed the way the client does:
+
+```bash
+curl 'http://localhost:9000/velopack/admin/HelloVelopack/darwin/arm64/releases.nightly.json?localVersion=1.0.1&id=HelloVelopack'
+```
+
+For a client on 1.0.1 the newest version in that answer is 1.0.2. The static feed in the bucket, at the same moment, lists 1.0.3 — an app reading from the bucket would have jumped straight from 1.0.1 to 1.0.3.
+
+So which mode should you pick? The static bucket (or a CDN in front of it) is the default and scales to any number of users, because update checks never touch your server. The API mode costs one request to faynoSync per check, and in return gives you per-client decisions like intermediate builds. You can start with the bucket and switch the feed URL to the API the day you actually need a required step. Both modes are compared in detail in the [Velopack updater docs](https://faynosync.com/docs/updaters/velopack#two-delivery-modes).
+
+---
+
+## Going further
+
+Once the basic flow works, the example app has a few optional switches, all described step by step in its `USAGE.md`:
+
+- **TUF verification.** Turn on TUF for the app, sign versions in the dashboard, and the client checks every package against signed metadata before installing it. An unsigned version is simply rejected. See [TUF in faynoSync](https://faynosync.com/docs/api/tuf/tuf-introduction).
+- **Telemetry.** Send a small beacon on every update check and see on the **Statistics** page which versions people actually run. See [Telemetry Insights](https://faynosync.com/blog/telemetry-insights).
+- **Failure reports.** Send failed updates to faynoSync and catch a bad rollout early. See [Rollout Health Reports](https://faynosync.com/blog/rollout-health-reports).
+- **CI.** The same `faynosync upload` command runs in the [GitHub Action](https://github.com/marketplace/actions/faynosync-upload) or as a Jenkins step, so the whole release becomes "build, then upload".
+
+---
+
+## Troubleshooting
+
+**macOS says the installer or the CLI "can't be opened" or "Apple could not verify" it.**
+That's Gatekeeper blocking an unsigned file. Install the `.pkg` with `sudo installer` from the terminal, and if you downloaded a file with a browser, remove the quarantine mark with `xattr -d com.apple.quarantine <file>` first (see Step 6).
+
+**The app says "Update check skipped (app not installed?)".**
+You ran `app.py` directly. The update flow works only from a Velopack-installed copy. Install it from the Setup installer first.
+
+**The app says it's on the latest version, but you just uploaded a new one.**
+Check that the version was uploaded with `--publish` (or that **Publish** is checked in the dashboard). Also check that channel, platform and architecture match what the app asks for — the app prints the feed URL it uses on every start.
+
+**The upload is rejected.**
+For the `velopack` updater you need at least one `*-full.nupkg` and exactly one `releases.{channel}.json` in the same upload. Also make sure the platform has **velopack** in its updaters.
+
+**The app skips the intermediate version and jumps straight to the latest.**
+The app is reading the static feed from the bucket. Intermediate builds work only when the feed URL points to the faynoSync API — in the example app, run it with `ASK_API=true`.
+
+**The app keeps downloading FULL instead of DELTA.**
+A delta is served only while the version right below it is still published. If you unpublished that version, faynoSync drops the delta on purpose so clients don't get a delta they can't apply, and the full package is used instead.
+
+---
+
+## Wrapping up
+
+Velopack does the hard part on the client: packing, installing, deltas. faynoSync takes care of the server side: feeds, channels, publishing, rollbacks, required intermediate versions and uploads from CI. Together you get a self-hosted Velopack update server without writing a single line of server code or client glue.
+
+The whole example is one repo and a few commands. Clone it, run through the steps above on your own machine, and watch your first delta update land.
+
+---
+
+## How to try faynoSync?
+
+1. Follow the Getting Started guide: [https://faynosync.com/docs/getting-started](https://faynosync.com/docs/getting-started)
+
+2. Create your app using the REST API or web dashboard:
+API Docs: [https://faynosync.com/docs/api](https://faynosync.com/docs/api)
+Dashboard UI: [https://github.com/ku9nov/faynoSync-dashboard](https://github.com/ku9nov/faynoSync-dashboard)
+
+3. Clone the [Velopack example app](https://github.com/ku9nov/faynoSync-velopack-p3-example) and follow its `USAGE.md`.
+
+4. Read the full reference: [Velopack Updater](https://faynosync.com/docs/updaters/velopack).
+
+---
+
+## Related reading
+
+- [Velopack Updater docs](https://faynosync.com/docs/updaters/velopack) — feed format, CDN vs API delivery, delta handling
+- [Velopack example app docs](https://faynosync.com/docs/examples/velopack) — how the example client is built
+- [faynoSync CLI](https://faynosync.com/docs/cli) — all upload flags, GitHub Action and Jenkins step
+- [How to Setup Auto Update for Electron App](https://faynosync.com/blog/electron-auto-update)
+- [Scaling Update Checks with Edge + S3 Response Cache](https://faynosync.com/blog/edge-s3-cache)
+- [Rollout Health Reports — Catch Failed Updates Before They Spread](https://faynosync.com/blog/rollout-health-reports)
+
+---
+
+If you find this project helpful, please consider **subscribing**, **leaving a comment**, or giving it a **star**, create an **Issue** or **feature request** on GitHub.
+Your support keeps the project alive and growing.
+
+---

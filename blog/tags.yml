@@ -67,3 +67,8 @@ analytics:
   label: Analytics
   permalink: /analytics
   description: Analytics documentation for FaynoSync
+
+velopack:
+  label: Velopack
+  permalink: /velopack
+  description: Velopack auto-updates with FaynoSync
