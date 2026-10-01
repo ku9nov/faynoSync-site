@@ -72,3 +72,8 @@ velopack:
   label: Velopack
   permalink: /velopack
   description: Velopack auto-updates with FaynoSync
+
+sparkle:
+  label: Sparkle
+  permalink: /sparkle
+  description: Sparkle macOS auto-updates with FaynoSync

@@ -60,6 +60,7 @@ Step-by-step guides from the blog:
 
 - [How to Setup Auto Update for Electron App](https://faynosync.com/blog/electron-auto-update) — auto-updates for Electron apps with electron-builder.
 - [Self-Hosted Velopack Update Server: Deltas, Rollbacks, CI](https://faynosync.com/blog/self-hosted-velopack-update-server) — Velopack feeds, delta updates, rollback, and CLI uploads.
+- [Self-Hosted Sparkle Update Server: Appcast Hosting for macOS](https://faynosync.com/blog/self-hosted-sparkle-update-server) — Sparkle appcast hosting, EdDSA signatures, critical updates, and CLI uploads.
 - [Local Development with faynoSync — Choose Your Path](https://faynosync.com/blog/local-development) — run faynoSync locally with Docker or from source.
 - [Private Apps in faynoSync — Keep Your Software Secure](https://faynosync.com/blog/private-apps) — restrict downloads of your builds.
 - [Team-Based Authorization in faynoSync — Manage Your Team Like a Pro](https://faynosync.com/blog/team-based-auth) — give team members scoped access.

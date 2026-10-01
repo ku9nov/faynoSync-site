@@ -91,10 +91,11 @@ faynoSync [materializes](../updaters/sparkle.mdx#the-materialized-feed) the appc
 
 ## Failure reports (optional)
 
-There is no SDK, so the app talks to faynoSync's [reports](../api/reports/ingest) endpoint with plain HTTP. Set `FaynoSyncReportKey` in `Info.plist` and update failures are POSTed to `/reports/ingest` — fire-and-forget, never blocking the update (see [`Sources/Reporter.swift`](https://github.com/ku9nov/faynoSync-sparkle-example/blob/main/Sources/Reporter.swift)).
+There is no SDK, so the app talks to faynoSync's [reports](../api/reports/ingest) endpoint with plain HTTP. Set `FaynoSyncReportKey` in `Info.plist` and the app POSTs demo failure events (random type and reason, every 60 seconds) to `/reports/ingest` — fire-and-forget, never blocking the update. Replace them with your real failure events in your own app (see [`Sources/Reporter.swift`](https://github.com/ku9nov/faynoSync-sparkle-example/blob/main/Sources/Reporter.swift)).
 
 ## Related reading
 
+- [Self-Hosted Sparkle Update Server, step by step](/blog/self-hosted-sparkle-update-server) — tutorial walking through this example with the faynoSync CLI.
 - [Sparkle Updater](../updaters/sparkle.mdx) — the appcast contract, managed vs. pass-through fields, and the materialized feed.
 - [Velopack Example](./velopack.mdx) — the other no-SDK native updater example.
 - [Rollout](../rollout.mdx) — why native rollout passes through but faynoSync rollout doesn't apply to a materialized feed.

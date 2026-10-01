@@ -1,0 +1,395 @@
+---
+slug: self-hosted-sparkle-update-server
+title: "Self-Hosted Sparkle Update Server: Appcast Hosting for macOS"
+authors: [ku9nov]
+tags: [faynoSync, sparkle, auto-update]
+description: "Host your Sparkle appcast on your own server with faynoSync: upload with the CLI, keep EdDSA signatures intact, ship critical updates and pull a bad release."
+---
+
+# Self-Hosted Sparkle Update Server: Appcast Hosting for macOS
+
+[Sparkle](https://sparkle-project.org) is the standard way to auto-update a native macOS app. You link the framework, set a feed URL, and Sparkle checks an **appcast** — an RSS file that lists your versions — downloads the newest archive, checks its EdDSA signature and installs it.
+
+Sparkle tells you how to *generate* that appcast (`generate_appcast`), but not where to *host* it. Most teams end up with a bucket or a GitHub Pages site and a script that copies files around. Then come the questions: how do I pull a bad release? How do I mark an update as critical without rebuilding? Which feed do the beta testers get?
+
+This post shows how to use [faynoSync](https://faynosync.com/docs/intro) as a **self-hosted Sparkle update server**. The stock Sparkle client stays untouched — faynoSync hosts the appcast and the archives, and you manage releases from a dashboard or CI. Everything below was run end to end on a local faynoSync with a real macOS app before writing it down.
+{/* truncate */}
+
+---
+
+## What you get
+
+| | Plain bucket / GitHub Pages | faynoSync |
+|---|---|---|
+| Appcast (`appcast.xml`) | You upload it and keep it in sync by hand | Rebuilt automatically on every change |
+| Pull a bad release | Edit the XML by hand | Uncheck **Publish** in the dashboard |
+| Critical update | Rebuild the appcast with `--critical-update-version` | Check **Critical** (or `--critical` on upload) |
+| Release notes | HTML files next to the archives | Changelog field, rendered into the appcast |
+| Channels, architectures | Folder naming conventions | One appcast per channel / platform / arch |
+| EdDSA signatures | Yours | Still yours — passed through byte for byte |
+| Delta updates | Work if the files are in the right place | Uploaded with the version, URLs rewritten for you |
+| CI uploads | Custom scripts | [faynoSync CLI](https://faynosync.com/docs/cli), GitHub Action, Jenkins step |
+
+Your private signing key never touches the server. faynoSync reads the `sparkle:edSignature` from the appcast you upload and serves it unchanged, so Sparkle verifies every archive exactly as it would against any static host.
+
+---
+
+## The example app
+
+We'll use a small native AppKit app that already has Sparkle wired in:
+
+**[github.com/ku9nov/faynoSync-sparkle-example](https://github.com/ku9nov/faynoSync-sparkle-example)**
+
+- `Sources/UpdaterManager.swift` — starts the stock `SPUStandardUpdaterController` and builds the feed URL.
+- `Sources/Config.swift` — reads owner, app name and channel from `Info.plist`, so one codebase can target any channel or architecture.
+- `project.yml` — the [XcodeGen](https://github.com/yonsweng/xcodegen) project, including the version numbers.
+- `Makefile` + `scripts/` — `make keys`, `make build`, `make appcast` on top of Sparkle's own tools.
+
+It opens one window, checks for updates on start and shows the standard Sparkle dialogs. There's no faynoSync SDK inside — the only "integration" is the feed URL. How the client is built is described in the [Sparkle example docs](https://faynosync.com/docs/examples/sparkle).
+
+### What you need installed
+
+- **Docker** — to run faynoSync locally.
+- **Xcode command line tools** and **XcodeGen** (`brew install xcodegen`).
+- **Sparkle's CLI tools** (`generate_keys`, `generate_appcast`) in the example's `tools/` folder. The repo README has a three-line snippet that downloads them from a Sparkle release.
+
+You **don't** need an Apple Developer ID for this walkthrough. Without one, the build is ad-hoc signed, which is fine for local testing.
+
+---
+
+## Step 1. Run faynoSync
+
+```bash
+git clone https://github.com/ku9nov/faynoSync.git
+cd faynoSync
+docker compose up --build
+```
+
+In a second terminal, run the database migrations:
+
+```bash
+docker compose exec -T backend /usr/bin/faynoSync migrate up
+```
+
+The API is now on `http://localhost:9000`, the dashboard on `http://localhost:3000`, and a public S3-compatible bucket serves the appcast and archives at `http://cb-faynosync-s3-public.web.garage.localhost:3902` — the same way a CDN would in production. More details: [Local Development Setup](https://faynosync.com/docs/getting-started/local-development).
+
+---
+
+## Step 2. Prepare the app in the dashboard
+
+Open `http://localhost:3000` and **register** (for a local setup the `secretKey` is `UHp3aKb40fwpoKZluZByWQ`). Then create:
+
+1. **Application** — `faynosyncSparkleExample`. The example reads this name from `FaynoSyncApp` in `Info.plist`, and it becomes part of the feed URL.
+2. **Channel** — `nightly`, the default channel in `project.yml`.
+3. **Platform** — `darwin`. In the **Updaters** section, add **sparkle**. This is what tells faynoSync to accept and serve Sparkle appcasts for this platform.
+4. **Architecture** — `arm64` on Apple Silicon, `amd64` on Intel.
+
+faynoSync builds **one appcast per channel, platform and architecture**, at a predictable path:
+
+```text
+sparkle/{owner}/{app}/{platform}/{arch}/appcast.{channel}.xml
+```
+
+The example composes exactly this URL at runtime. If you registered with a username other than `admin`, change `FaynoSyncOwner` in `Resources/Info.plist`.
+
+---
+
+## Step 3. Create an upload token and install the CLI
+
+In the dashboard, open **Settings → CI/CD Tokens**, create a token, and in **Select allowed apps** pick `faynosyncSparkleExample`. Copy it — it's shown only once. See [Create Token](https://faynosync.com/docs/api/tokens/create) for the API behind it.
+
+Install the [faynoSync CLI](https://github.com/ku9nov/faynoSync-cli/releases) (Sparkle support needs v1.1.0 or newer):
+
+```bash
+curl -L -o faynosync https://github.com/ku9nov/faynoSync-cli/releases/latest/download/faynosync-cli-darwin-arm64
+chmod +x faynosync
+sudo mv faynosync /usr/local/bin/
+
+export FAYNOSYNC_TOKEN=fns_your_token_here
+export FAYNOSYNC_URL=http://localhost:9000
+export FAYNOSYNC_ACCOUNT=admin
+```
+
+The environment variables are the same ones you'd set as secrets in CI. Run `faynosync init` instead if you prefer a config file — see the [CLI docs](https://faynosync.com/docs/cli).
+
+---
+
+## Step 4. Generate your signing keys
+
+Sparkle verifies every update with an **Ed25519** key pair. The private key signs archives on your machine, the public key ships inside the app as `SUPublicEDKey`.
+
+```bash
+git clone https://github.com/ku9nov/faynoSync-sparkle-example.git
+cd faynoSync-sparkle-example
+make keys
+```
+
+`generate_keys` stores the private key in your login Keychain and prints the public key. Paste it into `Resources/Info.plist`, replacing the `PASTE_SUPublicEDKey_FROM_make_keys` placeholder. If you already have a Sparkle key in your Keychain, it prints that one instead of creating a new key.
+
+This is the only trust anchor in the whole setup. faynoSync never sees the private key, and it can't produce a valid signature — so even a compromised update server can't push an archive your app will accept.
+
+---
+
+## Step 5. Build and publish version 1.0.0
+
+Set the version in `project.yml`:
+
+```yaml
+MARKETING_VERSION: "1.0.0"
+CURRENT_PROJECT_VERSION: "1"
+```
+
+`MARKETING_VERSION` is what users see. `CURRENT_PROJECT_VERSION` becomes `CFBundleVersion` — **this is the number Sparkle compares**, so it must go up with every release.
+
+```bash
+make build
+make appcast
+```
+
+`make build` produces `build/dist/darwin/arm64/nightly/faynosyncSparkleExample-1.0.0.zip`. `make appcast` signs it and writes `build/dist/darwin/arm64/appcast.nightly.xml`:
+
+```xml
+<item>
+    <title>1.0.0</title>
+    <sparkle:version>1</sparkle:version>
+    <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
+    <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+    <enclosure url="faynosyncSparkleExample-1.0.0.zip" length="1027212"
+        type="application/octet-stream" sparkle:edSignature="kW77V9W4..."/>
+</item>
+```
+
+Notice the enclosure URL is just a file name. You don't need `--download-url-prefix` — faynoSync rewrites every enclosure URL to where it actually stores the file.
+
+Upload the appcast and the archive:
+
+```bash
+faynosync upload \
+  --app faynosyncSparkleExample \
+  --version 1.0.0 \
+  --channel nightly \
+  --platform darwin \
+  --arch arm64 \
+  --updater sparkle \
+  --file build/dist/darwin/arm64/appcast.nightly.xml \
+  --file build/dist/darwin/arm64/nightly/faynosyncSparkleExample-1.0.0.zip \
+  --publish \
+  --changelog "First release"
+```
+
+```text
+INFO  Upload completed
+    app          faynosyncSparkleExample
+    files        2
+    uploaded_id  6abe76633daf3c60d93cb5a2
+    version      1.0.0
+```
+
+There's no `--signature` flag here — the signature already lives inside the appcast. Fetch the feed the way Sparkle will:
+
+```bash
+curl http://cb-faynosync-s3-public.web.garage.localhost:3902/sparkle/admin/faynosyncSparkleExample/darwin/arm64/appcast.nightly.xml
+```
+
+```xml
+<item>
+    <title>1.0.0</title>
+    <pubDate>Thu, 01 Oct 2026 18:05:15 +0300</pubDate>
+    <sparkle:version>1</sparkle:version>
+    <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
+    <sparkle:minimumSystemVersion>11.0</sparkle:minimumSystemVersion>
+    <enclosure url="http://cb-faynosync-s3-public.web.garage.localhost:3902/sparkle/admin/faynosyncSparkleExample/darwin/arm64/faynosyncSparkleExample-1.0.0.zip"
+        length="1027212" type="application/octet-stream" sparkle:edSignature="kW77V9W4..."/>
+    <description><![CDATA[<p>First release</p>]]></description>
+</item>
+```
+
+Three things changed, and only these: the enclosure URL points to the stored file, `pubDate` is the moment you published, and the `description` is your faynoSync changelog. `sparkle:version`, `length` and `edSignature` are byte-for-byte what `generate_appcast` wrote. The full list of managed vs. pass-through fields is in the [Sparkle updater docs](https://faynosync.com/docs/updaters/sparkle#what-faynosync-manages-vs-passes-through).
+
+---
+
+## Step 6. Install the app
+
+```bash
+curl -o faynosyncSparkleExample-1.0.0.zip \
+  http://cb-faynosync-s3-public.web.garage.localhost:3902/sparkle/admin/faynosyncSparkleExample/darwin/arm64/faynosyncSparkleExample-1.0.0.zip
+ditto -x -k faynosyncSparkleExample-1.0.0.zip /Applications
+open /Applications/faynosyncSparkleExample.app
+```
+
+The app checks for updates on start, and Sparkle answers with its standard dialog: **"You're up to date! faynoSync Sparkle Example 1.0.0 is currently the newest version available."**
+
+Files downloaded with `curl` don't get the macOS quarantine flag, so Gatekeeper doesn't complain about the unsigned build. For a real release you'd sign with your Developer ID and notarize — set `DEVELOPER_ID` and `DEVELOPMENT_TEAM` in the example's `.env` and the build switches to manual signing with hardened runtime.
+
+---
+
+## Step 7. Ship an update
+
+Bump both numbers in `project.yml` to `1.0.1` and `2`, then:
+
+```bash
+make build
+make appcast
+```
+
+Because the 1.0.0 archive is still in the folder, `generate_appcast` now also creates a **delta**: `faynosyncSparkleExample2-1.delta`, a binary diff from build 1 to build 2. In our run the full archive was about 1 MB and the delta 1,078 bytes — a hello-world app barely changes between builds, but for a real app the delta is where most of the bandwidth saving is.
+
+Upload the new archive together with its delta:
+
+```bash
+faynosync upload \
+  --app faynosyncSparkleExample --version 1.0.1 --channel nightly \
+  --platform darwin --arch arm64 --updater sparkle \
+  --file build/dist/darwin/arm64/appcast.nightly.xml \
+  --file build/dist/darwin/arm64/nightly/faynosyncSparkleExample-1.0.1.zip \
+  --file build/dist/darwin/arm64/nightly/faynosyncSparkleExample2-1.delta \
+  --publish --changelog "Second release"
+```
+
+The appcast you upload now lists both 1.0.0 and 1.0.1, but faynoSync only takes the items for the files in *this* upload. Older versions are kept in its database and stay in the feed until you unpublish or delete them — so in CI you can upload an appcast generated from just the new build.
+
+The served feed now has a `<sparkle:deltas>` block under 1.0.1, with the delta's URL rewritten and its own `edSignature` untouched. Sparkle picks the delta when the installed build matches `sparkle:deltaFrom` and falls back to the full archive otherwise.
+
+Restart the app. Sparkle shows **"A new version of faynoSync Sparkle Example is available! faynoSync Sparkle Example 1.0.1 is now available—you have 1.0.0."** with "Second release" as the release notes. Click **Install Update**: Sparkle downloads the update, verifies it (`OK: EdDSA signature is correct for update` in the system log), replaces the app and relaunches it as 1.0.1.
+
+---
+
+## Step 8. Ship a critical update
+
+Build `1.0.2` (build `3`) the same way and upload it with `--critical`:
+
+```bash
+faynosync upload \
+  --app faynosyncSparkleExample --version 1.0.2 --channel nightly \
+  --platform darwin --arch arm64 --updater sparkle \
+  --file build/dist/darwin/arm64/appcast.nightly.xml \
+  --file build/dist/darwin/arm64/nightly/faynosyncSparkleExample-1.0.2.zip \
+  --file build/dist/darwin/arm64/nightly/faynosyncSparkleExample3-2.delta \
+  --file build/dist/darwin/arm64/nightly/faynosyncSparkleExample3-1.delta \
+  --publish --critical --changelog "Security fix"
+```
+
+faynoSync adds `<sparkle:criticalUpdate/>` to the 1.0.2 item. On 1.0.1 the app now shows **"An important update to faynoSync Sparkle Example is ready to install"** — with only an **Install Update** button. No "Skip This Version", no "Remind Me Later".
+
+The flag is a faynoSync setting, not part of the build. Uncheck **Critical** in the dashboard and the tag disappears from the appcast without rebuilding or re-signing anything.
+
+---
+
+## Step 9. Pull a bad release
+
+Say 1.0.2 is broken. In the dashboard, edit version **1.0.2** and uncheck **Publish**. faynoSync rebuilds the appcast without it:
+
+```bash
+curl -s http://cb-faynosync-s3-public.web.garage.localhost:3902/sparkle/admin/faynosyncSparkleExample/darwin/arm64/appcast.nightly.xml | grep '<title>'
+```
+
+```text
+        <title>faynosyncSparkleExample</title>
+            <title>1.0.1</title>
+            <title>1.0.0</title>
+```
+
+The item and its deltas are gone together, and a client on 1.0.1 gets **"You're up to date!"** again.
+
+Be clear about what this does: **unpublishing stops the spread, it doesn't downgrade anyone.** Sparkle never installs a lower `CFBundleVersion`, so clients that already got 1.0.2 stay on it. The fix is to ship 1.0.3 with a higher build number. To catch a bad release before it reaches many users, combine this with [Rollout Health Reports](https://faynosync.com/blog/rollout-health-reports) or Sparkle's own `sparkle:phasedRolloutInterval`, which faynoSync passes through unchanged.
+
+---
+
+## Uploading from CI
+
+The upload is one command, so it fits any pipeline. With the [GitHub Action](https://github.com/marketplace/actions/faynosync-upload):
+
+```yaml
+- name: Upload to faynoSync
+  uses: ku9nov/faynoSync-cli@v1
+  with:
+    app: faynosyncSparkleExample
+    version: 1.0.3
+    channel: nightly
+    platform: darwin
+    arch: arm64
+    updater: sparkle
+    file: |
+      build/dist/darwin/arm64/appcast.nightly.xml
+      build/dist/darwin/arm64/nightly/faynosyncSparkleExample-1.0.3.zip
+    publish: true
+  env:
+    FAYNOSYNC_TOKEN: ${{ secrets.FAYNOSYNC_TOKEN }}
+    FAYNOSYNC_URL: ${{ secrets.FAYNOSYNC_URL }}
+    FAYNOSYNC_ACCOUNT: ${{ secrets.FAYNOSYNC_ACCOUNT }}
+```
+
+A CI runner has no Keychain with your key. Export the private key once with `generate_keys -x private-key-file`, store it as a secret, and let `generate_appcast` read it from a file with `--ed-key-file` (the example's `release.sh` maps `ED_KEY_FILE` to that flag). If you also want deltas in CI, download the previous archive into the dist folder before running `generate_appcast` — Sparkle can only diff against an archive it can see.
+
+---
+
+## What's different from Velopack
+
+If you read the [self-hosted Velopack update server](https://faynosync.com/blog/self-hosted-velopack-update-server) post, a few things work differently with Sparkle:
+
+- **No intermediate builds yet.** The Sparkle appcast is a static file, the same for every client, so faynoSync can't say "you, on 1.0.1, stop at 1.0.2 first". [Intermediate builds](https://faynosync.com/docs/intermediate_build) need a per-client feed and are planned as a dynamic Sparkle route.
+- **No faynoSync percentage rollout.** Same reason — use Sparkle's phased rollout instead. See [Rollout](https://faynosync.com/docs/rollout#updater-compatibility).
+- **No rollback by downgrade.** Velopack can be told to allow downgrades; Sparkle doesn't install lower versions.
+
+What you get in return: update checks never touch the faynoSync API. Sparkle reads a static file from the bucket, so you can put a CDN in front of it.
+
+---
+
+## Troubleshooting
+
+**The app crashes at launch with "Library not loaded: @rpath/Sparkle.framework … different Team IDs".**
+The app was built with hardened runtime but ad-hoc signed, so macOS refuses to load the embedded Sparkle framework. The example's `build.sh` turns hardened runtime off when `DEVELOPER_ID` is empty. In your own project, either sign with a Developer ID or disable hardened runtime for local builds.
+
+**Upload fails: "sparkle appcast has no matching \<enclosure\> for uploaded file(s)".**
+You uploaded an archive that isn't in the appcast — usually because you ran `make build` but not `make appcast`. Regenerate the appcast and upload again.
+
+**Upload fails: "sparkle updater requires exactly one appcast\*.xml feed file".**
+Every Sparkle upload needs the appcast plus at least one full archive (`.zip`, `.dmg`, `.tar.*` or `.aar`). Also check that the `darwin` platform has **sparkle** in its updaters.
+
+**Sparkle refuses the update with a signature error.**
+The `SUPublicEDKey` in the installed app doesn't match the key that signed the archive. Run `make keys`, paste the printed key into `Info.plist`, and rebuild — older installs signed with a different key can't verify new updates.
+
+**The app says it's up to date, but you just uploaded a new version.**
+Check that you bumped `CURRENT_PROJECT_VERSION` (Sparkle compares that, not the marketing version), that the version is published, and that channel, platform and architecture match the feed URL the app uses.
+
+**Don't enable `SURequireSignedFeed`.** faynoSync rewrites enclosure URLs, so a signature over the whole appcast can't stay valid. Security comes from the per-archive `edSignature`, which faynoSync never changes.
+
+---
+
+## Wrapping up
+
+Sparkle handles the client: checking, verifying, installing, deltas. faynoSync handles the server: hosting the appcast, channels, critical flags, release notes, pulling bad releases and uploads from CI. Your signing key stays on your machine, and the client stays stock Sparkle — if you ever move away, you just change the feed URL.
+
+Clone the example, run the steps above, and watch your first Sparkle update come from your own server.
+
+---
+
+## How to try faynoSync?
+
+1. Follow the Getting Started guide: [https://faynosync.com/docs/getting-started](https://faynosync.com/docs/getting-started)
+
+2. Create your app using the REST API or web dashboard:
+API Docs: [https://faynosync.com/docs/api](https://faynosync.com/docs/api)
+Dashboard UI: [https://github.com/ku9nov/faynoSync-dashboard](https://github.com/ku9nov/faynoSync-dashboard)
+
+3. Clone the [Sparkle example app](https://github.com/ku9nov/faynoSync-sparkle-example) and follow its README.
+
+4. Read the full reference: [Sparkle Updater](https://faynosync.com/docs/updaters/sparkle).
+
+---
+
+## Related reading
+
+- [Sparkle Updater docs](https://faynosync.com/docs/updaters/sparkle) — appcast contract, managed vs. pass-through fields, materialized feed
+- [Sparkle example app docs](https://faynosync.com/docs/examples/sparkle) — how the example client is built
+- [faynoSync CLI](https://faynosync.com/docs/cli) — all upload flags, GitHub Action and Jenkins step
+- [Self-Hosted Velopack Update Server: Deltas, Rollbacks, CI](https://faynosync.com/blog/self-hosted-velopack-update-server)
+- [How to Setup Auto Update for Electron App](https://faynosync.com/blog/electron-auto-update)
+- [Rollout Health Reports — Catch Failed Updates Before They Spread](https://faynosync.com/blog/rollout-health-reports)
+
+---
+
+If you find this project helpful, please consider **subscribing**, **leaving a comment**, or giving it a **star**, create an **Issue** or **feature request** on GitHub.
+Your support keeps the project alive and growing.
+
+---
