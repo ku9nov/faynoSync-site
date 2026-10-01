@@ -36,6 +36,21 @@ curl -X POST --location 'http://localhost:9000/upload' \
 --form 'data="{\"app_name\":\"myapp\",\"version\":\"0.0.1\",\"channel\":\"stable\",\"publish\":true,\"platform\":\"windows\",\"arch\":\"amd64\",\"updater\":\"electron-builder\"}"'
 ```
 
+For macOS, upload the whole build output of one architecture in one request — `latest-mac.yml`, the `.zip`, the `.dmg` and both `.blockmap` files:
+
+```bash
+curl -X POST --location 'http://localhost:9000/upload' \
+--header 'Authorization: Bearer <jwt_token>' \
+--form 'file=@"/path_to_file/latest-mac.yml"' \
+--form 'file=@"/path_to_file/myapp-0.0.1-arm64-mac.zip"' \
+--form 'file=@"/path_to_file/myapp-0.0.1-arm64-mac.zip.blockmap"' \
+--form 'file=@"/path_to_file/myapp-0.0.1-arm64.dmg"' \
+--form 'file=@"/path_to_file/myapp-0.0.1-arm64.dmg.blockmap"' \
+--form 'data="{\"app_name\":\"myapp\",\"version\":\"0.0.1\",\"channel\":\"stable\",\"publish\":true,\"platform\":\"darwin\",\"arch\":\"arm64\",\"updater\":\"electron-builder\"}"'
+```
+
+`electron-updater` updates macOS apps from the `.zip` and uses `.zip.blockmap` for differential downloads; the `.dmg` is for first installs from your download page (see [`/apps/latest`](../api/info/fetch-latest-build)). The `.dmg.blockmap` is not used, but uploading it is harmless — several `.blockmap` files per platform and architecture are accepted.
+
 Files are then organized as:
 
 ```

@@ -26,6 +26,17 @@ curl -X GET 'http://localhost:9000/checkVersion?app_name=myapp&version=1.0.0&cha
 
 The response is a standard JSON payload with download URLs plus the signature information the Tauri updater expects.
 
+## Which File the Updater Receives
+
+A version can hold more than the update bundle — for example a `.dmg` next to `myapp.app.tar.gz`, so that [`/apps/latest`](../api/info/fetch-latest-build) has an installer for your download page. `/checkVersion` always returns the file the Tauri updater can install, in this order:
+
+1. Update bundles: `.app.tar.gz` (macOS), `.AppImage.tar.gz`, `.nsis.zip`, `.msi.zip` (Tauri v1)
+2. Installers the Tauri v2 updater installs directly: `.exe`, `.msi`, `.AppImage`
+
+`.sig` and `.dmg` files are never returned as `url` — the Tauri updater cannot install them. If a version has nothing the updater can install for the requested platform and architecture (for example only a `.dmg`), `/checkVersion` answers `204 No Content`, which Tauri treats as "no update". Pass the bundle's signature as the `signature` parameter (`cat myapp.app.tar.gz.sig`), not as a file; it is stored for every file of that upload, so upload the bundle and any installers for your download page in the same request.
+
+`/apps/latest` works the other way round: it leaves out the update bundles and `.sig` files, and returns only the installers.
+
 ## Upload with the `updater` Parameter
 
 ```bash

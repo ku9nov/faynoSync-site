@@ -124,7 +124,7 @@ curl -X PUT -H 'Content-Length: <...>' -H 'Content-Md5: <...>' --upload-file MyA
 | `401` | Missing or invalid token |
 | `403` | The CI/CD token has no access to the app, or the app, channel, platform or architecture is not in the [team user's](/docs/team_based_auth) allowed lists |
 | `404` | The app does not exist |
-| `409` | An artifact with this app, version, platform, architecture and extension already exists, or the version already exists in another channel (the channel of a version cannot be changed) |
+| `409` | An artifact with this app, version, platform, architecture and extension already exists (for `.nupkg`, `.delta` and `.blockmap`: one stored under the same key), or the version already exists in another channel (the channel of a version cannot be changed) |
 | `501` | The configured storage driver does not support presigned uploads (MinIO). Use [`POST /upload`](./upload) |
 
 ## Notes

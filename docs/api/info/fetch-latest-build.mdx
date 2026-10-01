@@ -49,7 +49,30 @@ Public apps and private apps in `unlisted` mode need no credential. For a privat
 
 - If the response contains only one URL, the API will automatically redirect the request to download the build at that URL. This simplifies the process when only one option is available.
 
-### 3. Flexible Responses Based on Parameters
+### 3. Installers Only
+
+`/apps/latest` returns only files a user can download and install. Files that exist for native updaters are never included, whichever updater uploaded them:
+
+| Excluded | Examples |
+|----------|----------|
+| Update feeds | Squirrel.Windows `RELEASES`, Velopack `releases.{channel}.json`, electron-builder `latest*.yml`, Sparkle `appcast*.xml` |
+| Update packages | `.nupkg` (full and delta, Squirrel.Windows and Velopack), Sparkle `.delta`, Tauri update bundles (`.app.tar.gz`, `.AppImage.tar.gz`, `.nsis.zip`, `.msi.zip`) |
+| Updater helpers | electron-builder `.blockmap`, `.sig` signature files |
+
+So for an app using Velopack or Squirrel.Windows, a request narrowed to one platform and architecture resolves to the single installer and redirects to it. Filtering by an excluded type (for example `package=nupkg` or `package=yml`) returns `404`. Native updaters get these files from their feeds via [`/checkVersion`](./latest), not from this endpoint.
+
+### 4. Latest per Platform and Architecture
+
+The newest build is picked **separately for every platform and architecture**, from published versions only:
+
+- A release uploaded for one platform does not hide the others. If `1.0.3` ships only for Windows, `platform=darwin` keeps returning the newest macOS build, e.g. `1.0.2`.
+- With `package`, the newest version **that has this package** is returned. If the latest macOS release has only a `.dmg`, `package=zip` still resolves to the newest `.zip`.
+- A version whose files for a platform are all updater-internal (see [Installers Only](#3-installers-only)) is skipped for that platform.
+- Versions in a [staged rollout](../../rollout.mdx) (`rollout` below 100) are skipped until they reach 100%, so a download page never hands out a build that in-app updates are still holding back.
+
+Every entry carries the `version` it comes from, so a download page can show it next to the link. Without `platform`/`arch`, different platforms may therefore report different versions.
+
+### 5. Flexible Responses Based on Parameters
 
 The API responds dynamically based on the parameters you provide.
 
@@ -67,10 +90,12 @@ Returns a list of available builds:
     "linux": {
       "amd64": {
         "deb": {
-          "url": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.3.deb"
+          "url": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.3.deb",
+          "version": "0.0.3"
         },
         "rpm": {
-          "url": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.3.rpm"
+          "url": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.3.rpm",
+          "version": "0.0.3"
         }
       }
     }
@@ -104,22 +129,26 @@ Returns all available builds under that channel:
     "linux": {
       "amd64": {
         "deb": {
-          "url": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.3.deb"
+          "url": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.3.deb",
+          "version": "0.0.3"
         },
         "rpm": {
-          "url": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.3.rpm"
+          "url": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/linux/amd64/secondapp-0.0.3.rpm",
+          "version": "0.0.3"
         }
       }
     },
     "darwin": {
       "arm64": {
         "dmg": {
-          "url": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/darwin/arm64/secondapp-0.0.3.dmg"
+          "url": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/darwin/arm64/secondapp-0.0.3.dmg",
+          "version": "0.0.3"
         }
       },
       "amd64": {
         "pkg": {
-          "url": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/darwin/amd64/secondapp-0.0.3.pkg"
+          "url": "https://<bucket_name>.s3.amazonaws.com/secondapp/stable/darwin/amd64/secondapp-0.0.2.pkg",
+          "version": "0.0.2"
         }
       }
     }
@@ -132,7 +161,8 @@ Returns all available builds under that channel:
 - The API provides all available builds depending on what is uploaded in the specified channel, platform, and architecture
 - Use specific parameters to narrow down results and get direct download URLs
 - The `owner` parameter is required for proper access control
-- Package types are automatically detected based on available files
+- Each entry holds the download `url` and the `version` it belongs to
+- Package types are automatically detected from the file extension; updater feeds, update packages and helper files are excluded (see [Installers Only](#3-installers-only))
 - Responses of private apps are never cached in Redis
 
 ## Related reading

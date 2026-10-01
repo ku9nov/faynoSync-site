@@ -75,8 +75,8 @@ Returns all builds in the `stable` channel, grouped by platform → arch → pac
   "stable": {
     "linux": {
       "amd64": {
-        "deb": { "url": "https://<bucket>.s3.amazonaws.com/SpaceExplorer/stable/linux/amd64/SpaceExplorer-1.2.3.deb" },
-        "rpm": { "url": "https://<bucket>.s3.amazonaws.com/SpaceExplorer/stable/linux/amd64/SpaceExplorer-1.2.3.rpm" }
+        "deb": { "url": "https://<bucket>.s3.amazonaws.com/SpaceExplorer/stable/linux/amd64/SpaceExplorer-1.2.3.deb", "version": "1.2.3" },
+        "rpm": { "url": "https://<bucket>.s3.amazonaws.com/SpaceExplorer/stable/linux/amd64/SpaceExplorer-1.2.3.rpm", "version": "1.2.3" }
       },
       "arm64": {
         "deb": { "url": "..." },
@@ -217,6 +217,7 @@ curl -L 'http://localhost:9000/apps/latest?app_name=SpaceExplorer&channel=nightl
 - **Channel is required once defined.** If your app has channels, every `/apps/latest` request must include `channel` — otherwise the request is rejected.
 - **`owner` is mandatory** for access control; it must be your admin user name.
 - **Package types are auto-detected** from what's actually uploaded — you only get a `dmg`/`deb`/`exe` key if such a file exists for that platform/arch.
+- **"Latest" is per platform and architecture.** A release that ships only for Windows does not break your macOS link — each platform/arch resolves to its own newest published build, and each entry reports its `version`. Builds still in a [staged rollout](https://faynosync.com/docs/rollout) are skipped until they reach 100%. See [Latest per Platform and Architecture](https://faynosync.com/docs/api/info/fetch-latest-build#4-latest-per-platform-and-architecture).
 - **Redirect only fires for a single match.** If your filters still leave multiple builds (e.g. both `.deb` and `.rpm`), you get JSON instead of a redirect — add `package` to force a direct download.
 - **Use HTTPS in production** and put faynoSync behind your own domain (e.g. `updates.yourdomain.com`) so download links stay stable and trusted.
 
@@ -224,28 +225,20 @@ curl -L 'http://localhost:9000/apps/latest?app_name=SpaceExplorer&channel=nightl
 
 ## It works for native updater apps too
 
-`/apps/latest` isn't limited to plain `.deb`/`.dmg` uploads. Apps that use a native updater — Velopack, Squirrel, Sparkle, electron-builder, Tauri — show up in the same response, keyed by file type.
+`/apps/latest` isn't limited to plain `.deb`/`.dmg` uploads. Apps that use a native updater — Velopack, Squirrel, Sparkle, electron-builder, Tauri — work the same way, and the endpoint returns only their installers. Updater-internal files (release feeds such as `RELEASES`, `releases.{channel}.json`, `latest.yml` or the Sparkle appcast, `.nupkg` and `.delta` packages, `.blockmap` and `.sig` files) are left out — see [Installers Only](https://faynosync.com/docs/api/info/fetch-latest-build#3-installers-only).
 
-For example, a [Velopack](https://faynosync.com/docs/updaters/velopack) app on macOS returns, among other files, its release feed and its installer (response trimmed):
+For example, a [Velopack](https://faynosync.com/docs/updaters/velopack) app on macOS uploads a full and a delta `.nupkg`, its release feed, and a `.pkg` installer. Only the installer is a download target, so the request resolves to a single file:
 
 ```bash
-curl 'http://localhost:9000/apps/latest?app_name=HelloVelopack&channel=nightly&platform=darwin&arch=arm64&owner=admin'
+curl -i 'http://localhost:9000/apps/latest?app_name=HelloVelopack&channel=nightly&platform=darwin&arch=arm64&owner=admin'
 ```
 
-```json
-{
-  "nightly": {
-    "darwin": {
-      "arm64": {
-        "json": { "url": ".../velopack/admin/HelloVelopack/darwin/arm64/releases.nightly.json" },
-        "pkg":  { "url": ".../velopack/admin/HelloVelopack/darwin/arm64/installers/HelloVelopack-nightly-Setup-1.0.4-darwin-arm64.pkg" }
-      }
-    }
-  }
-}
+```
+HTTP/1.1 302 Found
+Location: .../velopack/admin/HelloVelopack/darwin/arm64/installers/HelloVelopack-nightly-Setup-1.0.4-darwin-arm64.pkg
 ```
 
-Add `package=pkg` and you get a `302` redirect straight to the installer of the newest version — exactly what a "Download for macOS" button needs. From there, the app keeps itself up to date through its own updater. The full Velopack flow is in [Self-Hosted Velopack Update Server: Deltas, Rollbacks, CI](https://faynosync.com/blog/self-hosted-velopack-update-server).
+That `302` goes straight to the installer of the newest version — exactly what a "Download for macOS" button needs, no `package` parameter required. From there, the app keeps itself up to date through its own updater. The full Velopack flow is in [Self-Hosted Velopack Update Server: Deltas, Rollbacks, CI](https://faynosync.com/blog/self-hosted-velopack-update-server).
 
 ---
 
