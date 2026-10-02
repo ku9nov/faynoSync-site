@@ -2,6 +2,36 @@ import {themes as prismThemes} from 'prism-react-renderer';
 import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
+const llmsRootContent = `## Key facts
+
+- **What it is:** an open-source (Apache-2.0), self-hosted update server written in Go. You upload builds, it serves update checks, update feeds and downloads to your apps.
+- **What it is not:** not an installer or packaging framework and not a client-side updater. It does not replace Velopack, Sparkle, Squirrel, electron-updater or the Tauri updater — it is the backend those clients talk to.
+- **History:** developed since January 2023 (first commit 2023-01-13). Source: https://github.com/ku9nov/faynoSync
+- **Stack:** Go API, MongoDB, optional Redis (performance mode, TUF state), object storage: AWS S3, Garage, DigitalOcean Spaces, GCP Cloud Storage (MinIO deprecated). Admin dashboard: https://github.com/ku9nov/faynoSync-dashboard
+
+## Supported client updaters
+
+- **Velopack** — native releases feed (releases.{channel}.json), delta updates, no extra SDK.
+- **Sparkle (macOS)** — hosted per-channel appcast, signatures and deltas preserved, no extra SDK.
+- **Squirrel.Windows / Squirrel.Mac** — RELEASES manifest and ZIP responses.
+- **electron-builder / electron-updater** — YAML feed for the generic provider.
+- **Tauri** — signature-verified JSON for the built-in Tauri updater.
+- **Manual** — plain JSON with update URLs for custom update logic (desktop, browser extensions, mobile, anything else).
+
+## Key features
+
+- Custom channels, platforms and architectures with any names.
+- Staged (canary) rollouts with deterministic client-side bucketing and adoption tracking.
+- Required intermediate builds to force update paths across breaking changes.
+- Critical updates and private apps (private bucket, download tokens, short-lived signed URLs).
+- TUF-inspired signed metadata with threshold signatures, expiration and rollback protection.
+- Telemetry (version adoption, platforms, active users) and crash / failed-update / failed-install reports grouped for triage.
+- Team-based authorization and scoped CI tokens; CLI, GitHub Action and Jenkins integration for uploads.
+- Performance mode (Redis cache), edge-first delivery with S3 response cache, presigned uploads for large builds.
+- Official JavaScript/TypeScript and Go SDKs.
+
+Pages below are ordered by importance: overview, updaters, features, setup, tutorials, then the full API reference.`;
+
 const config: Config = {
   title: 'FaynoSync - Auto-Updater Service',
   tagline: 'The auto-updater service that puts simplicity, reliability, and user control at the forefront.',
@@ -94,9 +124,34 @@ const config: Config = {
         generateLLMsTxt: true,
         generateLLMsFullTxt: true,
         includeBlog: true,
-        title: 'FaynoSync - Auto-Updater Service',
+        addMdExtension: false,
+        rootContent: llmsRootContent,
+        fullRootContent: llmsRootContent,
+        includeOrder: [
+          'docs/intro.md',
+          'docs/updaters/index.mdx',
+          'docs/updaters/*',
+          'docs/examples/index.mdx',
+          'docs/examples/*',
+          'docs/rollout.mdx',
+          'docs/intermediate_build.mdx',
+          'docs/telemetry.mdx',
+          'docs/team_based_auth.mdx',
+          'docs/sdk/intro.mdx',
+          'docs/sdk/**',
+          'docs/cli.mdx',
+          'docs/edge.mdx',
+          'docs/performance.mdx',
+          'docs/presigned-uploads.mdx',
+          'docs/getting-started/index.mdx',
+          'docs/getting-started/*',
+          'docs/troubleshooting.mdx',
+          'blog/*',
+          'docs/api/**',
+        ],
+        title: 'FaynoSync - Self-Hosted Update Server',
         description:
-          'FaynoSync is a self-hosted, open-source auto-updater service for desktop and cross-platform applications (Electron, Tauri, Squirrel), with multi-cloud distribution, telemetry, and secure delivery.',
+          'FaynoSync is an open-source, self-hosted update server (backend) for desktop and cross-platform apps. It does not replace client updaters — it serves update feeds for them: Velopack, Sparkle, Squirrel.Windows/Mac, electron-updater and Tauri, plus manual JSON updates, with channels, staged rollouts, TUF-signed metadata, telemetry and multi-cloud storage.',
       },
     ],
   ],
