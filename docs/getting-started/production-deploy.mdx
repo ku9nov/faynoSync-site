@@ -154,7 +154,7 @@ openssl rand -base64 32
 Create a `docker-compose.yaml` file:
 
 :::tip
-**Note**: Change <code>image: ku9nov/faynosync:latest</code> to <code>image: ku9nov/faynosync:<LatestVersion fallbackVersion="v1.6.0" /></code> to use the latest stable release.
+**Note**: Change <code>image: ku9nov/faynosync:latest</code> to <code>image: ku9nov/faynosync:<LatestVersion fallbackVersion="v2.6.0" /></code> to use the latest stable release.
 :::
 
 ```yaml
@@ -185,10 +185,21 @@ You should see output similar to:
 
 ```
 faynoSync_backend  | time="2025-09-17T11:19:18Z" level=info msg="Connected to MongoDB!"
-faynoSync_backend  | time="2025-09-17T11:19:18Z" level=info msg="Migrations completed"
 faynoSync_backend  | time="2025-09-17T11:19:18Z" level=info msg="Redis connection is required. Connecting to Redis."
 faynoSync_backend  | time="2025-09-17T11:19:18Z" level=info msg="Connected to Redis successfully"
 ```
+
+### 6. Apply Database Migrations
+
+The API does not run migrations on startup. Apply them once the container is running:
+
+```bash
+docker compose exec -T backend /usr/bin/faynoSync migrate up
+```
+
+The command prints `Migrations completed`, or `No pending migrations to apply` when the schema is already current. Migrations create the indexes faynoSync relies on, including the unique index that rejects a second document for the same app version, so do not skip this step. Run it again after every upgrade (see [Update FaynoSync](#update-faynosync)).
+
+If the command reports app versions stored in more than one document, no migration was applied: merge or remove the listed documents, then run it again.
 
 ## Web Server Configuration (Nginx)
 
@@ -348,6 +359,11 @@ To update to the latest version:
 2. Restart the service:
    ```bash
    docker compose up -d
+   ```
+
+3. Apply the migrations shipped with the new version:
+   ```bash
+   docker compose exec -T backend /usr/bin/faynoSync migrate up
    ```
 
 ## Security Considerations
