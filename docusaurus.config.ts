@@ -119,6 +119,17 @@ const config: Config = {
 
   plugins: [
     [
+      '@docusaurus/plugin-client-redirects',
+      {
+        redirects: [
+          {
+            from: ['/docs/getting-started/local-development', '/docs/getting-started/docker-development'],
+            to: '/docs/getting-started/local-deploy',
+          },
+        ],
+      },
+    ],
+    [
       'docusaurus-plugin-llms',
       {
         generateLLMsTxt: true,

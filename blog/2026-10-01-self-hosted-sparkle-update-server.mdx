@@ -71,13 +71,13 @@ In a second terminal, run the database migrations:
 docker compose exec -T backend /usr/bin/faynoSync migrate up
 ```
 
-The API is now on `http://localhost:9000`, the dashboard on `http://localhost:3000`, and a public S3-compatible bucket serves the appcast and archives at `http://cb-faynosync-s3-public.web.garage.localhost:3902` — the same way a CDN would in production. More details: [Local Development Setup](https://faynosync.com/docs/getting-started/local-development).
+The API is now on `http://localhost:9000`, the dashboard on `http://localhost:9000/dashboard/`, and a public S3-compatible bucket serves the appcast and archives at `http://cb-faynosync-s3-public.web.garage.localhost:3902` — the same way a CDN would in production. More details: [Local Setup](https://faynosync.com/docs/getting-started/local-deploy).
 
 ---
 
 ## Step 2. Prepare the app in the dashboard
 
-Open `http://localhost:3000` and **register** (for a local setup the `secretKey` is `UHp3aKb40fwpoKZluZByWQ`). Then create:
+Open `http://localhost:9000/dashboard/` and **register** (for a local setup the `secretKey` is `insecure-dev-api-key`). Then create:
 
 1. **Application** — `faynosyncSparkleExample`. The example reads this name from `FaynoSyncApp` in `Info.plist`, and it becomes part of the feed URL.
 2. **Channel** — `nightly`, the default channel in `project.yml`.

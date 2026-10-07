@@ -37,9 +37,32 @@ curl -X GET http://localhost:9000/health
 |-------|------|-------------|
 | `status` | string | Health status of the application (always "healthy" when functioning correctly) |
 
+### Error Response (424 Failed Dependency)
+
+Returned when MongoDB or Redis does not answer a ping within 5 seconds. MongoDB is checked first.
+
+```json
+{
+  "status": "unhealthy",
+  "details": "MongoDB connection failed"
+}
+```
+
+```json
+{
+  "status": "unhealthy",
+  "details": "Redis connection failed"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `status` | string | `unhealthy` |
+| `details` | string | Which dependency failed: `MongoDB connection failed` or `Redis connection failed` |
+
 ## Usage
 
-You can use this endpoint in your monitoring tools or health checks to ensure that the **FaynoSync** application is running smoothly. If the application is functioning correctly, the response will always return a status of "healthy".
+You can use this endpoint in your monitoring tools or health checks to ensure that the **FaynoSync** application is running smoothly. The endpoint pings MongoDB and Redis on every request, so a `200` response means the API can reach both. The Docker image's built-in healthcheck (`faynoSync healthcheck`) probes this endpoint.
 
 If you encounter issues or receive a different status, further investigation may be necessary to identify and resolve any problems.
 

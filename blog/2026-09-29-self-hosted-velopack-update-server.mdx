@@ -82,15 +82,15 @@ docker compose exec -T backend /usr/bin/faynoSync migrate up
 You'll get two things:
 
 - **API** on `http://localhost:9000` — this is what the CLI uploads to.
-- **Dashboard** on `http://localhost:3000` — this is where you'll click around.
+- **Dashboard** on `http://localhost:9000/dashboard/` — this is where you'll click around.
 
-Local storage is S3-compatible, so the release feed and packages are served straight from a public bucket, the same way a CDN would serve them in production. For the details, see [Local Development Setup](https://faynosync.com/docs/getting-started/local-development) and [Production Deployment](https://faynosync.com/docs/getting-started/production-deploy).
+Local storage is S3-compatible, so the release feed and packages are served straight from a public bucket, the same way a CDN would serve them in production. For the details, see [Local Setup](https://faynosync.com/docs/getting-started/local-deploy) and [Production Deployment](https://faynosync.com/docs/getting-started/production-deploy).
 
 ---
 
 ## Step 2. Prepare the app in the dashboard
 
-Open `http://localhost:3000` and **register**. The form asks for a `secretKey` — for a local setup use the development default `UHp3aKb40fwpoKZluZByWQ`. Then log in and create four things:
+Open `http://localhost:9000/dashboard/` and **register**. The form asks for a `secretKey` — for a local setup use the development default `insecure-dev-api-key`. Then log in and create four things:
 
 1. **Application** — click **Create app**, name it `HelloVelopack`. The name matters: it becomes part of the feed URL, and the example app looks for exactly this name.
 2. **Channel** — `nightly`. This must match the channel `vpk` bakes into the package (`build.sh` uses `nightly` by default).

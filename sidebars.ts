@@ -29,8 +29,6 @@ const sidebars: SidebarsConfig = {
         'getting-started/env-overview',
         'getting-started/local-deploy',
         'getting-started/production-deploy',
-        'getting-started/docker-development',
-        'getting-started/local-development',
         'getting-started/logging',
       ],
     },

@@ -19,8 +19,8 @@ const steps: Step[] = [
     href: '/docs/getting-started/env-overview',
   },
   {
-    title: 'Local Deployment',
-    description: 'Quick local deployment for testing your application updates.',
+    title: 'Local Setup',
+    description: 'Run FaynoSync locally with Docker Compose or from source.',
     icon: '🚀',
     color: '#EF4444',
     href: '/docs/getting-started/local-deploy',
@@ -31,20 +31,6 @@ const steps: Step[] = [
     icon: '🏭',
     color: '#7C3AED',
     href: '/docs/getting-started/production-deploy',
-  },
-  {
-    title: 'Docker Development',
-    description: 'Run FaynoSync using Docker for easy local setup.',
-    icon: '🐳',
-    color: '#06B6D4',
-    href: '/docs/getting-started/docker-development',
-  },
-  {
-    title: 'Local Development',
-    description: 'Set up and run FaynoSync locally for development.',
-    icon: '💻',
-    color: '#10B981',
-    href: '/docs/getting-started/local-development',
   },
   {
     title: 'Logging Configuration',

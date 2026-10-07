@@ -112,8 +112,8 @@ releaseDate: '2024-01-15T10:00:00.000Z'
 | Field | Type | Description |
 |-------|------|-------------|
 | `update_available` | boolean | Indicates whether a newer version is available |
-| `update_url_deb` | string | Direct download URL for the .deb package |
-| `update_url_rpm` | string | Direct download URL for the .rpm package |
+| `update_url_<ext>` | string | Direct download URL for each artifact, keyed by file extension (`update_url_deb`, `update_url_rpm`, `update_url_dmg`, ...) |
+| `update_url` | string | Direct download URL for an artifact uploaded without a file extension |
 | `url` | string | Direct download URL (Squirrel Darwin format) |
 | `changelog` | string | Changelog content for the latest version (in markdown format) |
 | `critical` | boolean | Indicates if this is a critical update that should be applied immediately |

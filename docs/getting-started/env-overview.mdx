@@ -67,11 +67,29 @@ Specifies the storage driver to use.
 </details>
 
 <details>
-<summary><strong>DASHBOARD_URL</strong></summary>
+<summary><strong>ALLOWED_CORS</strong></summary>
 
-The URL of your dashboard. This is used for configuring CORS (Cross-Origin Resource Sharing) to allow requests to the auto updater service from your dashboard.
+Comma-separated origins allowed to call the API from a browser. The dashboard served by the API at `/dashboard/` is same-origin and needs no entry; set this only for browser clients on another origin, such as a dashboard build hosted elsewhere or a browser extension.
 
-**Example:** `DASHBOARD_URL=http://localhost:3000`
+**Example:** `ALLOWED_CORS=https://dashboard.example.com`
+
+</details>
+
+<details>
+<summary><strong>DASHBOARD_ENABLED</strong></summary>
+
+Serve the admin dashboard at `/dashboard/`. Default: `true`. Set to `false` to turn it off; `/` then no longer redirects to it.
+
+**Example:** `DASHBOARD_ENABLED=true`
+
+</details>
+
+<details>
+<summary><strong>DASHBOARD_TUF_METADATA_URL</strong></summary>
+
+Optional. Pre-fills the TUF metadata URL in the dashboard's key generation form. The dashboard reads it from `/dashboard/config.json`.
+
+**Example:** `DASHBOARD_TUF_METADATA_URL=https://s3.example.com/tuf_metadata`
 
 </details>
 
@@ -113,7 +131,9 @@ This key is used for authentication during sign-up and other API interactions.
 
 Generate this key using `openssl rand -base64 16`.
 
-If `API_KEY` is empty, the `/signup` endpoint is disabled.
+If `API_KEY` is empty, the `/signup` endpoint is disabled. Remove it once your admin accounts exist.
+
+The repository's env files use the public placeholder `insecure-dev-api-key`. The API logs a warning when `API_KEY` starts with `insecure-dev-` and refuses to start with it when `GIN_MODE=release`.
 
 **Example:** `API_KEY=generated_api_key`
 
@@ -125,6 +145,8 @@ If `API_KEY` is empty, the `/signup` endpoint is disabled.
 A secret key used for signing and verifying JWT (JSON Web Tokens) used by the application for secure communication.
 
 Generate this key using `openssl rand -base64 32`.
+
+The API refuses to start when `JWT_SECRET` is empty or shorter than 32 bytes. It also logs a warning when the value starts with `insecure-dev-` (the public placeholder in the repository's env files) and refuses to start with it when `GIN_MODE=release`. Changing the secret signs out all users.
 
 **Example:** `JWT_SECRET=your_jwt_secret`
 
@@ -511,7 +533,7 @@ STORAGE_DRIVER=aws
 # =============================================================================
 # Other Configuration
 # =============================================================================
-DASHBOARD_URL=http://localhost:3000
+DASHBOARD_ENABLED=true
 PORT=9000
 MONGODB_URL=mongodb://root:password@127.0.0.1/faynosync_db?authSource=admin
 API_KEY=generated_api_key
@@ -550,5 +572,5 @@ REPORTS_STORAGE_PREFIX=reports
 REPORTS_RATE_LIMIT_PER_KEY_PER_MINUTE=100
 ```
 
-For convenience, you can also use the `.env.local` file, which contains all the variables already filled in. Ensure that your environment variables are properly set before running the application to avoid misconfigurations.
+For local development, copy `.env.example` from the repository root: it has every variable with a short description and working local values. Ensure that your environment variables are properly set before running the application to avoid misconfigurations.
 

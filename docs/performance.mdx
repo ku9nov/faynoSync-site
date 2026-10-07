@@ -43,12 +43,11 @@ For even better performance, you can configure Nginx to provide additional cachi
 
 ### Nginx Configuration
 
-Add the following configuration to your `nginx.conf`:
+This is the same cache as in [Production Deployment](/docs/getting-started/production-deploy#8-nginx-and-tls), plus optional rate limiting. Add the following to the `http` block (files in `sites-enabled` or `conf.d` are already included inside it):
 
 ```nginx
-# Add this to your global 'http' block in nginx.conf
 # Enables caching for the /checkVersion endpoint
-proxy_cache_path /tmp/nginx_cache levels=1:2 keys_zone=checkversion_cache:10m inactive=60s max_size=100m;
+proxy_cache_path /var/cache/nginx-faynosync levels=1:2 keys_zone=checkversion_cache:10m inactive=60s max_size=100m;
 
 # Optional: enable rate limiting (used in /checkVersion block below)
 limit_req_zone $binary_remote_addr zone=req_limit:10m rate=10r/s;
@@ -83,11 +82,7 @@ location = /checkVersion {
 
     # Standard proxy headers
     proxy_http_version 1.1;
-    proxy_set_header Upgrade $http_upgrade;
-    proxy_set_header Connection 'upgrade';
     proxy_set_header Host $host;
-    proxy_cache_bypass $http_upgrade;
-
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
@@ -133,7 +128,7 @@ echo "Total execution time: $total_time seconds"
 Note on Functionality
 Performance Mode caches the responses of [`/checkVersion`](./api/info/latest) and [`/apps/latest`](./api/info/fetch-latest-build). Responses of private apps are never cached.
 Cached entries expire after 24 hours. Before that, the cache of an app's channel is cleared whenever a version in that channel is uploaded or updated with an explicit `publish` value, or deleted — the next request caches the fresh answer.
-With Performance Mode enabled, [`/health`](./api/info/health) also pings Redis and reports `unhealthy` if it is unreachable.
+[`/health`](./api/info/health) pings MongoDB and Redis and reports `unhealthy` if either is unreachable, whether or not Performance Mode is enabled.
 :::
 
 ## Conclusion

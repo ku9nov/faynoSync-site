@@ -103,7 +103,7 @@ REDIS_DB=0
 
 That's it — once `PERFORMANCE_MODE=true` and Redis is reachable, the API starts caching automatically.
 
-Note that Redis isn't an extra dependency you add for this feature: faynoSync already requires Redis and won't start without it. `PERFORMANCE_MODE` only decides whether responses get cached there. With the mode on, [`/health`](https://faynosync.com/docs/api/info/health) also pings Redis and reports `unhealthy` when it's unreachable — handy for load balancer health checks. Full reference in the [environment overview](https://faynosync.com/docs/getting-started/env-overview).
+Note that Redis isn't an extra dependency you add for this feature: faynoSync already requires Redis and won't start without it. `PERFORMANCE_MODE` only decides whether responses get cached there. [`/health`](https://faynosync.com/docs/api/info/health) pings Redis whether or not the mode is on, and reports `unhealthy` when it's unreachable — handy for load balancer health checks. Full reference in the [environment overview](https://faynosync.com/docs/getting-started/env-overview).
 
 ---
 

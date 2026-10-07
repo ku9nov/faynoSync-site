@@ -1,249 +1,382 @@
 ---
 title: Production Deployment
-description: Complete guide to deploying FaynoSync in production environment on Linux servers
+description: Deploy faynoSync to production on a single Linux server with Docker Compose or the release binary — MongoDB, Redis, Nginx with TLS, migrations, upgrades and backups.
 ---
 
 import LatestVersion from '@site/src/components/LatestVersion';
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
 # Production Deployment
 
-This guide covers deploying FaynoSync in a production environment on Linux servers. FaynoSync is designed to be lightweight and doesn't require complex clustering or expensive infrastructure, making it suitable for simple production deployments.
+This guide deploys faynoSync on one Linux server: the API runs next to MongoDB and Redis, Nginx terminates TLS in front of it, and build artifacts live in your cloud object storage. One machine, one `.env`.
 
-We recommend using Linux servers as they are convenient, more reliable, and easier to use.
+There are two ways to run it, and only a few steps differ between them — those steps have a tab for each:
 
-## Prerequisites Installation
+- **Docker Compose** (recommended): the API, MongoDB and Redis run as containers from one compose file.
+- **Binary**: the release binary runs as a systemd service, and you bring your own MongoDB and Redis (installed on the server or managed). The binary includes the dashboard and the database migrations.
 
-Before deploying FaynoSync, ensure the following software is installed on your server:
+If you only want to try faynoSync on your machine, use [Local Setup](./local-deploy) instead.
 
-:::tip
-**Quick Start Option**: For your convenience, you can also use Docker Compose configurations from other pages in this documentation, adapt them for your server environment, and deploy directly. This can be especially useful if you want to start with a working configuration and modify it for production use.
-:::
+## What You Need
 
-### 1. MongoDB
+- A Linux server
+- A domain name with a DNS `A` record pointing to the server, e.g. `faynosync.example.com`
+- Nginx and Certbot on the server (installed in [step 8](#8-nginx-and-tls))
+- Object storage: **AWS S3**, **DigitalOcean Spaces** or **Google Cloud Storage**, with two buckets:
+  - a **public** bucket for public applications (objects must be publicly readable)
+  - a **private** bucket for private applications
+  - recommended: a bucket for edge manifests (`S3_BUCKET_NAME_CDN`) — reuse the public bucket or create a dedicated one, see [Serve update checks from the edge](#recommended-serve-update-checks-from-the-edge)
 
-Install MongoDB following the [official MongoDB installation guide](https://www.mongodb.com/docs/manual/installation/).
+<Tabs groupId="deployment">
+<TabItem value="compose" label="Docker Compose" default>
 
-### 2. Docker and Docker Compose
+- [Docker Engine and the Compose plugin](https://docs.docker.com/engine/install/)
 
-Install Docker Engine and Docker Compose:
-- [Docker Engine Installation](https://docs.docker.com/engine/install/)
-- [Docker Compose Installation](https://docs.docker.com/compose/install/linux/#install-the-plugin-manually)
+</TabItem>
+<TabItem value="binary" label="Binary">
 
-### 3. Redis
+- MongoDB and Redis reachable from the server — installed locally ([MongoDB](https://www.mongodb.com/docs/manual/installation/), [Redis](https://redis.io/docs/latest/operate/oss_and_stack/install/)) or managed. Redis is required: the API exits on startup without it. faynoSync is tested with MongoDB 7.0 and 8.0 and Redis 8.10.
+- systemd
 
-Redis is required. faynoSync stores response cache (performance mode), telemetry counters, TUF task and signing state, rate limits and Slack notification state in it. The API exits on startup if Redis is unreachable.
-- [Redis Installation Guide](https://redis.io/docs/latest/operate/oss_and_stack/install/archive/install-redis/)
+</TabItem>
+</Tabs>
 
-### 4. Web Server (Nginx)
-
-Install Nginx for reverse proxy and static file serving:
-- [Nginx Installation Guide](https://docs.nginx.com/nginx/admin-guide/installing-nginx/installing-nginx-open-source/)
-
-### 5. Cloud Storage Access
-
-Set up access to your cloud storage provider. FaynoSync supports:
-- **AWS S3**
-- **DigitalOcean Spaces** 
-- **Google Cloud Storage (GCP)**
-
-Create two buckets:
-- One **public** bucket for publicly accessible applications
-- One **private** bucket for private applications
-
-Recommended for update-check caching (see [Serve update checks from the edge](#recommended-serve-update-checks-from-the-edge)):
-- Reuse your **public** bucket for `S3_BUCKET_NAME_CDN`, or create a dedicated **cdn** bucket for more flexible cache settings.
-
-For detailed setup instructions, refer to your cloud provider's documentation.
-
-## FaynoSync Installation and Configuration
-
-### 1. Create Project Directory
+## 1. Create the Project Directory
 
 ```bash
-mkdir faynosync
-cd faynosync
+mkdir faynosync && cd faynosync
 ```
 
-### 2. Environment Configuration
+All files below are created in this directory.
 
-Create a `.env` file with the following content:
+## 2. Generate Secrets
 
-```env
-# Storage Configuration
-STORAGE_DRIVER=aws  # or digitalocean, gcp
+Create `.env` with freshly generated secrets and restrict its permissions:
+
+<Tabs groupId="deployment">
+<TabItem value="compose" label="Docker Compose" default>
+
+```bash
+cat > .env <<EOF
+API_KEY=$(openssl rand -base64 16)
+JWT_SECRET=$(openssl rand -base64 32)
+MONGO_ROOT_PASSWORD=$(openssl rand -hex 24)
+REDIS_PASSWORD=$(openssl rand -hex 24)
+EOF
+chmod 600 .env
+```
+
+The compose file creates MongoDB and Redis with these passwords and passes the connection settings to the API.
+
+</TabItem>
+<TabItem value="binary" label="Binary">
+
+```bash
+cat > .env <<EOF
+API_KEY=$(openssl rand -base64 16)
+JWT_SECRET=$(openssl rand -base64 32)
+MONGODB_URL=mongodb://faynosync:$(openssl rand -hex 24)@127.0.0.1/faynosync?authSource=admin
+REDIS_PASSWORD=$(openssl rand -hex 24)
+EOF
+chmod 600 .env
+```
+
+Do not forget to create the MongoDB user `faynosync` (role `readWrite` on the `faynosync` database) and set the Redis `requirepass` with the generated passwords — without the user the API exits with `Authentication failed`. With managed MongoDB or Redis, replace `MONGODB_URL` and `REDIS_PASSWORD` with the values from your provider.
+
+</TabItem>
+</Tabs>
+
+The API refuses to start when `JWT_SECRET` is empty or shorter than 32 bytes. Do not copy `API_KEY` or `JWT_SECRET` from the repository's `.env.example`: their `insecure-dev-*` values are public, and in release mode the API refuses to start with them.
+
+## 3. Configure the Instance
+
+Append the rest of the configuration to `.env` and replace the example values:
+
+```bash
+cat >> .env <<'EOF'
+
+# Release to run (see the note below)
+FAYNOSYNC_VERSION=v2.7.0
+
+# Public URL of the API
+API_URL=https://faynosync.example.com
+
+# Storage (AWS S3 example)
+STORAGE_DRIVER=aws
 S3_ACCESS_KEY=your_access_key
 S3_SECRET_KEY=your_secret_key
-S3_BUCKET_NAME_PRIVATE=your-private-bucket
-S3_BUCKET_NAME=your-public-bucket
-S3_BUCKET_NAME_CDN=your-public-bucket  # recommended; can match S3_BUCKET_NAME or use a dedicated cache bucket
-S3_ENDPOINT_PRIVATE=https://bucket-name-private.s3.amazonaws.com
-S3_ENDPOINT=https://bucket-name.s3.amazonaws.com
 S3_REGION=us-east-1
+S3_BUCKET_NAME=your-public-bucket
+S3_BUCKET_NAME_PRIVATE=your-private-bucket
+S3_BUCKET_NAME_CDN=your-public-bucket
+S3_ENDPOINT=https://your-public-bucket.s3.amazonaws.com
+S3_ENDPOINT_PRIVATE=https://your-private-bucket.s3.amazonaws.com
 
-# For DigitalOcean Spaces example:
-# S3_ENDPOINT_PRIVATE=fra1.digitaloceanspaces.com
-# S3_ENDPOINT=fra1.digitaloceanspaces.com
-# S3_REGION=fra1
-
-# For GCP, the above three environment variables are not needed
-
-# Core Configuration
-PORT=9000
-ALLOWED_CORS=https://your-faynosync-dashboard.com
-MONGODB_URL=mongodb://myDatabaseUser:D1fficultP%40ssw0rd@mongodb0.example.com:27017/myDefaultDB?authSource=admin
-API_KEY=your_generated_api_key
-MONGODB_URL_TESTS=mongodb://myDatabaseUser:D1fficultP%40ssw0rd@mongodb0.example.com:27017/myDefaultDBTest?authSource=admin
-JWT_SECRET=your_generated_jwt_secret
-TRUSTED_PROXIES=172.16.0.0/12  # nginx on the host reaches the container through the Docker network gateway
-
-# Performance and Features
-PERFORMANCE_MODE=true  # or false
-ENABLE_TELEMETRY=true  # or false
-MAX_BULK_DELETE_VERSIONS=10  # ids per DELETE /apps/delete request
-
-# Redis Configuration (required)
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_PASSWORD=your_redis_password
-REDIS_DB=0
-
-# Security
-ENABLE_PRIVATE_APP_DOWNLOADING=true  # default download_mode for new private apps: true = unlisted, false = strict
-
-# Slack Integration (optional)
-SLACK_ENABLE=true  # or false
-SLACK_BOT_TOKEN=xoxb-your-slack-bot-token
-SLACK_CHANNEL=faynosync-releases
-
-# Reports (optional; blobs stored in S3_BUCKET_NAME_PRIVATE)
-REPORTS_ENABLED=false  # or true
-REPORTS_MAX_BODY_BYTES=262144
-REPORTS_MAX_DETAILS_COMPRESSED_BYTES=131072
-REPORTS_MAX_DETAILS_DECOMPRESSED_BYTES=1048576
-REPORTS_BLOB_RETENTION_DAYS=30
-REPORTS_MAX_BLOBS_PER_GROUP=10
-REPORTS_STORAGE_PREFIX=reports
-REPORTS_RATE_LIMIT_PER_KEY_PER_MINUTE=100
-
-# TUF (The Update Framework) — optional, enables signed metadata
-TUF_ENABLED=true  # or false
-ONLINE_KEY_DIR=/private_keys
-
-# API Configuration
-API_URL=https://faynosync-api.example.com
+# Features
+PERFORMANCE_MODE=true
+ENABLE_TELEMETRY=true
+REPORTS_ENABLED=true
+TUF_ENABLED=true
+EOF
 ```
-
-:::info
-When `TUF_ENABLED=true`, `ONLINE_KEY_DIR` must point to a directory (inside the container) holding the online signing keys. Mount it into the container in your `docker-compose.yaml` (see below). Leave `TUF_ENABLED=false` if you don't use TUF signing.
-:::
-
-### 3. Generate Security Keys
-
-Generate secure API key and JWT secret:
-
-```bash
-# Generate API Key
-openssl rand -base64 16
-
-# Generate JWT Secret
-openssl rand -base64 32
-```
-
-### 4. Docker Compose Configuration
-
-Create a `docker-compose.yaml` file:
 
 :::tip
-**Note**: Change <code>image: ku9nov/faynosync:latest</code> to <code>image: ku9nov/faynosync:<LatestVersion fallbackVersion="v2.6.0" /></code> to use the latest stable release.
+Set `FAYNOSYNC_VERSION` to the latest release: <code><LatestVersion fallbackVersion="v2.7.0" /></code>. Pinning a version instead of `latest` means an upgrade happens only when you change this line.
 :::
 
-```yaml
-services:
-  backend:
-    image: ku9nov/faynosync:latest
-    container_name: "faynoSync_backend"
-    restart: always
-    ports:
-      - "9000:9000"
-    volumes:
-      -  ./.env:/app/.env
-      # Required only when TUF_ENABLED=true — mount the online signing keys
-      -  ./private_keys:/private_keys
-    environment:
-      GIN_MODE: release
+Then add the settings that depend on how you run faynoSync:
+
+<Tabs groupId="deployment">
+<TabItem value="compose" label="Docker Compose" default>
+
+```bash
+cat >> .env <<'EOF'
+
+# Nginx on the host reaches the container through the Docker network gateway
+TRUSTED_PROXIES=172.16.0.0/12
+ONLINE_KEY_DIR=/private_keys
+EOF
 ```
 
-### 5. Deploy FaynoSync
+`MONGODB_URL`, `REDIS_HOST`, `REDIS_PORT` and `REDIS_PASSWORD` for the API are set by the compose file — do not add them.
 
-Start the container:
+</TabItem>
+<TabItem value="binary" label="Binary">
+
+```bash
+cat >> .env <<'EOF'
+
+# Nginx on the same host
+TRUSTED_PROXIES=127.0.0.1
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+ONLINE_KEY_DIR=/opt/faynosync/private_keys
+EOF
+```
+
+</TabItem>
+</Tabs>
+
+Notes:
+
+- For DigitalOcean Spaces set `STORAGE_DRIVER=digitalocean`, `S3_REGION=fra1` and `S3_ENDPOINT=fra1.digitaloceanspaces.com` / `S3_ENDPOINT_PRIVATE=fra1.digitaloceanspaces.com` (your region). For GCP see `GCS_CREDENTIALS_FILE` in the [Environment Variables Overview](./env-overview).
+- Every other variable (Slack, reports limits, presigned uploads, private downloads) is described in the [Environment Variables Overview](./env-overview).
+
+## 4. Install
+
+<Tabs groupId="deployment">
+<TabItem value="compose" label="Docker Compose" default>
+
+Download the compose file:
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/ku9nov/faynoSync/main/deploy/docker-compose.yaml
+```
+
+It runs the API, MongoDB and Redis. You can [read it on GitHub](https://github.com/ku9nov/faynoSync/blob/main/deploy/docker-compose.yaml) before running it.
+
+What this gives you:
+
+- MongoDB and Redis are reachable only inside the compose network — no ports are published for them.
+- Compose reads `.env` on the host and passes it to the API as environment variables, so the file can stay `chmod 600`; values under `environment:` take precedence.
+- The API listens on `127.0.0.1:9000` only; the outside world reaches it through Nginx.
+- The API starts after MongoDB and Redis report healthy, and restarts if it crashes.
+- The image has a built-in healthcheck (`faynoSync healthcheck` probes `/health`), so `docker compose ps` shows whether the API is healthy.
+- Logs are rotated (5 × 10 MB per container) instead of growing until the disk is full.
+
+:::note
+If MongoDB 8.0 does not start on your host (`docker compose logs db`), change the `db` image to `mongo:7.0`: faynoSync is fully supported on it. Do this only before the first start — an existing 8.0 data volume cannot be opened by 7.0.
+:::
+
+</TabItem>
+<TabItem value="binary" label="Binary">
+
+Download the archive for your architecture (`amd64` or `arm64`) from the release, verify it, and install it to `/opt/faynosync`:
+
+```bash
+VERSION=v2.7.0
+ARCH=amd64
+BASE=https://github.com/ku9nov/faynoSync/releases/download/$VERSION
+curl -fsSLO "$BASE/faynoSync_${VERSION}_linux_${ARCH}.tar.gz"
+curl -fsSLO "$BASE/SHA256SUMS"
+sha256sum --check --ignore-missing SHA256SUMS
+tar xzf "faynoSync_${VERSION}_linux_${ARCH}.tar.gz"
+
+sudo useradd --system --home-dir /opt/faynosync --shell /usr/sbin/nologin faynosync
+sudo install -d -o faynosync -g faynosync -m 750 /opt/faynosync
+sudo install -o root -g root -m 755 "faynoSync_${VERSION}_linux_${ARCH}/faynoSync" /opt/faynosync/faynoSync
+sudo install -o faynosync -g faynosync -m 600 .env /opt/faynosync/.env
+```
+
+Create `/etc/systemd/system/faynosync.service`:
+
+```ini
+[Unit]
+Description=faynoSync update server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=faynosync
+Group=faynosync
+WorkingDirectory=/opt/faynosync
+Environment=GIN_MODE=release
+ExecStart=/opt/faynosync/faynoSync
+Restart=on-failure
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
+```
+
+What this gives you:
+
+- The API reads `/opt/faynosync/.env` from its working directory; only the `faynosync` user can read it, and the binary itself is owned by root.
+- `GIN_MODE=release` turns on the release-mode checks: the API refuses to start with the `insecure-dev-*` secrets from the repository.
+- The API restarts if it crashes and can write only to its private `/tmp`.
+
+:::warning
+The binary listens on port `9000` on all interfaces. Block it with your firewall so the outside world reaches the API only through Nginx, e.g. with `ufw`: `sudo ufw allow 22,80,443/tcp && sudo ufw enable`.
+:::
+
+</TabItem>
+</Tabs>
+
+## 5. Start
+
+<Tabs groupId="deployment">
+<TabItem value="compose" label="Docker Compose" default>
 
 ```bash
 docker compose up -d
+docker compose ps
+docker compose logs backend
 ```
 
-You should see output similar to:
+</TabItem>
+<TabItem value="binary" label="Binary">
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now faynosync
+sudo journalctl -u faynosync -f
+```
+
+</TabItem>
+</Tabs>
+
+The log should show:
 
 ```
-faynoSync_backend  | time="2025-09-17T11:19:18Z" level=info msg="Connected to MongoDB!"
-faynoSync_backend  | time="2025-09-17T11:19:18Z" level=info msg="Redis connection is required. Connecting to Redis."
-faynoSync_backend  | time="2025-09-17T11:19:18Z" level=info msg="Connected to Redis successfully"
+level=info msg="Connected to MongoDB!"
+level=info msg="Redis connection is required. Connecting to Redis."
+level=info msg="Connected to Redis successfully"
+level=info msg="Telemetry allow-list reloaded after initializing app handler"
 ```
 
-### 6. Apply Database Migrations
+With Docker Compose the log also starts with `.env file not found, using system variables`. This is expected: Compose passes `.env` to the container as environment variables, not as a file, and the API reads them from the environment.
 
-The API does not run migrations on startup. Apply them once the container is running:
+## 6. Apply Database Migrations
+
+The API does not run migrations on startup. Apply them once it is running:
+
+<Tabs groupId="deployment">
+<TabItem value="compose" label="Docker Compose" default>
 
 ```bash
 docker compose exec -T backend /usr/bin/faynoSync migrate up
 ```
 
-The command prints `Migrations completed`, or `No pending migrations to apply` when the schema is already current. Migrations create the indexes faynoSync relies on, including the unique index that rejects a second document for the same app version, so do not skip this step. Run it again after every upgrade (see [Update FaynoSync](#update-faynosync)).
+</TabItem>
+<TabItem value="binary" label="Binary">
+
+```bash
+sudo -u faynosync sh -c 'cd /opt/faynosync && exec ./faynoSync migrate up'
+```
+
+</TabItem>
+</Tabs>
+
+The command prints `Migrations completed`, or `No pending migrations to apply` when the schema is already current. Migrations create the indexes faynoSync relies on, including the unique index that rejects a second document for the same app version, so do not skip this step. Run it again after every upgrade (see [Upgrade](#upgrade)).
 
 If the command reports app versions stored in more than one document, no migration was applied: merge or remove the listed documents, then run it again.
 
-## Web Server Configuration (Nginx)
+## 7. Create the Admin Account
 
-### 1. Create Nginx Configuration
-
-Create the configuration file:
+Register the admin with the `API_KEY` from your `.env` (see [Sign Up](/docs/api/auth/signup)):
 
 ```bash
-sudo nano /etc/nginx/sites-available/faynosync.conf
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "<strong-password>", "api_key": "<API_KEY>"}' \
+  http://127.0.0.1:9000/signup
 ```
 
-Add the following content:
+`/signup` stays open while `API_KEY` is set. Once your admin accounts exist, remove the `API_KEY` line from `.env` and restart the API to disable it:
+
+<Tabs groupId="deployment">
+<TabItem value="compose" label="Docker Compose" default>
+
+```bash
+docker compose up -d backend
+```
+
+Use `up -d`, not `restart`: `restart` keeps the old environment.
+
+</TabItem>
+<TabItem value="binary" label="Binary">
+
+```bash
+sudo systemctl restart faynosync
+```
+
+</TabItem>
+</Tabs>
+
+The log then shows `API_KEY is not set, /signup is disabled`.
+
+## 8. Nginx and TLS
+
+The commands below are for Debian/Ubuntu. On other distributions, install Nginx, Certbot and the Certbot Nginx plugin with your package manager, put the config in `/etc/nginx/conf.d/faynosync.conf` and skip the `ln -s` step.
+
+Install Nginx and Certbot:
+
+```bash
+sudo apt update
+sudo apt install nginx certbot python3-certbot-nginx
+```
+
+Create `/etc/nginx/sites-available/faynosync.conf`:
 
 ```nginx
+# Cache zone for /checkVersion (files in sites-enabled are included inside the http block)
+proxy_cache_path /var/cache/nginx-faynosync levels=1:2 keys_zone=checkversion_cache:10m inactive=60s max_size=100m;
+
 server {
     server_name faynosync.example.com;
     client_max_body_size 1000M;
-    
-    # Pass all requests to the backend API server
+
     location / {
         proxy_pass http://127.0.0.1:9000;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-
-        # Additional headers for the API
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
 
-        # Timeout settings
         proxy_connect_timeout 60;
         proxy_send_timeout 60;
         proxy_read_timeout 60;
         send_timeout 60;
     }
-    
-    # Optional: Cache checkVersion endpoint to reduce server load
+
+    # Optional: short-lived cache for update checks
     location = /checkVersion {
         proxy_pass http://127.0.0.1:9000;
 
-        # Cache configuration
         proxy_cache checkversion_cache;
         proxy_cache_valid 200 60s;
         proxy_cache_use_stale error timeout updating http_500 http_502 http_503 http_504;
@@ -253,24 +386,11 @@ server {
         proxy_cache_key "$scheme$request_method$host$request_uri";
         add_header X-Cache-Status $upstream_cache_status;
 
-        # Rate limiting (optional)
-        # limit_req zone=req_limit burst=20 nodelay;
-
-        # Headers
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-
-        # Timeouts
-        proxy_connect_timeout 60;
-        proxy_send_timeout 60;
-        proxy_read_timeout 60;
-        send_timeout 60;
     }
 
     access_log /var/log/nginx/faynosync.access.log;
@@ -280,39 +400,27 @@ server {
 }
 ```
 
-### 2. Enable the Site
-
-Create a symbolic link to enable the site:
+Enable the site, then let Certbot obtain a certificate and switch the server block to HTTPS:
 
 ```bash
 sudo ln -s /etc/nginx/sites-available/faynosync.conf /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+sudo certbot --nginx -d faynosync.example.com
 ```
 
-### 3. Test and Restart Nginx
-
-Test the configuration:
+Certbot renews the certificate automatically. Check the result:
 
 ```bash
-sudo nginx -t
+curl https://faynosync.example.com/health
 ```
 
-If the test passes, restart Nginx:
-
-```bash
-sudo systemctl restart nginx
-```
-
-Your API should now be accessible to the world!
-
-:::info
-**HTTPS Configuration**: Setting up HTTPS is beyond the scope of this documentation. Use your SSL certificates and SSL configuration, or use Certbot to obtain free certificates from Let's Encrypt.
-:::
+For more caching and rate-limiting options see [Performance Mode](/docs/performance).
 
 ## Recommended: Serve Update Checks from the Edge
 
 For any internet-facing instance, serve steady-state update checks from object storage instead of the API. With [edge mode](/docs/edge), the API answers only the first check for each combination of app, channel, platform, arch and client version after a publish; every later check is a static object read. This is the cheapest way to handle client load, and it needs no API clustering.
 
-1. **Bucket.** Set `S3_BUCKET_NAME_CDN` (see [Cloud Storage Access](#5-cloud-storage-access)). Manifests are written as public objects, so the bucket must allow public reads. Only the API writes to it.
+1. **Bucket.** Set `S3_BUCKET_NAME_CDN` (see [What You Need](#what-you-need)). Manifests are written as public objects, so the bucket must allow public reads. Only the API writes to it.
 2. **CDN (optional).** Put a CDN in front of that bucket. Manifests carry `Cache-Control: public, max-age=60, must-revalidate`, so clients see a publish within about a minute.
 3. **Apps.** Enable `cdn` on each public app with [Create Application](/docs/api/apps/create) or [Update application](/docs/api/apps/update-app). Private apps cannot use it; the API rejects the combination with `400`.
 4. **Clients.** Use an official SDK with the edge URL set to the bucket or the CDN in front of it: `EdgeURL` in the [Go SDK](/docs/sdk/go/sdk), `edgeURL` in the [JavaScript SDK](/docs/sdk/js/sdk). The SDK reads the manifest first and falls back to `/checkVersion` on a miss.
@@ -320,75 +428,135 @@ For any internet-facing instance, serve steady-state update checks from object s
 
 Clients that call `/checkVersion` directly keep working unchanged; they just don't benefit from the edge. For the design, cache keys and invalidation rules, see [Edge and S3 Response Cache](/docs/edge).
 
-## Dashboard Setup
+## TUF Signing Keys
 
-For the FaynoSync dashboard, we recommend using any CDN provider to serve the FaynoSync dashboard, as it's a static application. For more details, refer to your cloud provider's documentation.
+Not part of the first install: do this when you bootstrap TUF for an app. `TUF_ENABLED=true` only turns on the TUF API, and the API does not generate keys — you create them outside the server (e.g. with the script from the dashboard), then copy the online signing keys (targets, snapshot, timestamp and delegated roles) into `ONLINE_KEY_DIR`. Each file is named after its key ID. Root keys stay offline and never go on the server (see [TUF Management](/docs/api/tuf/tuf-introduction)). If you don't use TUF, set `TUF_ENABLED=false`.
 
-Alternatively, you can use Nginx for proxying static content. See the [Nginx static content serving guide](https://docs.nginx.com/nginx/admin-guide/web-server/serving-static-content/).
+The key files must be readable by the user the API runs as:
 
-## Environment Variables Reference
+<Tabs groupId="deployment">
+<TabItem value="compose" label="Docker Compose" default>
 
-For detailed information about all available environment variables, see the [Environment Variables Overview](/docs/getting-started/env-overview).
-
-## Monitoring and Maintenance
-
-### View Logs
-
-To view FaynoSync logs:
+`./private_keys` is mounted read-only, and the API runs as UID `65532` inside the container:
 
 ```bash
-docker compose logs -f backend
+sudo chown -R 65532:65532 ./private_keys
+sudo chmod 700 ./private_keys && sudo chmod 600 ./private_keys/*
 ```
 
-To view Nginx logs:
+</TabItem>
+<TabItem value="binary" label="Binary">
 
 ```bash
-sudo tail -f /var/log/nginx/faynosync.access.log
-sudo tail -f /var/log/nginx/faynosync.error.log
+sudo install -d -o faynosync -g faynosync -m 700 /opt/faynosync/private_keys
+sudo install -o faynosync -g faynosync -m 600 /path/to/online-keys/* /opt/faynosync/private_keys/
 ```
 
-### Update FaynoSync
+</TabItem>
+</Tabs>
 
-To update to the latest version:
+## Dashboard
 
-1. Pull the latest image:
+The API serves the dashboard at `https://faynosync.example.com/dashboard/`; there is nothing to deploy separately. Optional settings:
+
+- `DASHBOARD_ENABLED=false` turns it off.
+- `DASHBOARD_TUF_METADATA_URL` pre-fills the TUF metadata URL in the key generation form.
+- `ALLOWED_CORS` is only needed if you also host a dashboard build on another origin.
+
+## Upgrade
+
+Read the release's `CHANGELOG` entry before upgrading — breaking changes are listed first.
+
+<Tabs groupId="deployment">
+<TabItem value="compose" label="Docker Compose" default>
+
+1. Set `FAYNOSYNC_VERSION` in `.env` to the new release.
+2. Pull and recreate the API container:
    ```bash
-   docker compose pull
-   ```
-
-2. Restart the service:
-   ```bash
+   docker compose pull backend
    docker compose up -d
    ```
-
 3. Apply the migrations shipped with the new version:
    ```bash
    docker compose exec -T backend /usr/bin/faynoSync migrate up
    ```
 
-## Security Considerations
+</TabItem>
+<TabItem value="binary" label="Binary">
 
-1. **Change default credentials**: Ensure all default passwords and keys are changed
-2. **Use HTTPS**: Always use HTTPS in production
-3. **Firewall**: Configure your firewall to only allow necessary ports
-4. **Regular updates**: Keep all components updated
-5. **Monitor logs**: Regularly check logs for any suspicious activity
+1. Download and verify the new archive as in [step 4](#4-install), then replace the binary and restart:
+   ```bash
+   sudo install -o root -g root -m 755 "faynoSync_${VERSION}_linux_${ARCH}/faynoSync" /opt/faynosync/faynoSync
+   sudo systemctl restart faynosync
+   ```
+2. Apply the migrations shipped with the new version:
+   ```bash
+   sudo -u faynosync sh -c 'cd /opt/faynosync && exec ./faynoSync migrate up'
+   ```
+
+</TabItem>
+</Tabs>
+
+Restarting takes the API offline for a few seconds; clients retry their next update check, and edge-served checks are not affected.
+
+## Backups
+
+| What | Why | How |
+|------|-----|-----|
+| MongoDB | apps, versions, users, tokens, settings | `mongodump` (below) |
+| `.env` | secrets and configuration | copy to a secure location |
+| `ONLINE_KEY_DIR` | TUF online signing keys | secure offline copy; keep it separate from the database dumps |
+| Buckets | build artifacts, feeds, TUF metadata | enable versioning on the buckets |
+| Redis | cache, telemetry counters, TUF task and bootstrap state | Redis persistence (the compose file enables AOF); TUF bootstrap state can also be rebuilt with [Bootstrap Recovery](/docs/api/tuf/recovery) |
+
+Dump MongoDB to a compressed archive and restore it:
+
+<Tabs groupId="deployment">
+<TabItem value="compose" label="Docker Compose" default>
+
+```bash
+docker compose exec -T db sh -c \
+  'mongodump --username root --password "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --archive --gzip' \
+  > faynosync-$(date +%F).archive.gz
+```
+
+```bash
+docker compose exec -T db sh -c \
+  'mongorestore --username root --password "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin --archive --gzip --drop' \
+  < faynosync-2026-01-01.archive.gz
+```
+
+</TabItem>
+<TabItem value="binary" label="Binary">
+
+With the [MongoDB Database Tools](https://www.mongodb.com/docs/database-tools/) installed and `MONGODB_URL` from your `.env`:
+
+```bash
+mongodump --uri "$MONGODB_URL" --archive --gzip > faynosync-$(date +%F).archive.gz
+mongorestore --uri "$MONGODB_URL" --archive --gzip --drop < faynosync-2026-01-01.archive.gz
+```
+
+</TabItem>
+</Tabs>
+
+## Security Checklist
+
+1. Generate every secret (step 2); never reuse values from the repository.
+2. Remove `API_KEY` once admin accounts exist (step 7).
+3. Serve the API only over HTTPS (step 8).
+4. Expose only ports 80 and 443; MongoDB, Redis and the API port stay on the host (with the binary, block port `9000` in the firewall).
+5. Keep `TRUSTED_PROXIES` set to the addresses your proxy connects from.
+6. Upgrade regularly and read the changelog.
 
 ## Troubleshooting
 
-### Common Issues
+- **`backend` stays in `Created`** (Compose) — MongoDB or Redis is not healthy yet. Check `docker compose ps` and `docker compose logs db cache`.
+- **`dependency db failed to start`** (Compose) — check `docker compose logs db`; if MongoDB 8.0 cannot start on your host, use `mongo:7.0` as described in [step 4](#4-install).
+- **The service exits right after start** (binary) — MongoDB or Redis is unreachable or `.env` is not readable by the `faynosync` user; check `sudo journalctl -u faynosync`.
+- **`JWT_SECRET is empty or shorter than 32 bytes`** or **`holds the public development value`** — regenerate the secret as in step 2.
+- **Storage access denied** — check the storage credentials and bucket permissions; the public bucket must allow public reads.
+- **Nginx 502** — the API is not running or not listening on port `9000`; check `docker compose logs backend` or `sudo journalctl -u faynosync`.
 
-1. **MongoDB connection failed**: Check MongoDB URL and credentials
-2. **Redis connection failed**: Verify Redis is running and accessible
-3. **Storage access denied**: Verify cloud storage credentials and bucket permissions
-4. **Nginx 502 error**: Check if FaynoSync backend is running on the correct port
+## Environment Variables Reference
 
-### Health Check
-
-You can check if FaynoSync is running properly by accessing:
-
-```bash
-curl http://your-domain.com/health
-```
-
-This should return a JSON response with the service status.
+For every available environment variable, see the [Environment Variables Overview](/docs/getting-started/env-overview).
